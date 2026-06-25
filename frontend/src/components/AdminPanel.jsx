@@ -1,0 +1,628 @@
+import React, { useState, useEffect } from 'react';
+
+export default function AdminPanel({
+    products,
+    bookings,
+    settings,
+    onAddProduct,
+    onEditProduct,
+    onDeleteProduct,
+    onUpdateBookingStatus,
+    onSaveSettings,
+    onClose
+}) {
+    const [activeTab, setActiveTab] = useState('products');
+
+    // Admin Auth States
+    const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('isAdminLoggedIn') === 'true');
+    const [username, setUsername] = useState('');
+    const [password, setPassword] = useState('');
+    const [loginError, setLoginError] = useState('');
+
+    // 1. Products Tab States
+    const [isProductFormOpen, setIsProductFormOpen] = useState(false);
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [prodTitle, setProdTitle] = useState('');
+    const [prodCategory, setProdCategory] = useState('t-shirt');
+    const [prodPrice, setProdPrice] = useState('');
+    const [prodOriginalPrice, setProdOriginalPrice] = useState('');
+    const [prodImage, setProdImage] = useState('');
+    const [prodDesc, setProdDesc] = useState('');
+    const [prodSizes, setProdSizes] = useState(['M', 'L', 'XL']);
+    const [prodTags, setProdTags] = useState([]);
+    const [prodStock, setProdStock] = useState(50);
+    const [prodInStock, setProdInStock] = useState(true);
+    const [uploading, setUploading] = useState(false);
+
+    // 2. Bookings Tab States
+    const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const bookingsPerPage = 8;
+
+    // 3. Settings Tab States
+    const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
+
+    useEffect(() => {
+        if (settings) {
+            setWhatsappNum(settings.whatsappNumber);
+        }
+    }, [settings]);
+
+    const handleLoginSubmit = (e) => {
+        e.preventDefault();
+        if (username === 'admin' && password === 'admin123') {
+            sessionStorage.setItem('isAdminLoggedIn', 'true');
+            setIsLoggedIn(true);
+            setLoginError('');
+            setUsername('');
+            setPassword('');
+        } else {
+            setLoginError('Invalid username or password');
+        }
+    };
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('isAdminLoggedIn');
+        setIsLoggedIn(false);
+    };
+
+    if (!isLoggedIn) {
+        return (
+            <div className="admin-login-wrapper">
+                <div className="admin-login-card">
+                    <div className="login-header">
+                        <h3>Admin Portal Login</h3>
+                        <p>Sign in to manage your store catalog and bookings</p>
+                    </div>
+                    <form onSubmit={handleLoginSubmit} className="admin-login-form">
+                        <div className="form-field">
+                            <label htmlFor="admin-username">Username</label>
+                            <input
+                                id="admin-username"
+                                type="text"
+                                value={username}
+                                onChange={e => setUsername(e.target.value)}
+                                placeholder="Enter admin username"
+                                required
+                            />
+                        </div>
+                        <div className="form-field">
+                            <label htmlFor="admin-password">Password</label>
+                            <input
+                                id="admin-password"
+                                type="password"
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                placeholder="Enter admin password"
+                                required
+                            />
+                        </div>
+                        {loginError && <div className="login-error-msg">{loginError}</div>}
+                        <button type="submit" className="cta-btn primary-cta login-submit-btn">
+                            Sign In
+                        </button>
+                        <button type="button" className="cta-btn secondary-cta login-cancel-btn" onClick={onClose} style={{ marginTop: '10px', width: '100%' }}>
+                            Return to Store
+                        </button>
+                    </form>
+                </div>
+            </div>
+        );
+    }
+
+    // Handle Form Reset
+    const resetProductForm = () => {
+        setEditingProduct(null);
+        setProdTitle('');
+        setProdCategory('t-shirt');
+        setProdPrice('');
+        setProdOriginalPrice('');
+        setProdImage('');
+        setProdDesc('');
+        setProdSizes(['M', 'L', 'XL']);
+        setProdTags([]);
+        setProdStock(50);
+        setProdInStock(true);
+    };
+
+    // Open Add Form
+    const handleOpenAdd = () => {
+        resetProductForm();
+        setIsProductFormOpen(true);
+    };
+
+    // Open Edit Form
+    const handleOpenEdit = (product) => {
+        setEditingProduct(product);
+        setProdTitle(product.title || '');
+        setProdCategory(product.category || 't-shirt');
+        setProdPrice(product.price || '');
+        setProdOriginalPrice(product.originalPrice || '');
+        setProdImage(product.image || '');
+        setProdDesc(product.description || '');
+        setProdSizes(product.sizes || ['M', 'L', 'XL']);
+        setProdTags(product.tags || []);
+        setProdStock(product.stock !== undefined ? product.stock : 50);
+        setProdInStock(product.inStock !== undefined ? product.inStock : true);
+        setIsProductFormOpen(true);
+    };
+
+    // Submit Product Form (Add or Edit)
+    const handleProductSubmit = (e) => {
+        e.preventDefault();
+        if (!prodTitle || !prodCategory || !prodPrice) {
+            alert('Please fill out all required fields.');
+            return;
+        }
+
+        const productPayload = {
+            title: prodTitle,
+            category: prodCategory,
+            price: parseFloat(prodPrice),
+            originalPrice: prodOriginalPrice ? parseFloat(prodOriginalPrice) : undefined,
+            image: prodImage,
+            description: prodDesc,
+            sizes: prodSizes,
+            tags: prodTags,
+            stock: parseInt(prodStock) || 0,
+            inStock: prodInStock
+        };
+
+        if (editingProduct) {
+            onEditProduct(editingProduct.id, productPayload);
+        } else {
+            onAddProduct(productPayload);
+        }
+        setIsProductFormOpen(false);
+        resetProductForm();
+    };
+
+    // File Upload Handler
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('image', file);
+
+        setUploading(true);
+        try {
+            const response = await fetch('http://localhost:5000/api/upload', {
+                method: 'POST',
+                body: formData
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setProdImage(data.fileUrl);
+            } else {
+                alert('Image upload failed.');
+            }
+        } catch (err) {
+            console.error('Upload error:', err);
+            alert('Error connecting to upload server.');
+        } finally {
+            setUploading(false);
+        }
+    };
+
+    // Handle Size Toggles
+    const toggleSize = (size) => {
+        if (prodSizes.includes(size)) {
+            setProdSizes(prodSizes.filter(s => s !== size));
+        } else {
+            setProdSizes([...prodSizes, size]);
+        }
+    };
+
+    // Handle Tag Input (Comma separated)
+    const handleTagsChange = (val) => {
+        const arr = val.split(',').map(t => t.trim()).filter(t => t !== '');
+        setProdTags(arr);
+    };
+
+    // Booking Filtering and Searching
+    const filteredBookings = bookings.filter(b => {
+        const matchesQuery = 
+            b.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            b.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            b.customer.phone.includes(searchQuery);
+        
+        const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
+        return matchesQuery && matchesStatus;
+    });
+
+    // Pagination Calculation
+    const indexOfLastBooking = currentPage * bookingsPerPage;
+    const indexOfFirstBooking = indexOfLastBooking - bookingsPerPage;
+    const currentBookings = filteredBookings.slice(indexOfFirstBooking, indexOfLastBooking);
+    const totalPages = Math.ceil(filteredBookings.length / bookingsPerPage);
+
+    const handleSaveSettingsSubmit = (e) => {
+        e.preventDefault();
+        onSaveSettings({ whatsappNumber: whatsappNum });
+    };
+
+    return (
+        <div className="admin-dashboard-container container">
+            <div className="admin-header-row">
+                <h2>Admin Control Center</h2>
+                <div className="admin-header-actions" style={{ display: 'flex', gap: '10px' }}>
+                    <button className="cta-btn secondary-cta" onClick={handleLogout}>
+                        Log Out
+                    </button>
+                    <button className="cta-btn secondary-cta" onClick={onClose}>
+                        Return to Store
+                    </button>
+                </div>
+            </div>
+
+            {/* Admin Tabs */}
+            <div className="admin-tabs-row">
+                <button 
+                    className={`admin-tab-btn ${activeTab === 'products' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('products')}
+                >
+                    Manage Products
+                </button>
+                <button 
+                    className={`admin-tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
+                    onClick={() => { setActiveTab('bookings'); setCurrentPage(1); }}
+                >
+                    Orders & Bookings ({bookings.length})
+                </button>
+                <button 
+                    className={`admin-tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('settings')}
+                >
+                    Shop Settings
+                </button>
+            </div>
+
+            {/* TAB CONTENT: PRODUCTS */}
+            {activeTab === 'products' && (
+                <div className="admin-tab-content">
+                    <div className="tab-actions-bar">
+                        <h3>Current Store Catalog</h3>
+                        <button className="cta-btn primary-cta" onClick={handleOpenAdd}>
+                            + Add New Product
+                        </button>
+                    </div>
+
+                    {isProductFormOpen && (
+                        <div className="admin-form-overlay">
+                            <div className="admin-modal-content">
+                                <div className="modal-header">
+                                    <h4>{editingProduct ? 'Edit Product details' : 'Add New Product'}</h4>
+                                    <button className="close-btn" onClick={() => setIsProductFormOpen(false)}>&times;</button>
+                                </div>
+                                <form onSubmit={handleProductSubmit} className="admin-product-form">
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Product Title *</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                value={prodTitle} 
+                                                onChange={e => setProdTitle(e.target.value)} 
+                                                placeholder="e.g. Premium Linen Shirt"
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Category *</label>
+                                            <select value={prodCategory} onChange={e => setProdCategory(e.target.value)}>
+                                                <option value="summer-t-shirt">Summer T-Shirts</option>
+                                                <option value="t-shirt">T-Shirts</option>
+                                                <option value="shirt">Shirts</option>
+                                                <option value="pants">Pants</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Selling Price (₹) *</label>
+                                            <input 
+                                                type="number" 
+                                                required 
+                                                value={prodPrice} 
+                                                onChange={e => setProdPrice(e.target.value)} 
+                                                placeholder="e.g. 799"
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Original Price (₹) (Optional)</label>
+                                            <input 
+                                                type="number" 
+                                                value={prodOriginalPrice} 
+                                                onChange={e => setProdOriginalPrice(e.target.value)} 
+                                                placeholder="e.g. 1499"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Stock Count</label>
+                                            <input 
+                                                type="number" 
+                                                value={prodStock} 
+                                                onChange={e => setProdStock(e.target.value)} 
+                                                placeholder="e.g. 50"
+                                            />
+                                        </div>
+                                        <div className="form-field toggle-field">
+                                            <label>Product Availability</label>
+                                            <div className="checkbox-wrapper">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id="inStockCheckbox"
+                                                    checked={prodInStock} 
+                                                    onChange={e => setProdInStock(e.target.checked)}
+                                                />
+                                                <label htmlFor="inStockCheckbox">In Stock & Listed</label>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Product Image Link / Upload</label>
+                                        <div className="image-input-group">
+                                            <input 
+                                                type="text" 
+                                                value={prodImage} 
+                                                onChange={e => setProdImage(e.target.value)} 
+                                                placeholder="Paste Unsplash image URL or upload file"
+                                            />
+                                            <div className="file-upload-btn-wrapper">
+                                                <button type="button" className="file-btn">Upload Image</button>
+                                                <input type="file" accept="image/*" onChange={handleFileUpload} />
+                                            </div>
+                                        </div>
+                                        {uploading && <span className="upload-indicator">Uploading to server...</span>}
+                                        {prodImage && (
+                                            <div className="image-preview-box">
+                                                <img src={prodImage} alt="Preview" style={{ maxHeight: '100px', borderRadius: '4px', marginTop: '10px' }} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Sizes Available (Select all that apply)</label>
+                                        <div className="sizes-checkboxes">
+                                            {['S', 'M', 'L', 'XL', 'XXL', 'One Size'].map(sz => (
+                                                <button 
+                                                    key={sz}
+                                                    type="button"
+                                                    className={`admin-size-select-btn ${prodSizes.includes(sz) ? 'selected' : ''}`}
+                                                    onClick={() => toggleSize(sz)}
+                                                >
+                                                    {sz}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Product Description</label>
+                                        <textarea 
+                                            value={prodDesc} 
+                                            onChange={e => setProdDesc(e.target.value)} 
+                                            rows="3"
+                                            placeholder="Write brief description for card..."
+                                        />
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Tags (Comma separated values)</label>
+                                        <input 
+                                            type="text" 
+                                            value={prodTags.join(', ')} 
+                                            onChange={e => handleTagsChange(e.target.value)} 
+                                            placeholder="e.g. New, Oversized, Trending"
+                                        />
+                                    </div>
+
+                                    <div className="modal-footer-actions">
+                                        <button type="button" className="cta-btn secondary-cta" onClick={() => setIsProductFormOpen(false)}>Cancel</button>
+                                        <button type="submit" className="cta-btn primary-cta">Save Product</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Products list Table */}
+                    <div className="responsive-table-wrapper">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Stock</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {products.map(prod => (
+                                    <tr key={prod.id}>
+                                        <td>
+                                            <img src={prod.image} alt={prod.title} className="table-thumbnail" />
+                                        </td>
+                                        <td className="bold-td">{prod.title}</td>
+                                        <td>{prod.category}</td>
+                                        <td>₹{prod.price}</td>
+                                        <td>{prod.stock !== undefined ? prod.stock : 50}</td>
+                                        <td>
+                                            <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`}>
+                                                {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out of Stock'}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <div className="table-actions">
+                                                <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
+                                                    Edit
+                                                </button>
+                                                <button className="delete-action-btn" onClick={() => {
+                                                    if(confirm(`Are you sure you want to delete "${prod.title}"?`)) {
+                                                        onDeleteProduct(prod.id);
+                                                    }
+                                                }}>
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: BOOKINGS */}
+            {activeTab === 'bookings' && (
+                <div className="admin-tab-content">
+                    <div className="tab-filters-bar">
+                        <div className="search-box-wrapper">
+                            <input 
+                                type="text" 
+                                placeholder="Search Booking ID, Customer, Phone..." 
+                                value={searchQuery}
+                                onChange={e => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                                className="admin-search-input"
+                            />
+                        </div>
+                        <div className="filter-dropdown-wrapper">
+                            <label>Filter Status: </label>
+                            <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}>
+                                <option value="all">All Orders</option>
+                                <option value="Pending">Pending</option>
+                                <option value="Confirmed">Confirmed</option>
+                                <option value="Cancelled">Cancelled</option>
+                                <option value="Delivered">Delivered</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="responsive-table-wrapper">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Booking ID</th>
+                                    <th>Date</th>
+                                    <th>Customer Name</th>
+                                    <th>Phone / WhatsApp</th>
+                                    <th>Items (Qty)</th>
+                                    <th>Total Price</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {currentBookings.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                            No matching bookings found.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    currentBookings.map(book => (
+                                        <tr key={book.orderId}>
+                                            <td className="bold-td highlight-order-id">{book.orderId}</td>
+                                            <td style={{ fontSize: '13px' }}>{book.date}</td>
+                                            <td className="bold-td">{book.customer.name}</td>
+                                            <td>
+                                                <div style={{ fontSize: '13px' }}>📞 {book.customer.phone}</div>
+                                                <div style={{ fontSize: '13px', color: '#10b981' }}>💬 {book.customer.whatsapp}</div>
+                                            </td>
+                                            <td>
+                                                <div className="items-list-cell">
+                                                    {book.items.map((item, idx) => (
+                                                        <div key={idx} className="order-item-desc">
+                                                            • {item.title} ({item.size}) x{item.quantity}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </td>
+                                            <td className="bold-td">₹{book.total}</td>
+                                            <td>
+                                                <select 
+                                                    value={book.status || 'Pending'} 
+                                                    className={`status-select-dropdown ${book.status ? book.status.toLowerCase() : 'pending'}`}
+                                                    onChange={e => onUpdateBookingStatus(book.orderId, e.target.value)}
+                                                >
+                                                    <option value="Pending">Pending</option>
+                                                    <option value="Confirmed">Confirmed</option>
+                                                    <option value="Cancelled">Cancelled</option>
+                                                    <option value="Delivered">Delivered</option>
+                                                </select>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    {totalPages > 1 && (
+                        <div className="admin-pagination-row">
+                            <button 
+                                className="pagination-btn" 
+                                disabled={currentPage === 1}
+                                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                            >
+                                &laquo; Prev
+                            </button>
+                            <span className="pagination-info">
+                                Page {currentPage} of {totalPages}
+                            </span>
+                            <button 
+                                className="pagination-btn" 
+                                disabled={currentPage === totalPages}
+                                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                            >
+                                Next &raquo;
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* TAB CONTENT: SETTINGS */}
+            {activeTab === 'settings' && (
+                <div className="admin-tab-content">
+                    <div className="settings-card">
+                        <h3>Shop Configurations</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>
+                            Update global settings for your Netrave Store website.
+                        </p>
+
+                        <form onSubmit={handleSaveSettingsSubmit} className="admin-settings-form">
+                            <div className="form-field" style={{ maxWidth: '400px' }}>
+                                <label>Target WhatsApp Notification Number *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={whatsappNum} 
+                                    onChange={e => setWhatsappNum(e.target.value)} 
+                                    placeholder="e.g. 919876543210 (include country code)"
+                                />
+                                <small style={{ color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>
+                                    Customers will automatically redirect to this WhatsApp contact to confirm order details after booking.
+                                </small>
+                            </div>
+
+                            <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '20px' }}>
+                                Save Configurations
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
