@@ -149,6 +149,24 @@ if (useMongo) {
             await SettingsModel.create({ key: 'main', whatsappNumber: fileSettings.whatsappNumber || '919946550713' });
             console.log('[Netrave Backend] Seeded MongoDB settings collection');
         }
+        // Seed Coupons
+        const couponCount = await CouponModel.countDocuments();
+        if (couponCount === 0) {
+            const fileCoupons = await readJson(couponsPath);
+            if (fileCoupons && fileCoupons.length > 0) {
+                await CouponModel.insertMany(fileCoupons);
+                console.log('[Netrave Backend] Seeded MongoDB coupons collection from coupons.json');
+            }
+        }
+        // Seed Users
+        const userCount = await UserModel.countDocuments();
+        if (userCount === 0) {
+            const fileUsers = await readJson(usersPath);
+            if (fileUsers && fileUsers.length > 0) {
+                await UserModel.insertMany(fileUsers);
+                console.log('[Netrave Backend] Seeded MongoDB users collection from users.json');
+            }
+        }
     } catch (err) {
         console.error('[Netrave Backend] Seeding error:', err.message);
     }
