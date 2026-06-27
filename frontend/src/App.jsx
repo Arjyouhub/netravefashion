@@ -499,24 +499,21 @@ export default function App() {
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
     // Conditional Admin Dashboard Rendering
+    // Conditional Developer Page Rendering (removes storefront header/footer)
+    if (isDeveloperOpen) {
+        return (
+            <DeveloperModal
+                isOpen={isDeveloperOpen}
+                onClose={() => setIsDeveloperOpen(false)}
+            />
+        );
+    }
+
+    // Conditional Admin Dashboard Rendering (removes storefront header)
     if (isAdminView) {
         return (
             <div className="app-container">
-                <Header
-                    cartCount={cartCount}
-                    onCartOpen={() => setIsCartOpen(true)}
-                    onBookingsOpen={() => setIsBookingsOpen(true)}
-                    activeCategory={activeCategory}
-                    onCategoryChange={setActiveCategory}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    mobileDrawerOpen={mobileDrawerOpen}
-                    setMobileDrawerOpen={setMobileDrawerOpen}
-                    user={user}
-                    onLogout={handleLogout}
-                    onLoginClick={() => setIsAuthOpen(true)}
-                />
-                <main>
+                <main style={{ paddingTop: '20px' }}>
                     <AdminPanel
                         products={products}
                         bookings={bookings}
@@ -709,11 +706,6 @@ export default function App() {
                 bookings={bookings}
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsBookingsOpen(false)}
-            />
-
-            <DeveloperModal
-                isOpen={isDeveloperOpen}
-                onClose={() => setIsDeveloperOpen(false)}
             />
 
             {/* Mobile Bottom Navigation Bar completely removed */}
