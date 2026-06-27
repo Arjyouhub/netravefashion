@@ -9,6 +9,7 @@ import SuccessModal from './components/SuccessModal';
 import BookingsModal from './components/BookingsModal';
 import AdminPanel from './components/AdminPanel';
 import AuthModal from './components/AuthModal';
+import DeveloperModal from './components/DeveloperModal';
 
 // Backup fallback database to ensure frontend works gracefully even if backend is offline
 const FALLBACK_PRODUCTS = [
@@ -116,6 +117,7 @@ export default function App() {
     const [isBookingsOpen, setIsBookingsOpen] = useState(false);
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
     const [user, setUser] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem('netrave_user')) || null;
@@ -655,7 +657,7 @@ export default function App() {
                 </div>
 
                 <div className="footer-bottom">
-                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala.</p>
+                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala. | <button onClick={() => setIsDeveloperOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontFamily: 'inherit', fontWeight: '600' }}>Developer Page</button></p>
                 </div>
             </footer>
 
@@ -707,6 +709,11 @@ export default function App() {
                 bookings={bookings}
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsBookingsOpen(false)}
+            />
+
+            <DeveloperModal
+                isOpen={isDeveloperOpen}
+                onClose={() => setIsDeveloperOpen(false)}
             />
 
             {/* Mobile Bottom Navigation Bar completely removed */}
