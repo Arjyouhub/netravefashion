@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking }) {
+export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking, user, API_BASE_URL }) {
     const [name, setName] = useState('');
     const [phone, setPhone] = useState('');
     const [whatsapp, setWhatsapp] = useState('');
@@ -13,20 +13,28 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking }
     const [errors, setErrors] = useState({});
     const [validated, setValidated] = useState(false);
 
-    // Reset validations on modal load
+    // Coupon states
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponError, setCouponError] = useState('');
+
+    // Reset validations and prefill user on modal load
     useEffect(() => {
-        setName('');
-        setPhone('');
-        setWhatsapp('');
+        setName(user?.name || '');
+        setPhone(user?.phone || '');
+        setWhatsapp(user?.phone || '');
         setAddress('');
         setDistrict('');
         setPincode('');
         setPayment('COD');
         setTermsCheck(false);
-        setSameAsPhone(false);
+        setSameAsPhone(user ? true : false);
         setErrors({});
         setValidated(false);
-    }, [isOpen]);
+        setCouponCode('');
+        setAppliedCoupon(null);
+        setCouponError('');
+    }, [isOpen, user]);
 
     // Handle same as phone copy toggle
     const handleSameAsPhoneToggle = (checked) => {
@@ -46,12 +54,49 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking }
         }
     }, [phone, sameAsPhone]);
 
+    const handleApplyCoupon = async () => {
+        setCouponError('');
+        if (!couponCode.trim()) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/coupons/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: couponCode, subtotal })
+            });
+            const data = await response.json();
+            if (response.ok && data.valid) {
+                setAppliedCoupon(data);
+            } else {
+                setCouponError(data.error || 'Failed to validate coupon.');
+            }
+        } catch (err) {
+            setCouponError('Network error validating coupon.');
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponCode('');
+        setCouponError('');
+    };
+
     if (!isOpen) return null;
 
     // Calculate totals
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const delivery = subtotal >= 999 ? 0 : 60;
-    const total = subtotal + delivery;
+    
+    let discountAmount = 0;
+    if (appliedCoupon) {
+        if (appliedCoupon.discountType === 'percentage') {
+            discountAmount = Math.round((subtotal * appliedCoupon.discountValue) / 100);
+        } else {
+            discountAmount = appliedCoupon.discountValue;
+        }
+    }
+    const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount);
+    const delivery = subtotalAfterDiscount >= 999 ? 0 : 60;
+    const total = subtotalAfterDiscount + delivery;
 
     const validateForm = () => {
         const tempErrors = {};
@@ -75,14 +120,19 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking }
         if (!termsCheck) tempErrors.terms = 'You must agree to the terms.';
 
         setErrors(tempErrors);
-        return Object.keys(tempErrors).length === 0;
+        return {
+            isValid: Object.keys(tempErrors).length === 0,
+            errorsMap: tempErrors
+        };
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
         setValidated(true);
 
-        if (validateForm()) {
+        const { isValid, errorsMap } = validateForm();
+
+        if (isValid) {
             onSubmitBooking({
                 name,
                 phone,
@@ -90,8 +140,31 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking }
                 address,
                 district,
                 pincode,
-                payment
+                payment,
+                couponCode: appliedCoupon ? appliedCoupon.code : undefined,
+                discount: discountAmount
             });
+        } else {
+            // Scroll to the first error element
+            const firstErrorKey = Object.keys(errorsMap)[0];
+            let elementId = '';
+            if (firstErrorKey === 'name') elementId = 'custName';
+            else if (firstErrorKey === 'phone') elementId = 'custPhone';
+            else if (firstErrorKey === 'whatsapp') elementId = 'custWhatsApp';
+            else if (firstErrorKey === 'address') elementId = 'custAddress';
+            else if (firstErrorKey === 'district') elementId = 'custDistrict';
+            else if (firstErrorKey === 'pincode') elementId = 'custPincode';
+            else if (firstErrorKey === 'terms') elementId = 'termsCheck';
+
+            if (elementId) {
+                const element = document.getElementById(elementId);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    setTimeout(() => {
+                        element.focus({ preventScroll: true });
+                    }, 300);
+                }
+            }
         }
     };
 
@@ -273,11 +346,67 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking }
                             ))}
                         </div>
 
+                        {/* Coupon Code Section */}
+                        <div className="coupon-section" style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '15px 0', margin: '15px 0' }}>
+                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#fff', marginBottom: '8px', display: 'block' }}>Have a Coupon Code?</label>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                                <input 
+                                    type="text" 
+                                    placeholder="ENTER CODE" 
+                                    value={couponCode} 
+                                    onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                    style={{ 
+                                        flexGrow: 1, 
+                                        background: 'var(--bg-dark)', 
+                                        border: '1px solid var(--border-color)', 
+                                        borderRadius: '8px', 
+                                        padding: '8px 12px', 
+                                        color: '#fff', 
+                                        textTransform: 'uppercase',
+                                        fontFamily: 'var(--font-body)',
+                                        fontSize: '13px'
+                                    }}
+                                    disabled={appliedCoupon !== null}
+                                />
+                                {appliedCoupon ? (
+                                    <button 
+                                        type="button" 
+                                        className="cta-btn secondary-cta" 
+                                        onClick={handleRemoveCoupon}
+                                        style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', minHeight: 'unset' }}
+                                    >
+                                        Remove
+                                    </button>
+                                ) : (
+                                    <button 
+                                        type="button" 
+                                        className="cta-btn primary-cta" 
+                                        onClick={handleApplyCoupon}
+                                        style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', minHeight: 'unset' }}
+                                    >
+                                        Apply
+                                    </button>
+                                )}
+                            </div>
+                            {couponError && <span className="validation-err" style={{ display: 'block', marginTop: '6px' }}>{couponError}</span>}
+                            {appliedCoupon && (
+                                <span style={{ display: 'block', color: 'var(--primary)', fontSize: '12px', fontWeight: '600', marginTop: '6px' }}>
+                                    🎉 Coupon Applied! Saved ₹{discountAmount}
+                                </span>
+                            )}
+                        </div>
+
                         <div className="checkout-pricing">
                             <div className="summary-row">
                                 <span>Subtotal</span>
                                 <span>₹{subtotal}</span>
                             </div>
+                            {discountAmount > 0 && (
+                                <div className="summary-row" style={{ color: 'var(--primary)' }}>
+                                    <span>Discount</span>
+                                    <span>-₹{discountAmount}</span>
+                                </div>
+                            )}
                             <div className="summary-row">
                                 <span>Delivery</span>
                                 <span className={delivery === 0 ? 'free-delivery' : ''}>

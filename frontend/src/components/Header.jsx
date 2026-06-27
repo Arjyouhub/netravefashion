@@ -13,7 +13,10 @@ export default function Header({
     activeTag,
     onTagChange,
     setIsAdminView,
-    onSortChange
+    onSortChange,
+    user,
+    onLogout,
+    onLoginClick
 }) {
     const [mobileSearchVisible, setMobileSearchVisible] = useState(false);
     const [localDrawerOpen, setLocalDrawerOpen] = useState(false);
@@ -121,8 +124,14 @@ export default function Header({
 
                     {/* Logo */}
                     <a href="#" className="logo" onClick={(e) => { e.preventDefault(); triggerHome(); }}>
-                        <span className="logo-accent">NETRAVE</span>
-                        <span className="logo-sub">CLOTHING & STYLE</span>
+                        <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" />
+                        <div className="logo-text">
+                            <div className="logo-accent">
+                                <span className="logo-net">NET</span>
+                                <span className="logo-rave">RAVE</span>
+                            </div>
+                            <span className="logo-sub">CLOTHING & STYLE</span>
+                        </div>
                     </a>
 
                     {/* Desktop Navigation */}
@@ -168,11 +177,33 @@ export default function Header({
 
                         <button 
                             className="action-btn mobile-bookings-trigger" 
-                            onClick={onBookingsOpen}
+                            onClick={user ? onBookingsOpen : onLoginClick}
                             aria-label="View Booking History"
+                            title={user ? `Logged in as ${user.name} - View Bookings` : "Track Order / Sign In"}
                         >
-                            <svg viewBox="0 0 24 24" className="icon"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
+                            {user ? (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <svg viewBox="0 0 24 24" className="icon" style={{ fill: 'var(--primary)' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                    <span className="desktop-search-header" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--primary)' }}>My Orders</span>
+                                </div>
+                            ) : (
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <svg viewBox="0 0 24 24" className="icon" style={{ fill: '#ffffff' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                    <span className="desktop-search-header" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Login</span>
+                                </div>
+                            )}
                         </button>
+
+                        {user && (
+                            <button 
+                                className="action-btn text-action" 
+                                onClick={onLogout}
+                                title="Sign Out"
+                                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', height: '36px' }}
+                            >
+                                Logout
+                            </button>
+                        )}
 
                         <button 
                             className="action-btn" 
@@ -259,11 +290,11 @@ export default function Header({
                         )}
                     </li>
 
-                    {/* 4. New Arrivals */}
+                    {/* 4. Modern New */}
                     <li>
                         <button className={`mob-link ${activeTag === 'New' ? 'active' : ''}`} onClick={triggerNewArrivals}>
                             <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                            <span>New Arrivals</span>
+                            <span>Modern New</span>
                         </button>
                     </li>
 
@@ -290,11 +321,20 @@ export default function Header({
 
                     {/* 7. Track Order */}
                     <li>
-                        <button className="mob-link" onClick={triggerTrackOrder}>
+                        <button className="mob-link" onClick={() => { if (user) { triggerTrackOrder(); } else { setMobileDrawerOpen(false); onLoginClick(); } }}>
                             <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-                            <span>Track Order</span>
+                            <span>{user ? `My Orders (${user.name})` : 'Track Order'}</span>
                         </button>
                     </li>
+
+                    {user && (
+                        <li>
+                            <button className="mob-link" onClick={() => { onLogout(); setMobileDrawerOpen(false); }} style={{ color: 'var(--error)' }}>
+                                <svg viewBox="0 0 24 24" className="drawer-icon" style={{ fill: 'var(--error)' }}><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+                                <span style={{ color: 'var(--error)' }}>Logout</span>
+                            </button>
+                        </li>
+                    )}
 
                     {/* 8. Contact Us */}
                     <li>

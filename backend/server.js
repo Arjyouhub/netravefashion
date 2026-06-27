@@ -5,6 +5,9 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import multer from 'multer';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +21,8 @@ app.use(express.json());
 const productsPath = path.join(__dirname, 'data', 'products.json');
 const bookingsPath = path.join(__dirname, 'data', 'bookings.json');
 const settingsPath = path.join(__dirname, 'data', 'settings.json');
+const usersPath = path.join(__dirname, 'data', 'users.json');
+const couponsPath = path.join(__dirname, 'data', 'coupons.json');
 
 // Ensure data folder exists
 async function initDataFolder() {
@@ -101,6 +106,27 @@ const SettingsSchema = new mongoose.Schema({
     whatsappNumber: { type: String, default: '919946550713' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
+
+// User Schema
+const UserSchema = new mongoose.Schema({
+    phone: { type: String, required: true, unique: true },
+    name: { type: String, required: true },
+    mpin: { type: String, required: true },
+    loginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Number, default: 0 },
+    isBlocked: { type: Boolean, default: false }
+});
+const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// Coupon Schema
+const CouponSchema = new mongoose.Schema({
+    code: { type: String, required: true, unique: true },
+    discountType: { type: String, default: 'flat' },
+    discountValue: { type: Number, required: true },
+    minSubtotal: { type: Number, default: 0 },
+    isActive: { type: Boolean, default: true }
+});
+const CouponModel = mongoose.models.Coupon || mongoose.model('Coupon', CouponSchema);
 
 // --------------------------------------------------------------------------
 // DATABASE SEEDING FOR MONGODB
@@ -510,7 +536,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
         const ordId = req.params.orderId;
         const { status } = req.body;
 
-        const validStatuses = ['Pending', 'Confirmed', 'Cancelled', 'Delivered'];
+        const validStatuses = ['Pending', 'Order Placed', 'Payment Confirmed', 'Dispatched', 'Delivered', 'Cancelled'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid booking status value.' });
         }
@@ -601,6 +627,354 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to update booking status.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// USER AUTHENTICATION & LOGIN ENDPOINTS
+// --------------------------------------------------------------------------
+
+// Register User (OTP-less 6-digit MPIN setup)
+app.post('/api/auth/register', async (req, res) => {
+    try {
+        const { phone, name, mpin } = req.body;
+        if (!phone || !name || !mpin) {
+            return res.status(400).json({ error: 'Phone, Name, and MPIN are required.' });
+        }
+        if (!/^[0-9]{10}$/.test(phone)) {
+            return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
+        }
+        if (!/^[0-9]{6}$/.test(mpin)) {
+            return res.status(400).json({ error: 'MPIN must be exactly 6 digits.' });
+        }
+
+        if (useMongo) {
+            const existingUser = await UserModel.findOne({ phone });
+            if (existingUser) {
+                return res.status(400).json({ error: 'User already registered with this mobile number.' });
+            }
+            const newUser = new UserModel({ phone, name, mpin });
+            await newUser.save();
+            res.status(201).json({ success: true, user: { phone: newUser.phone, name: newUser.name } });
+        } else {
+            const users = await readJson(usersPath);
+            const existingUser = users.find(u => u.phone === phone);
+            if (existingUser) {
+                return res.status(400).json({ error: 'User already registered with this mobile number.' });
+            }
+            const newUser = { phone, name, mpin };
+            users.push(newUser);
+            await writeJson(usersPath, users);
+            res.status(201).json({ success: true, user: { phone, name } });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Registration failed.' });
+    }
+});
+
+// Login User
+app.post('/api/auth/login', async (req, res) => {
+    try {
+        const { phone, mpin } = req.body;
+        if (!phone || !mpin) {
+            return res.status(400).json({ error: 'Phone and MPIN are required.' });
+        }
+
+        if (useMongo) {
+            const user = await UserModel.findOne({ phone });
+            if (!user) {
+                return res.status(400).json({ error: 'Invalid mobile number or MPIN.' });
+            }
+
+            // 1. Check if permanently blocked
+            if (user.isBlocked) {
+                return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
+            }
+
+            // 2. Check if temporarily locked
+            if (user.lockUntil && user.lockUntil > Date.now()) {
+                const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+                return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
+            }
+
+            // 3. Verify MPIN
+            if (user.mpin !== mpin) {
+                const attempts = (user.loginAttempts || 0) + 1;
+                let errMsg = 'Incorrect MPIN.';
+                
+                user.loginAttempts = attempts;
+                if (attempts === 5) {
+                    user.lockUntil = Date.now() + 5 * 60 * 1000; // 5 mins
+                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account locked for 5 minutes.';
+                } else if (attempts >= 7) {
+                    user.isBlocked = true;
+                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account has been permanently blocked. Contact Admin.';
+                } else {
+                    const remaining = attempts < 5 ? 5 - attempts : 7 - attempts;
+                    const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
+                    errMsg = `Incorrect MPIN. Remaining attempts before ${type}: ${remaining}`;
+                }
+                await user.save();
+                return res.status(400).json({ error: errMsg });
+            }
+
+            // 4. Success: Reset retries
+            user.loginAttempts = 0;
+            user.lockUntil = 0;
+            await user.save();
+
+            res.json({ success: true, user: { phone: user.phone, name: user.name } });
+        } else {
+            const users = await readJson(usersPath);
+            const userIndex = users.findIndex(u => u.phone === phone);
+            if (userIndex === -1) {
+                return res.status(400).json({ error: 'Invalid mobile number or MPIN.' });
+            }
+
+            const user = users[userIndex];
+
+            // 1. Check if permanently blocked
+            if (user.isBlocked) {
+                return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
+            }
+
+            // 2. Check if temporarily locked
+            if (user.lockUntil && user.lockUntil > Date.now()) {
+                const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+                return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
+            }
+
+            // 3. Verify MPIN
+            if (user.mpin !== mpin) {
+                const attempts = (user.loginAttempts || 0) + 1;
+                let errMsg = 'Incorrect MPIN.';
+                
+                user.loginAttempts = attempts;
+                if (attempts === 5) {
+                    user.lockUntil = Date.now() + 5 * 60 * 1000;
+                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account locked for 5 minutes.';
+                } else if (attempts >= 7) {
+                    user.isBlocked = true;
+                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account has been permanently blocked. Contact Admin.';
+                } else {
+                    const remaining = attempts < 5 ? 5 - attempts : 7 - attempts;
+                    const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
+                    errMsg = `Incorrect MPIN. Remaining attempts before ${type}: ${remaining}`;
+                }
+                users[userIndex] = user;
+                await writeJson(usersPath, users);
+                return res.status(400).json({ error: errMsg });
+            }
+
+            // 4. Success: Reset retries
+            user.loginAttempts = 0;
+            user.lockUntil = 0;
+            users[userIndex] = user;
+            await writeJson(usersPath, users);
+
+            res.json({ success: true, user: { phone: user.phone, name: user.name } });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Login failed.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// USER-SPECIFIC BOOKINGS ENDPOINT
+// --------------------------------------------------------------------------
+app.get('/api/bookings/user/:phone', async (req, res) => {
+    try {
+        const phone = req.params.phone;
+        if (useMongo) {
+            const bookings = await BookingModel.find({ 'customer.phone': phone }).sort({ _id: -1 });
+            res.json(bookings);
+        } else {
+            const bookings = await readJson(bookingsPath);
+            const filtered = bookings.filter(b => b.customer.phone === phone);
+            res.json(filtered);
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch bookings for user.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// COUPON MANAGEMENT & VALIDATION ENDPOINTS
+// --------------------------------------------------------------------------
+
+// Fetch all coupons (Admin)
+app.get('/api/coupons', async (req, res) => {
+    try {
+        if (useMongo) {
+            const coupons = await CouponModel.find().sort({ _id: -1 });
+            res.json(coupons);
+        } else {
+            const coupons = await readJson(couponsPath);
+            res.json(coupons);
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch coupons.' });
+    }
+});
+
+// Create Coupon (Admin)
+app.post('/api/coupons', async (req, res) => {
+    try {
+        const { code, discountType, discountValue, minSubtotal } = req.body;
+        if (!code || !discountValue) {
+            return res.status(400).json({ error: 'Coupon code and discount value are required.' });
+        }
+        const formattedCode = code.trim().toUpperCase();
+
+        if (useMongo) {
+            const existingCoupon = await CouponModel.findOne({ code: formattedCode });
+            if (existingCoupon) {
+                return res.status(400).json({ error: 'Coupon code already exists.' });
+            }
+            const newCoupon = new CouponModel({
+                code: formattedCode,
+                discountType: discountType || 'flat',
+                discountValue: Number(discountValue),
+                minSubtotal: minSubtotal ? Number(minSubtotal) : 0,
+                isActive: true
+            });
+            await newCoupon.save();
+            res.status(201).json(newCoupon);
+        } else {
+            const coupons = await readJson(couponsPath);
+            const existingCoupon = coupons.find(c => c.code === formattedCode);
+            if (existingCoupon) {
+                return res.status(400).json({ error: 'Coupon code already exists.' });
+            }
+            const newCoupon = {
+                id: Date.now().toString(),
+                code: formattedCode,
+                discountType: discountType || 'flat',
+                discountValue: Number(discountValue),
+                minSubtotal: minSubtotal ? Number(minSubtotal) : 0,
+                isActive: true
+            };
+            coupons.unshift(newCoupon);
+            await writeJson(couponsPath, coupons);
+            res.status(201).json(newCoupon);
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to create coupon.' });
+    }
+});
+
+// Delete Coupon (Admin)
+app.delete('/api/coupons/:code', async (req, res) => {
+    try {
+        const code = req.params.code.toUpperCase();
+        if (useMongo) {
+            const deleted = await CouponModel.findOneAndDelete({ code });
+            if (!deleted) return res.status(404).json({ error: 'Coupon not found.' });
+            res.json({ message: 'Coupon deleted successfully.' });
+        } else {
+            const coupons = await readJson(couponsPath);
+            const filtered = coupons.filter(c => c.code !== code);
+            if (coupons.length === filtered.length) {
+                return res.status(404).json({ error: 'Coupon not found.' });
+            }
+            await writeJson(couponsPath, filtered);
+            res.json({ message: 'Coupon deleted successfully.' });
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete coupon.' });
+    }
+});
+
+// Validate Coupon (Checkout)
+app.post('/api/coupons/validate', async (req, res) => {
+    try {
+        const { code, subtotal } = req.body;
+        if (!code || subtotal === undefined) {
+            return res.status(400).json({ error: 'Coupon code and cart subtotal are required.' });
+        }
+        const formattedCode = code.trim().toUpperCase();
+
+        let coupon = null;
+        if (useMongo) {
+            coupon = await CouponModel.findOne({ code: formattedCode, isActive: true });
+        } else {
+            const coupons = await readJson(couponsPath);
+            coupon = coupons.find(c => c.code === formattedCode && c.isActive);
+        }
+
+        if (!coupon) {
+            return res.status(404).json({ error: 'Invalid or expired coupon code.' });
+        }
+
+        if (subtotal < coupon.minSubtotal) {
+            return res.status(400).json({ error: `Minimum order subtotal for this coupon is ₹${coupon.minSubtotal}.` });
+        }
+
+        res.json({
+            valid: true,
+            code: coupon.code,
+            discountType: coupon.discountType,
+            discountValue: coupon.discountValue
+        });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to validate coupon.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// ADMIN USER MANAGEMENT ENDPOINTS
+// --------------------------------------------------------------------------
+
+// Fetch all registered users (Admin view)
+app.get('/api/admin/users', async (req, res) => {
+    try {
+        if (useMongo) {
+            const users = await UserModel.find({}, { mpin: 0 }).sort({ _id: -1 });
+            res.json(users);
+        } else {
+            const users = await readJson(usersPath);
+            // Strip password/mpin for security
+            const sanitized = users.map(({ mpin, ...rest }) => rest);
+            res.json(sanitized);
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch users list.' });
+    }
+});
+
+// Unblock / Reset user login attempts
+app.post('/api/admin/users/unblock/:phone', async (req, res) => {
+    try {
+        const { phone } = req.params;
+        if (useMongo) {
+            const user = await UserModel.findOne({ phone });
+            if (!user) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            user.loginAttempts = 0;
+            user.lockUntil = 0;
+            user.isBlocked = false;
+            await user.save();
+            res.json({ success: true, message: 'User unblocked successfully.' });
+        } else {
+            const users = await readJson(usersPath);
+            const userIndex = users.findIndex(u => u.phone === phone);
+            if (userIndex === -1) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            users[userIndex].loginAttempts = 0;
+            users[userIndex].lockUntil = 0;
+            users[userIndex].isBlocked = false;
+            await writeJson(usersPath, users);
+            res.json({ success: true, message: 'User unblocked successfully.' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to unblock user.' });
     }
 });
 

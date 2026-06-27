@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function BookingsModal({ isOpen, bookings, onClose }) {
+export default function BookingsModal({ isOpen, bookings, onClose, whatsappNumber }) {
     if (!isOpen) return null;
 
     const generateWhatsAppLink = (orderRecord) => {
@@ -36,7 +36,8 @@ ${itemsText}
 -----------------------------------------
 💡 _Please confirm my booking order. Thank you!_`;
 
-        return `https://wa.me/919876543210?text=${encodeURIComponent(textTemplate)}`;
+        const targetNumber = whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, '') : '919876543210';
+        return `https://wa.me/${targetNumber}?text=${encodeURIComponent(textTemplate)}`;
     };
 
     return (

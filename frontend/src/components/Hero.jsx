@@ -11,7 +11,7 @@ export default function Hero({ onShopClick, onSummerClick }) {
                 <span className="hero-tagline">✨ THE NETRAVE EXPERIENCE</span>
                 <h1 className="hero-title">ELEVATE YOUR DAILY STYLE</h1>
                 <p className="hero-subtitle">
-                    Discover premium oversized Tees, tailored Shirts, rugged Cargo Pants, and stylish Summer T-Shirts. Speed booking with direct WhatsApp support.
+                    Discover oversized Tees, tailored Shirts, and stylish Summer T-Shirts. Speed booking with direct WhatsApp support.
                 </p>
                 <div className="hero-actions-container">
                     <button onClick={onShopClick} className="cta-btn primary-cta">

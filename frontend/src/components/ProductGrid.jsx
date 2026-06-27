@@ -134,7 +134,7 @@ export default function ProductGrid({
                 <div className="active-filter-status">
                     <span>
                         Active filters: <strong>
-                            {activeTag ? `${activeTag} Arrivals` : (activeCategory === 'all' ? 'All Items' : capitalize(activeCategory) + 's')}
+                            {activeTag === 'New' ? 'Modern New Arrivals' : activeTag ? `${activeTag} Arrivals` : (activeCategory === 'all' ? 'All Items' : capitalize(activeCategory) + 's')}
                             {searchQuery.trim() !== '' ? ` matching "${searchQuery}"` : ''}
                         </strong>
                     </span>

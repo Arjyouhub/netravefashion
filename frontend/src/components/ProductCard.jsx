@@ -36,7 +36,7 @@ export default function ProductCard({ product, onQuickView }) {
                     <span className="badge-soldout">Sold Out</span>
                 ) : (
                     <>
-                        {product.tags && product.tags.includes('New') && <span className="badge-new">New</span>}
+                        {product.tags && (product.tags.includes('New') || product.tags.includes('Modern New')) && <span className="badge-new">Modern New</span>}
                         {hasDiscount && <span className="badge-discount">{discountPct}% OFF</span>}
                     </>
                 )}

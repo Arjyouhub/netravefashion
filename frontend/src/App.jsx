@@ -8,6 +8,7 @@ import CheckoutModal from './components/CheckoutModal';
 import SuccessModal from './components/SuccessModal';
 import BookingsModal from './components/BookingsModal';
 import AdminPanel from './components/AdminPanel';
+import AuthModal from './components/AuthModal';
 
 // Backup fallback database to ensure frontend works gracefully even if backend is offline
 const FALLBACK_PRODUCTS = [
@@ -88,7 +89,7 @@ const FALLBACK_PRODUCTS = [
     }
 ];
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://netravefashion.onrender.com/api';
 
 export default function App() {
     // A. Main State
@@ -102,18 +103,26 @@ export default function App() {
         }
     });
 
-        // B. Filters & UI State
+    // B. Filters & UI State
     const [activeCategory, setActiveCategory] = useState('all');
     const [activeTag, setActiveTag] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortMethod, setSortMethod] = useState('default');
-    
+
     // C. Modal/Drawer Open Toggles
     const [isCartOpen, setIsCartOpen] = useState(false);
     const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isBookingsOpen, setIsBookingsOpen] = useState(false);
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
+    const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const [user, setUser] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('netrave_user')) || null;
+        } catch {
+            return null;
+        }
+    });
 
     // D. Focused Items
     const [selectedProductId, setSelectedProductId] = useState(null);
@@ -141,27 +150,43 @@ export default function App() {
         fetchProducts();
     }, []);
 
-    // 2. Fetch booking history
+    // 2. Fetch booking history for the logged-in user
     const fetchBookings = async () => {
+        if (!user) {
+            setBookings([]);
+            return;
+        }
         try {
-            const response = await fetch(`${API_BASE_URL}/bookings`);
+            const response = await fetch(`${API_BASE_URL}/bookings/user/${user.phone}`);
             if (response.ok) {
                 const data = await response.json();
                 setBookings(data);
             }
         } catch (err) {
             console.warn('Could not load bookings from backend API.', err.message);
-            // Fallback load bookings from localStorage
+            // Fallback load bookings from localStorage, filtering by user phone
             try {
                 const localOrders = JSON.parse(localStorage.getItem('netrave_bookings')) || [];
-                setBookings(localOrders);
-            } catch {}
+                const filtered = localOrders.filter(b => b.customer.phone === user.phone);
+                setBookings(filtered);
+            } catch { }
         }
     };
 
     useEffect(() => {
         fetchBookings();
-    }, []);
+    }, [user]);
+
+    const handleAuthSuccess = (userData) => {
+        setUser(userData);
+        localStorage.setItem('netrave_user', JSON.stringify(userData));
+    };
+
+    const handleLogout = () => {
+        setUser(null);
+        localStorage.removeItem('netrave_user');
+        setBookings([]);
+    };
 
     // 2b. Fetch Settings configuration
     const fetchSettings = async () => {
@@ -180,7 +205,7 @@ export default function App() {
         fetchSettings();
     }, []);
 
-        // 2c. Listen to client-side path / route changes to toggle Admin view
+    // 2c. Listen to client-side path / route changes to toggle Admin view
     useEffect(() => {
         const checkRoute = () => {
             const path = window.location.pathname;
@@ -221,6 +246,7 @@ export default function App() {
 
         setCart(updatedCart);
         localStorage.setItem('netrave_cart', JSON.stringify(updatedCart));
+        setSelectedProductId(null); // Close the ProductModal
         setIsCartOpen(true);
     };
 
@@ -258,7 +284,7 @@ export default function App() {
 
             if (response.ok) {
                 const orderData = await response.json();
-                
+
                 // Clear cart state
                 setCart([]);
                 localStorage.setItem('netrave_cart', JSON.stringify([]));
@@ -266,7 +292,7 @@ export default function App() {
                 setPlacedOrder(orderData);
                 setIsCheckoutOpen(false);
                 setIsSuccessOpen(true);
-                
+
                 // Sync bookings & products (to reflect decremented stock)
                 fetchBookings();
                 const res = await fetch(`${API_BASE_URL}/products`);
@@ -280,7 +306,7 @@ export default function App() {
             }
         } catch (err) {
             console.error('API booking failed, attempting localStorage backup place...', err);
-            
+
             // Backup offline fallback placement
             const backupOrderId = `TR-${Math.floor(100000 + Math.random() * 900000)}`;
             const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
@@ -474,7 +500,7 @@ export default function App() {
     if (isAdminView) {
         return (
             <div className="app-container">
-                <Header 
+                <Header
                     cartCount={cartCount}
                     onCartOpen={() => setIsCartOpen(true)}
                     onBookingsOpen={() => setIsBookingsOpen(true)}
@@ -484,9 +510,12 @@ export default function App() {
                     onSearchChange={setSearchQuery}
                     mobileDrawerOpen={mobileDrawerOpen}
                     setMobileDrawerOpen={setMobileDrawerOpen}
+                    user={user}
+                    onLogout={handleLogout}
+                    onLoginClick={() => setIsAuthOpen(true)}
                 />
                 <main>
-                    <AdminPanel 
+                    <AdminPanel
                         products={products}
                         bookings={bookings}
                         settings={settings}
@@ -495,6 +524,7 @@ export default function App() {
                         onDeleteProduct={handleDeleteProduct}
                         onUpdateBookingStatus={handleUpdateBookingStatus}
                         onSaveSettings={handleSaveSettings}
+                        API_BASE_URL={API_BASE_URL}
                         onClose={() => {
                             setIsAdminView(false);
                             window.history.pushState({}, '', '/');
@@ -512,8 +542,8 @@ export default function App() {
 
     return (
         <div className="app-container">
-                        {/* Header Navigation */}
-            <Header 
+            {/* Header Navigation */}
+            <Header
                 cartCount={cartCount}
                 onCartOpen={() => setIsCartOpen(true)}
                 onBookingsOpen={() => setIsBookingsOpen(true)}
@@ -533,15 +563,18 @@ export default function App() {
                 }}
                 setIsAdminView={setIsAdminView}
                 onSortChange={setSortMethod}
+                user={user}
+                onLogout={handleLogout}
+                onLoginClick={() => setIsAuthOpen(true)}
             />
 
             {/* Main Area */}
             <main>
-                <Hero 
+                <Hero
                     onShopClick={scrollToProducts}
                     onSummerClick={handleSummerCtaClick}
                 />
-                <ProductGrid 
+                <ProductGrid
                     products={products}
                     activeCategory={activeCategory}
                     onCategoryChange={(catId) => {
@@ -562,17 +595,26 @@ export default function App() {
             <footer className="main-footer">
                 <div className="footer-container">
                     <div className="footer-info">
-                        <h3>NETRAVE STORE</h3>
-                        <p>We supply high quality premium men's shirts, custom streetwear t-shirts, cargo pants, and stylish summer apparel.</p>
+                        <div className="logo" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" style={{ height: '32px' }} />
+                            <div className="logo-text">
+                                <div className="logo-accent" style={{ fontSize: '20px', display: 'flex' }}>
+                                    <span className="logo-net">NET</span>
+                                    <span className="logo-rave">RAVE</span>
+                                </div>
+                                <span className="logo-sub" style={{ fontSize: '8px', letterSpacing: '1.5px' }}>CLOTHING & STYLE</span>
+                            </div>
+                        </div>
+                        <p>We supply high quality men's shirts, custom streetwear t-shirts, and stylish summer apparel.</p>
                         <div className="social-links">
                             <a href="#" aria-label="Instagram" className="social-icon-card">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051C.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+                                <svg viewBox="0 0 24 24" className="icon"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051C.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" /></svg>
                             </a>
                             <a href="#" aria-label="WhatsApp" className="social-icon-card">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.248 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.197 1.45 4.817 1.453 5.461 0 9.903-4.44 9.907-9.902.002-2.646-1.02-5.133-2.873-6.988C16.591 1.862 14.103.839 11.45.839c-5.463 0-9.904 4.44-9.908 9.9.001 2.072.547 4.093 1.59 5.891L2.162 21.8l5.588-1.464-.103-.182zM17.06 14.382c-.272-.136-1.61-.794-1.86-.885-.25-.092-.432-.136-.613.136-.18.273-.704.885-.863 1.067-.159.182-.318.204-.59.068-.272-.136-1.15-.424-2.19-1.353-.81-.722-1.357-1.615-1.516-1.888-.159-.272-.017-.42.12-.556.122-.123.272-.318.408-.477.136-.159.182-.272.272-.454.09-.182.046-.341-.023-.477-.068-.136-.613-1.477-.84-2.022-.222-.533-.487-.463-.66-.463-.17 0-.363-.01-.556-.01-.193 0-.51.072-.777.363-.267.292-1.02 1.002-1.02 2.445 0 1.442 1.049 2.836 1.196 3.033.147.197 2.062 3.148 4.996 4.413.698.302 1.243.482 1.668.617.7.223 1.338.192 1.843.117.562-.083 1.61-.659 1.838-1.295.228-.636.228-1.182.159-1.295-.068-.114-.25-.205-.523-.341z"/></svg>
+                                <svg viewBox="0 0 24 24" className="icon"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.248 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.197 1.45 4.817 1.453 5.461 0 9.903-4.44 9.907-9.902.002-2.646-1.02-5.133-2.873-6.988C16.591 1.862 14.103.839 11.45.839c-5.463 0-9.904 4.44-9.908 9.9.001 2.072.547 4.093 1.59 5.891L2.162 21.8l5.588-1.464-.103-.182zM17.06 14.382c-.272-.136-1.61-.794-1.86-.885-.25-.092-.432-.136-.613.136-.18.273-.704.885-.863 1.067-.159.182-.318.204-.59.068-.272-.136-1.15-.424-2.19-1.353-.81-.722-1.357-1.615-1.516-1.888-.159-.272-.017-.42.12-.556.122-.123.272-.318.408-.477.136-.159.182-.272.272-.454.09-.182.046-.341-.023-.477-.068-.136-.613-1.477-.84-2.022-.222-.533-.487-.463-.66-.463-.17 0-.363-.01-.556-.01-.193 0-.51.072-.777.363-.267.292-1.02 1.002-1.02 2.445 0 1.442 1.049 2.836 1.196 3.033.147.197 2.062 3.148 4.996 4.413.698.302 1.243.482 1.668.617.7.223 1.338.192 1.843.117.562-.083 1.61-.659 1.838-1.295.228-.636.228-1.182.159-1.295-.068-.114-.25-.205-.523-.341z" /></svg>
                             </a>
                             <a href="#" aria-label="Facebook" className="social-icon-card">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                <svg viewBox="0 0 24 24" className="icon"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
                             </a>
                         </div>
                     </div>
@@ -611,50 +653,63 @@ export default function App() {
                         <p>✉️ Email: netrave@zohomail.com</p>
                     </div>
                 </div>
-                
+
                 <div className="footer-bottom">
                     <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala.</p>
                 </div>
             </footer>
 
             {/* Intermediary Modals & Drawers */}
-            <ProductModal 
+            <ProductModal
                 isOpen={selectedProductId !== null}
                 product={activeProduct}
                 onClose={() => setSelectedProductId(null)}
                 onAddToCart={handleAddToCart}
             />
 
-            <CartDrawer 
+            <CartDrawer
                 isOpen={isCartOpen}
                 cart={cart}
                 onClose={() => setIsCartOpen(false)}
                 onRemoveItem={handleRemoveCartItem}
                 onUpdateQuantity={handleUpdateCartQuantity}
-                onCheckoutTrigger={() => setIsCheckoutOpen(true)}
+                onCheckoutTrigger={() => {
+                    setIsCheckoutOpen(true);
+                    setIsCartOpen(false);
+                }}
             />
 
-            <CheckoutModal 
+            <CheckoutModal
                 isOpen={isCheckoutOpen}
                 cart={cart}
                 onClose={() => setIsCheckoutOpen(false)}
                 onSubmitBooking={handlePlaceBooking}
+                user={user}
+                API_BASE_URL={API_BASE_URL}
             />
 
-            <SuccessModal 
+            <AuthModal
+                isOpen={isAuthOpen}
+                onClose={() => setIsAuthOpen(false)}
+                onAuthSuccess={handleAuthSuccess}
+                API_BASE_URL={API_BASE_URL}
+            />
+
+            <SuccessModal
                 isOpen={isSuccessOpen}
                 order={placedOrder}
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsSuccessOpen(false)}
             />
 
-            <BookingsModal 
+            <BookingsModal
                 isOpen={isBookingsOpen}
                 bookings={bookings}
+                whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsBookingsOpen(false)}
             />
 
-                        {/* Mobile Bottom Navigation Bar completely removed */}
+            {/* Mobile Bottom Navigation Bar completely removed */}
         </div>
     );
 }

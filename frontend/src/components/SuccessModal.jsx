@@ -38,16 +38,6 @@ ${itemsText}
         return `https://wa.me/${targetNumber}?text=${encodeURIComponent(textTemplate)}`;
     }, [whatsappNumber]);
  
-    useEffect(() => {
-        if (isOpen && order) {
-            const url = generateWhatsAppLink(order);
-            const timer = setTimeout(() => {
-                window.open(url, '_blank');
-            }, 800);
-            return () => clearTimeout(timer);
-        }
-    }, [isOpen, order, generateWhatsAppLink]);
- 
     if (!isOpen || !order) return null;
  
     const whatsappUrl = generateWhatsAppLink(order);
@@ -70,8 +60,8 @@ ${itemsText}
  
                 <div className="success-body">
                     <div className="whatsapp-prompt-box">
-                        <h3>⚠️ CRITICAL NEXT STEP</h3>
-                        <p>To confirm and activate your order, please click the button below to send your booking receipt to our team on WhatsApp if it didn't open automatically. Unconfirmed bookings may be cancelled.</p>
+                        <h3>Confirm on WhatsApp</h3>
+                        <p>Please click the button below to send your booking receipt to our team on WhatsApp to confirm your order and delivery details.</p>
                         <a href={whatsappUrl} target="_blank" rel="noopener noreferrer" className="cta-btn whatsapp-cta-btn">
                             <svg viewBox="0 0 24 24" className="whatsapp-icon"><path d="M12.012 2c-5.506 0-9.989 4.478-9.99 9.984a9.96 9.96 0 0 0 1.333 4.982L2 22l5.233-1.371a9.927 9.927 0 0 0 4.779 1.229h.005c5.505 0 9.99-4.478 9.992-9.985.001-2.668-1.037-5.176-2.927-7.067C17.195 2.924 14.685 2.001 12.012 2zm5.794 14.41c-.243.684-1.42 1.309-1.954 1.39-.48.073-1.106.126-3.235-.756-2.724-1.129-4.477-3.901-4.613-4.084-.136-.182-1.107-1.472-1.107-2.812 0-1.34.697-1.996.969-2.27.27-.272.597-.341.79-.341.192 0 .385.002.55.01.173.007.407-.064.638.498.24.582.816 1.99.886 2.13.07.14.117.305.023.49-.093.188-.14.305-.28.468-.14.162-.295.363-.42.487-.14.14-.286.293-.12.578.167.285.741 1.222 1.59 1.977.896.797 1.65 1.042 1.884 1.158.234.115.37.098.508-.06.136-.16.59-.687.747-.92.158-.233.316-.197.533-.115.218.082 1.385.653 1.62.77.234.118.39.176.447.275.058.099.058.574-.185 1.258z"/></svg>
                             Send Confirmation to WhatsApp

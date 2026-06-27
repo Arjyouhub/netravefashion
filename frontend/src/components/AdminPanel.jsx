@@ -9,9 +9,22 @@ export default function AdminPanel({
     onDeleteProduct,
     onUpdateBookingStatus,
     onSaveSettings,
-    onClose
+    onClose,
+    API_BASE_URL
 }) {
     const [activeTab, setActiveTab] = useState('products');
+
+    // Coupon states
+    const [coupons, setCoupons] = useState([]);
+    const [couponCode, setCouponCode] = useState('');
+    const [discountType, setDiscountType] = useState('flat');
+    const [discountValue, setDiscountValue] = useState('');
+    const [minSubtotal, setMinSubtotal] = useState('');
+    const [couponError, setCouponError] = useState('');
+
+    // User states
+    const [users, setUsers] = useState([]);
+    const [userError, setUserError] = useState('');
 
     // Admin Auth States
     const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('isAdminLoggedIn') === 'true');
@@ -48,6 +61,115 @@ export default function AdminPanel({
             setWhatsappNum(settings.whatsappNumber);
         }
     }, [settings]);
+
+    const fetchCoupons = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/coupons`);
+            if (response.ok) {
+                const data = await response.json();
+                setCoupons(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch coupons:', err);
+        }
+    };
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchCoupons();
+        }
+    }, [isLoggedIn]);
+
+    const handleCreateCoupon = async (e) => {
+        e.preventDefault();
+        setCouponError('');
+        if (!couponCode || !discountValue) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/coupons`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: couponCode,
+                    discountType,
+                    discountValue: Number(discountValue),
+                    minSubtotal: Number(minSubtotal) || 0
+                })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setCoupons([data, ...coupons]);
+                setCouponCode('');
+                setDiscountValue('');
+                setMinSubtotal('');
+                setDiscountType('flat');
+            } else {
+                setCouponError(data.error || 'Failed to create coupon.');
+            }
+        } catch (err) {
+            setCouponError('Network error creating coupon.');
+        }
+    };
+
+    const handleDeleteCoupon = async (code) => {
+        if (!window.confirm(`Are you sure you want to delete coupon "${code}"?`)) return;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/coupons/${code}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                setCoupons(coupons.filter(c => c.code !== code));
+            } else {
+                alert('Failed to delete coupon.');
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchUsers = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users`);
+            if (response.ok) {
+                const data = await response.json();
+                setUsers(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch users list:', err);
+        }
+    };
+
+    useEffect(() => {
+        if (isLoggedIn) {
+            fetchUsers();
+        }
+    }, [isLoggedIn]);
+
+    const handleUnblockUser = async (phone) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/unblock/${phone}`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, loginAttempts: 0, lockUntil: 0 } : u));
+                alert('User unblocked successfully!');
+            } else {
+                alert('Failed to unblock user.');
+            }
+        } catch (err) {
+            console.error('Unblock error:', err);
+        }
+    };
+
+    const getUserStatus = (user) => {
+        if (user.isBlocked) return { label: 'Blocked', class: 'inactive' };
+        if (user.lockUntil && user.lockUntil > Date.now()) {
+            const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+            return { label: `Locked (${remainingMins}m)`, class: 'pending' };
+        }
+        return { label: 'Active', class: 'active' };
+    };
 
     const handleLoginSubmit = (e) => {
         e.preventDefault();
@@ -270,6 +392,18 @@ export default function AdminPanel({
                     onClick={() => { setActiveTab('bookings'); setCurrentPage(1); }}
                 >
                     Orders & Bookings ({bookings.length})
+                </button>
+                <button 
+                    className={`admin-tab-btn ${activeTab === 'coupons' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('coupons')}
+                >
+                    Manage Coupons ({coupons.length})
+                </button>
+                <button 
+                    className={`admin-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('users')}
+                >
+                    Manage Users ({users.length})
                 </button>
                 <button 
                     className={`admin-tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
@@ -501,9 +635,11 @@ export default function AdminPanel({
                             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}>
                                 <option value="all">All Orders</option>
                                 <option value="Pending">Pending</option>
-                                <option value="Confirmed">Confirmed</option>
-                                <option value="Cancelled">Cancelled</option>
+                                <option value="Order Placed">Order Placed</option>
+                                <option value="Payment Confirmed">Payment Confirmed</option>
+                                <option value="Dispatched">Dispatched</option>
                                 <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
                             </select>
                         </div>
                     </div>
@@ -536,7 +672,7 @@ export default function AdminPanel({
                                             <td className="bold-td">{book.customer.name}</td>
                                             <td>
                                                 <div style={{ fontSize: '13px' }}>📞 {book.customer.phone}</div>
-                                                <div style={{ fontSize: '13px', color: '#10b981' }}>💬 {book.customer.whatsapp}</div>
+                                                <div style={{ fontSize: '13px', color: 'var(--accent)' }}>💬 {book.customer.whatsapp}</div>
                                             </td>
                                             <td>
                                                 <div className="items-list-cell">
@@ -551,13 +687,15 @@ export default function AdminPanel({
                                             <td>
                                                 <select 
                                                     value={book.status || 'Pending'} 
-                                                    className={`status-select-dropdown ${book.status ? book.status.toLowerCase() : 'pending'}`}
+                                                    className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
                                                     onChange={e => onUpdateBookingStatus(book.orderId, e.target.value)}
                                                 >
                                                     <option value="Pending">Pending</option>
-                                                    <option value="Confirmed">Confirmed</option>
-                                                    <option value="Cancelled">Cancelled</option>
+                                                    <option value="Order Placed">Order Placed</option>
+                                                    <option value="Payment Confirmed">Payment Confirmed</option>
+                                                    <option value="Dispatched">Dispatched</option>
                                                     <option value="Delivered">Delivered</option>
+                                                    <option value="Cancelled">Cancelled</option>
                                                 </select>
                                             </td>
                                         </tr>
@@ -589,6 +727,175 @@ export default function AdminPanel({
                             </button>
                         </div>
                     )}
+                </div>
+            )}
+
+            {/* TAB CONTENT: COUPONS */}
+            {activeTab === 'coupons' && (
+                <div className="admin-tab-content">
+                    <div className="tab-actions-bar">
+                        <h3>Active Discount Coupons</h3>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px', marginTop: '20px' }}>
+                        {/* Form: Create Coupon */}
+                        <div className="admin-modal-content" style={{ position: 'relative', top: 0, margin: 0, maxWidth: '100%', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--bg-card)' }}>
+                            <div className="modal-header">
+                                <h4 style={{ color: '#fff' }}>Create New Coupon</h4>
+                            </div>
+                            <form onSubmit={handleCreateCoupon} className="admin-product-form" style={{ padding: '20px' }}>
+                                <div className="form-field">
+                                    <label>Coupon Code *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        value={couponCode} 
+                                        onChange={e => setCouponCode(e.target.value.toUpperCase())} 
+                                        placeholder="e.g. EXTRA100"
+                                    />
+                                </div>
+                                <div className="form-group-row" style={{ display: 'flex', gap: '15px' }}>
+                                    <div className="form-field" style={{ flex: 1 }}>
+                                        <label>Discount Type *</label>
+                                        <select value={discountType} onChange={e => setDiscountType(e.target.value)}>
+                                            <option value="flat">Flat Price (₹)</option>
+                                            <option value="percentage">Percentage (%)</option>
+                                        </select>
+                                    </div>
+                                    <div className="form-field" style={{ flex: 1 }}>
+                                        <label>Discount Value *</label>
+                                        <input 
+                                            type="number" 
+                                            required 
+                                            value={discountValue} 
+                                            onChange={e => setDiscountValue(e.target.value)} 
+                                            placeholder={discountType === 'flat' ? 'e.g. 100' : 'e.g. 10'}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="form-field">
+                                    <label>Minimum Order Subtotal (₹) (Optional)</label>
+                                    <input 
+                                        type="number" 
+                                        value={minSubtotal} 
+                                        onChange={e => setMinSubtotal(e.target.value)} 
+                                        placeholder="e.g. 500"
+                                    />
+                                </div>
+
+                                {couponError && (
+                                    <div className="validation-err" style={{ display: 'block', marginBottom: '15px' }}>
+                                        {couponError}
+                                    </div>
+                                )}
+
+                                <button type="submit" className="cta-btn primary-cta" style={{ width: '100%', justifyContent: 'center' }}>
+                                    Create Coupon Code
+                                </button>
+                            </form>
+                        </div>
+
+                        {/* List: Coupon codes */}
+                        <div>
+                            <div className="responsive-table-wrapper" style={{ border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                                <table className="admin-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Code</th>
+                                            <th>Type</th>
+                                            <th>Value</th>
+                                            <th>Min Order</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {coupons.length === 0 ? (
+                                            <tr>
+                                                <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>No active coupons found.</td>
+                                            </tr>
+                                        ) : (
+                                            coupons.map(c => (
+                                                <tr key={c.code}>
+                                                    <td style={{ fontWeight: 'bold', color: 'var(--primary)' }}>{c.code}</td>
+                                                    <td>{c.discountType === 'flat' ? 'Flat' : 'Percentage'}</td>
+                                                    <td>{c.discountType === 'flat' ? `₹${c.discountValue}` : `${c.discountValue}%`}</td>
+                                                    <td>₹{c.minSubtotal || 0}</td>
+                                                    <td>
+                                                        <button 
+                                                            className="cta-btn secondary-cta" 
+                                                            onClick={() => handleDeleteCoupon(c.code)}
+                                                            style={{ padding: '4px 10px', fontSize: '12px', minHeight: 'unset', color: 'var(--error)', background: 'transparent' }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: USERS */}
+            {activeTab === 'users' && (
+                <div className="admin-tab-content">
+                    <div className="tab-actions-bar">
+                        <h3>Registered Store Customers</h3>
+                    </div>
+
+                    <div className="responsive-table-wrapper" style={{ marginTop: '20px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Customer Name</th>
+                                    <th>Mobile Number</th>
+                                    <th>Login Attempts</th>
+                                    <th>Account Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {users.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" style={{ textAlign: 'center', padding: '20px' }}>No registered users found.</td>
+                                    </tr>
+                                ) : (
+                                    users.map(u => {
+                                        const status = getUserStatus(u);
+                                        return (
+                                            <tr key={u.phone}>
+                                                <td className="bold-td">{u.name}</td>
+                                                <td>{u.phone}</td>
+                                                <td>{u.loginAttempts || 0} / 5 (lock) / 7 (block)</td>
+                                                <td>
+                                                    <span className={`status-pill ${status.class}`}>
+                                                        {status.label}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    {(u.isBlocked || (u.lockUntil && u.lockUntil > Date.now())) ? (
+                                                        <button 
+                                                            className="cta-btn primary-cta" 
+                                                            onClick={() => handleUnblockUser(u.phone)}
+                                                            style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto' }}
+                                                        >
+                                                            Unblock Account
+                                                        </button>
+                                                    ) : (
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>No actions needed</span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             )}
 
