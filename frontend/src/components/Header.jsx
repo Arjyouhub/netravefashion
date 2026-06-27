@@ -184,19 +184,19 @@ export default function Header({
                             {user ? (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <svg viewBox="0 0 24 24" className="icon" style={{ fill: 'var(--primary)' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                                    <span className="desktop-search-header" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--primary)' }}>My Orders</span>
+                                    <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--primary)' }}>My Orders</span>
                                 </div>
                             ) : (
                                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                     <svg viewBox="0 0 24 24" className="icon" style={{ fill: '#ffffff' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                                    <span className="desktop-search-header" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Login</span>
+                                    <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Login</span>
                                 </div>
                             )}
                         </button>
-
+ 
                         {user && (
                             <button 
-                                className="action-btn text-action desktop-search-header" 
+                                className="action-btn text-action desktop-hide-medium" 
                                 onClick={onLogout}
                                 title="Sign Out"
                                 style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', height: '36px' }}

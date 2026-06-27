@@ -2183,6 +2183,24 @@ h1, h2, h3, h4, h5, h6 {
    ========================================================================== */
 
 @media (max-width: 1024px) {
+    .desktop-hide-medium {
+        display: none !important;
+    }
+    
+    .desktop-nav ul {
+        gap: 15px;
+    }
+    
+    .nav-link {
+        font-size: 13.5px;
+    }
+    
+    .search-input {
+        max-width: 160px;
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
     .hero-title {
         font-size: 44px;
     }
