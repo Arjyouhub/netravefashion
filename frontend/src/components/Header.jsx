@@ -196,7 +196,7 @@ export default function Header({
 
                         {user && (
                             <button 
-                                className="action-btn text-action" 
+                                className="action-btn text-action desktop-search-header" 
                                 onClick={onLogout}
                                 title="Sign Out"
                                 style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', height: '36px' }}

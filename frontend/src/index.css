@@ -3175,6 +3175,16 @@ h1, h2, h3, h4, h5, h6 {
         align-items: center;
     }
 
+    .admin-table th,
+    .admin-table td {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+    
+    .admin-table th {
+        font-size: 11px;
+    }
+
     /* Quickview Modal responsive */
     .quickview-container {
         grid-template-columns: 1fr;
