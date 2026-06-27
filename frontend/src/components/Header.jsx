@@ -27,7 +27,6 @@ export default function Header({
 
     const categories = [
         { id: 'all', label: 'All Items' },
-        { id: 'summer-t-shirt', label: 'Summer T-Shirts' },
         { id: 't-shirt', label: 'T-Shirts' },
         { id: 'shirt', label: 'Shirts' },
         { id: 'pants', label: 'Pants' }
