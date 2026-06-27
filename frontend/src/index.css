@@ -2266,7 +2266,8 @@ h1, h2, h3, h4, h5, h6 {
     .desktop-nav,
     .desktop-search-header,
     .mobile-search-trigger,
-    .mobile-bookings-trigger {
+    .mobile-bookings-trigger,
+    .header-logout-btn {
         display: none !important;
     }
     

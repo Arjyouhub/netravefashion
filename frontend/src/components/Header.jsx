@@ -196,12 +196,13 @@ export default function Header({
  
                         {user && (
                             <button 
-                                className="action-btn text-action desktop-hide-medium" 
+                                className="action-btn text-action header-logout-btn" 
                                 onClick={onLogout}
                                 title="Sign Out"
-                                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', height: '36px' }}
+                                style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', height: '36px', display: 'flex', alignItems: 'center', gap: '4px' }}
                             >
-                                Logout
+                                <svg viewBox="0 0 24 24" className="icon" style={{ fill: 'var(--error)' }}><path d="M14.08 15.59L16.67 13H7v-2h9.67l-2.59-2.59L15.5 7l5 5-5 5-1.42-1.41zM12 3H4v18h8v-2H6V5h6V3z"/></svg>
+                                <span className="desktop-hide-medium">Logout</span>
                             </button>
                         )}
 
