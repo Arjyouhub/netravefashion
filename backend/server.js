@@ -90,7 +90,7 @@ let useMongo = false;
 try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/netravestore';
     await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 2000 });
-    console.log(`[Netrave Backend] Connected to MongoDB at ${mongoUri}`);
+    console.log('[Netrave Backend] Connected to MongoDB Cloud Database Cluster');
     useMongo = true;
 } catch (err) {
     console.warn('[Netrave Backend] MongoDB connection failed. Falling back to local JSON database.', err.message);
@@ -1485,6 +1485,6 @@ app.get('/api/developer/system-status', requireDeveloper, async (req, res) => {
 
 // Start Server
 app.listen(PORT, () => {
-    console.log(`[Netrave Backend] Server running on http://localhost:${PORT}`);
+    console.log(`[Netrave Backend] Server is active and listening on port ${PORT}`);
 });
 
