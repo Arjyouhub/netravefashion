@@ -679,8 +679,14 @@ export default function App() {
                 onRemoveItem={handleRemoveCartItem}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onCheckoutTrigger={() => {
-                    setIsCheckoutOpen(true);
-                    setIsCartOpen(false);
+                    if (!user) {
+                        alert('Please login or register to place your order.');
+                        setIsAuthOpen(true);
+                        setIsCartOpen(false);
+                    } else {
+                        setIsCheckoutOpen(true);
+                        setIsCartOpen(false);
+                    }
                 }}
             />
 
