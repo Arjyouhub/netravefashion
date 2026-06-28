@@ -175,33 +175,14 @@ h1, h2, h3, h4, h5, h6 {
     transform: scale(1.08) rotate(3deg);
 }
 
-.logo-text {
-    display: flex;
-    flex-direction: column;
-}
-
-.logo-accent {
+.logo-text-new {
     font-family: var(--font-heading);
-    font-size: 27px;
+    font-size: 25px;
     font-weight: 800;
     letter-spacing: 1.5px;
     display: flex;
-}
-
-.logo-net {
+    align-items: center;
     color: #ffffff;
-}
-
-.logo-rave {
-    color: var(--accent);
-}
-
-.logo-sub {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 2px;
-    color: var(--primary);
-    margin-top: 2px;
 }
 
 /* Desktop Navigation */
@@ -3085,12 +3066,8 @@ h1, h2, h3, h4, h5, h6 {
         gap: 15px;
     }
     
-    .logo-accent {
-        font-size: 23px;
-    }
-    
-    .logo-sub {
-        font-size: 9.5px;
+    .logo-text-new {
+        font-size: 21px;
     }
 
     .hero-container {
@@ -3251,13 +3228,8 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     /* Logo size */
-    .logo-accent {
-        font-size: 21px;
-    }
-    
-    .logo-sub {
-        font-size: 8.5px;
-        letter-spacing: 1.5px;
+    .logo-text-new {
+        font-size: 18px;
     }
 
     /* Header container padding and cart badge */
