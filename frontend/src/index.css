@@ -38,6 +38,16 @@
     --shadow-glow: 0 0 15px var(--primary-glow);
 }
 
+/* Prevent Autofill from turning inputs white in Chrome/Safari/Edge */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 1000px #0a0b0e inset !important;
+    -webkit-text-fill-color: #ffffff !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
 * {
     margin: 0;
     padding: 0;
