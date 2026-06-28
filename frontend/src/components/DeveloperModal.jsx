@@ -24,6 +24,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     // Dashboard Tab & Data States
     const [activeTab, setActiveTab] = useState('users');
     const [users, setUsers] = useState([]);
+    const [logs, setLogs] = useState([]);
+    const [systemStatus, setSystemStatus] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
 
     // Credentials Forms States
@@ -44,19 +46,53 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
-            } else {
-                console.error('Failed to fetch developer users list');
             }
         } catch (err) {
             console.error('Error fetching users:', err);
         }
     };
 
-    // Poll users every 5 seconds when logged in for real-time attempt logs/lockout statuses
+    // Fetch login logs from backend
+    const fetchLogs = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/developer/logs`);
+            if (response.ok) {
+                const data = await response.json();
+                setLogs(data);
+            }
+        } catch (err) {
+            console.error('Error fetching logs:', err);
+        }
+    };
+
+    // Fetch server status from backend
+    const fetchSystemStatus = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/developer/system-status`);
+            if (response.ok) {
+                const data = await response.json();
+                setSystemStatus(data);
+            }
+        } catch (err) {
+            console.error('Error fetching system status:', err);
+        }
+    };
+
+    // Poll data periodically when logged in and modal is open
     useEffect(() => {
         if (isLoggedIn && isOpen) {
+            // Initial fetches
             fetchUsers();
-            const interval = setInterval(fetchUsers, 5000);
+            fetchLogs();
+            fetchSystemStatus();
+
+            // Setup 5-second polling interval
+            const interval = setInterval(() => {
+                fetchUsers();
+                fetchLogs();
+                fetchSystemStatus();
+            }, 5000);
+
             return () => clearInterval(interval);
         }
     }, [isLoggedIn, isOpen]);
@@ -194,6 +230,13 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             return { label: `Locked (${remainingMins}m)`, class: 'pending' };
         }
         return { label: 'Active', class: 'active' };
+    };
+
+    // Helper to format date
+    const formatDateTime = (timestamp) => {
+        if (!timestamp) return 'N/A';
+        const d = new Date(timestamp);
+        return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     };
 
     // Search query filter
@@ -334,6 +377,20 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                     Customer Database Logs
                 </button>
                 <button 
+                    className={`tab-btn ${activeTab === 'logs' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('logs')}
+                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'logs' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'logs' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                >
+                    Customer Login History
+                </button>
+                <button 
+                    className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('system')}
+                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'system' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'system' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                >
+                    Server Health & RAM Status
+                </button>
+                <button 
                     className={`tab-btn ${activeTab === 'credentials' ? 'active' : ''}`}
                     onClick={() => setActiveTab('credentials')}
                     style={{ background: 'none', border: 'none', borderBottom: activeTab === 'credentials' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'credentials' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
@@ -362,6 +419,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                     }}
                 >
                     <option value="users">👤 Customer Database Logs</option>
+                    <option value="logs">📜 Customer Login History</option>
+                    <option value="system">🖥️ Server Health & RAM Status</option>
                     <option value="credentials">🔑 Credentials Bypass Override</option>
                 </select>
             </div>
@@ -448,6 +507,142 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                             </tbody>
                         </table>
                     </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: CUSTOMER LOGIN HISTORY */}
+            {activeTab === 'logs' && (
+                <div className="admin-tab-content">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ color: '#ffffff', margin: 0 }}>Recent Authentication Log Entries</h3>
+                        <button className="cta-btn secondary-cta" onClick={fetchLogs} style={{ width: 'auto', minHeight: 'unset', padding: '10px 18px', fontSize: '13px', borderColor: 'rgba(255,255,255,0.08)' }}>
+                            🔄 Refresh Login History
+                        </button>
+                    </div>
+
+                    <div className="responsive-table-wrapper" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                        <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr style={{ background: '#121929', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Login Time</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Customer Name</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Phone Contact</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Auth Status</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>IP Address</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>User Agent / Browser</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {logs.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="6" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>No authentication history logs registered in database yet.</td>
+                                    </tr>
+                                ) : (
+                                    logs.map((log, index) => (
+                                        <tr key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
+                                            <td style={{ padding: '16px', fontWeight: '600', color: '#fff' }}>{formatDateTime(log.timestamp)}</td>
+                                            <td style={{ padding: '16px' }}>{log.name || 'Unknown'}</td>
+                                            <td style={{ padding: '16px' }}>{log.phone}</td>
+                                            <td style={{ padding: '16px' }}>
+                                                <span className={`status-pill ${log.status === 'success' ? 'active' : 'inactive'}`} style={{ textTransform: 'capitalize' }}>
+                                                    {log.status}
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '16px', fontFamily: 'monospace', fontSize: '12px' }}>{log.ip || 'Unknown'}</td>
+                                            <td style={{ padding: '16px', fontSize: '12px', color: 'var(--text-muted)', maxWidth: '250px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.userAgent}>
+                                                {log.userAgent || 'Unknown'}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: SERVER HEALTH & RAM STATUS */}
+            {activeTab === 'system' && (
+                <div className="admin-tab-content">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                        <h3 style={{ color: '#ffffff', margin: 0 }}>Render Engine Diagnostics</h3>
+                        <button className="cta-btn secondary-cta" onClick={fetchSystemStatus} style={{ width: 'auto', minHeight: 'unset', padding: '10px 18px', fontSize: '13px', borderColor: 'rgba(255,255,255,0.08)' }}>
+                            🔄 Refresh Diagnostics
+                        </button>
+                    </div>
+
+                    {systemStatus ? (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+                            {/* DB Status & Fallback Alert */}
+                            <div style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                                <h4 style={{ color: '#fff', margin: '0 0 16px' }}>Database Connectivity</h4>
+                                {systemStatus.useMongo ? (
+                                    <div style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            🟢 MongoDB Atlas Connection Active
+                                        </div>
+                                        <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#a7f3d0', lineHeight: '1.5' }}>
+                                            The server is successfully writing and fetching storefront data from the Cloud Database cluster. Local JSON database fallbacks are offline.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', padding: '16px', borderRadius: '8px', marginBottom: '20px' }}>
+                                        <div style={{ fontWeight: 'bold', fontSize: '15px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            🔴 MongoDB Atlas Offline: Falling Back to Local JSON
+                                        </div>
+                                        <p style={{ margin: '8px 0 0', fontSize: '13px', color: '#fca5a5', lineHeight: '1.5' }}>
+                                            CRITICAL: The backend MongoDB Atlas database connection failed. Server is currently writing data locally to backend JSON files.
+                                        </p>
+                                    </div>
+                                )}
+                                <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span>Active Connection URI:</span>
+                                        <span style={{ fontFamily: 'monospace', color: '#fff' }}>{systemStatus.mongoUri}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* RAM & Memory Diagnostics */}
+                            <div style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                                <h4 style={{ color: '#fff', margin: '0 0 16px' }}>Render 512MB RAM Usage</h4>
+                                <div style={{ marginBottom: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#94a3b8', marginBottom: '8px' }}>
+                                        <span>Allocated Memory Usage (RSS):</span>
+                                        <span style={{ fontWeight: 'bold', color: '#fff' }}>{systemStatus.ramTotal} MB / 512 MB</span>
+                                    </div>
+                                    <div style={{ width: '100%', height: '12px', background: '#1e293b', borderRadius: '6px', overflow: 'hidden' }}>
+                                        <div style={{ 
+                                            width: `${Math.min(100, (systemStatus.ramTotal / 512) * 100)}%`, 
+                                            height: '100%', 
+                                            background: systemStatus.ramTotal > 400 ? '#ef4444' : systemStatus.ramTotal > 300 ? '#f59e0b' : '#06b6d4',
+                                            transition: 'width 0.3s ease-out'
+                                        }} />
+                                    </div>
+                                </div>
+                                <div style={{ fontSize: '13px', color: '#94a3b8' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span>JS Heap Memory Used:</span>
+                                        <span style={{ color: '#fff' }}>{systemStatus.ramUsed} MB</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span>Server Uptime:</span>
+                                        <span style={{ color: '#fff' }}>{Math.floor(systemStatus.uptime / 3600)}h {Math.floor((systemStatus.uptime % 3600) / 60)}m {Math.floor(systemStatus.uptime % 60)}s</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span>Node JS Version:</span>
+                                        <span style={{ color: '#fff' }}>{systemStatus.nodeVersion}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Platform Environment:</span>
+                                        <span style={{ color: '#fff', textTransform: 'capitalize' }}>{systemStatus.platform}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Fetching diagnostics data from Render backend engine...</div>
+                    )}
                 </div>
             )}
 

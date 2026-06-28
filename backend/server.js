@@ -24,6 +24,7 @@ const bookingsPath = path.join(__dirname, 'data', 'bookings.json');
 const settingsPath = path.join(__dirname, 'data', 'settings.json');
 const usersPath = path.join(__dirname, 'data', 'users.json');
 const couponsPath = path.join(__dirname, 'data', 'coupons.json');
+const loginLogsPath = path.join(__dirname, 'data', 'login_logs.json');
 
 // Ensure data folder and default JSON files exist to prevent log warnings on Render
 async function initDataFolder() {
@@ -49,6 +50,7 @@ async function initDataFolder() {
         await ensureFile(settingsPath, { whatsappNumber: '919946550713' });
         await ensureFile(usersPath, []);
         await ensureFile(couponsPath, []);
+        await ensureFile(loginLogsPath, []);
     } catch (err) {
         console.error('[Netrave Backend] Error initializing data folder:', err.message);
     }
@@ -152,6 +154,42 @@ const UserSchema = new mongoose.Schema({
     isBlocked: { type: Boolean, default: false }
 });
 const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// Login Log Schema
+const LoginLogSchema = new mongoose.Schema({
+    phone: { type: String, required: true },
+    name: { type: String, default: 'Unknown' },
+    timestamp: { type: Number, default: Date.now },
+    status: { type: String, required: true }, // 'success', 'failed (blocked)', 'failed (locked)', etc.
+    ip: { type: String },
+    userAgent: { type: String }
+});
+const LoginLogModel = mongoose.models.LoginLog || mongoose.model('LoginLog', LoginLogSchema);
+
+// Helper function to log user auth events
+async function logUserLogin(phone, name, status, req) {
+    try {
+        const logEntry = {
+            phone,
+            name: name || 'Unknown',
+            timestamp: Date.now(),
+            status,
+            ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+            userAgent: req.headers['user-agent']
+        };
+
+        if (useMongo) {
+            await LoginLogModel.create(logEntry);
+        } else {
+            const logs = await readJson(loginLogsPath);
+            logs.unshift(logEntry);
+            if (logs.length > 500) logs.length = 500; // cap at 500 logs
+            await writeJson(loginLogsPath, logs);
+        }
+    } catch (err) {
+        console.error('[Netrave Backend] Failed to save login log:', err.message);
+    }
+}
 
 // Coupon Schema
 const CouponSchema = new mongoose.Schema({
@@ -746,16 +784,19 @@ app.post('/api/auth/login', async (req, res) => {
         if (useMongo) {
             const user = await UserModel.findOne({ phone });
             if (!user) {
+                await logUserLogin(phone, 'Unknown', 'failed (user not found)', req);
                 return res.status(400).json({ error: 'Invalid mobile number or MPIN.' });
             }
 
             // 1. Check if permanently blocked
             if (user.isBlocked) {
+                await logUserLogin(phone, user.name, 'failed (blocked)', req);
                 return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
             }
 
             // 2. Check if temporarily locked
             if (user.lockUntil && user.lockUntil > Date.now()) {
+                await logUserLogin(phone, user.name, 'failed (locked)', req);
                 const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
                 return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
             }
@@ -777,6 +818,7 @@ app.post('/api/auth/login', async (req, res) => {
                     const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
                     errMsg = `Incorrect MPIN. Remaining attempts before ${type}: ${remaining}`;
                 }
+                await logUserLogin(phone, user.name, 'failed (incorrect MPIN)', req);
                 await user.save();
                 return res.status(400).json({ error: errMsg });
             }
@@ -786,11 +828,13 @@ app.post('/api/auth/login', async (req, res) => {
             user.lockUntil = 0;
             await user.save();
 
+            await logUserLogin(user.phone, user.name, 'success', req);
             res.json({ success: true, user: { phone: user.phone, name: user.name } });
         } else {
             const users = await readJson(usersPath);
             const userIndex = users.findIndex(u => u.phone === phone);
             if (userIndex === -1) {
+                await logUserLogin(phone, 'Unknown', 'failed (user not found)', req);
                 return res.status(400).json({ error: 'Invalid mobile number or MPIN.' });
             }
 
@@ -798,11 +842,13 @@ app.post('/api/auth/login', async (req, res) => {
 
             // 1. Check if permanently blocked
             if (user.isBlocked) {
+                await logUserLogin(phone, user.name, 'failed (blocked)', req);
                 return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
             }
 
             // 2. Check if temporarily locked
             if (user.lockUntil && user.lockUntil > Date.now()) {
+                await logUserLogin(phone, user.name, 'failed (locked)', req);
                 const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
                 return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
             }
@@ -824,6 +870,7 @@ app.post('/api/auth/login', async (req, res) => {
                     const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
                     errMsg = `Incorrect MPIN. Remaining attempts before ${type}: ${remaining}`;
                 }
+                await logUserLogin(phone, user.name, 'failed (incorrect MPIN)', req);
                 users[userIndex] = user;
                 await writeJson(usersPath, users);
                 return res.status(400).json({ error: errMsg });
@@ -835,6 +882,7 @@ app.post('/api/auth/login', async (req, res) => {
             users[userIndex] = user;
             await writeJson(usersPath, users);
 
+            await logUserLogin(user.phone, user.name, 'success', req);
             res.json({ success: true, user: { phone: user.phone, name: user.name } });
         }
     } catch (err) {
@@ -1259,6 +1307,46 @@ app.get('/api/developer/users', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to fetch users list for developer.' });
+    }
+});
+
+// Fetch all customer login logs for Developer Dashboard
+app.get('/api/developer/logs', async (req, res) => {
+    try {
+        if (useMongo) {
+            const logs = await LoginLogModel.find({}).sort({ timestamp: -1 }).limit(100);
+            res.json(logs);
+        } else {
+            const logs = await readJson(loginLogsPath);
+            res.json(logs.slice(0, 100));
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch login logs.' });
+    }
+});
+
+// Fetch Server RAM, DB Connection Fallback, and general health metrics
+app.get('/api/developer/system-status', async (req, res) => {
+    try {
+        const memoryUsage = process.memoryUsage();
+        const ramUsed = Math.round(memoryUsage.heapUsed / 1024 / 1024 * 100) / 100;
+        const ramTotal = Math.round(memoryUsage.rss / 1024 / 1024 * 100) / 100;
+
+        const systemStatus = {
+            useMongo: useMongo,
+            mongoUri: process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:([^@]+)@/, ':****@') : 'mongodb://127.0.0.1:27017/netravestore',
+            ramLimit: 512,
+            ramUsed,
+            ramTotal,
+            uptime: process.uptime(),
+            nodeVersion: process.version,
+            platform: process.platform
+        };
+        res.json(systemStatus);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch system status.' });
     }
 });
 
