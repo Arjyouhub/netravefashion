@@ -63,10 +63,12 @@ export default function AdminPanel({
 
     // 3. Settings Tab States
     const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
+    const [newUsername, setNewUsername] = useState(settings?.adminUsername || 'admin');
 
     useEffect(() => {
         if (settings) {
             setWhatsappNum(settings.whatsappNumber);
+            setNewUsername(settings.adminUsername || 'admin');
         }
     }, [settings]);
 
@@ -416,11 +418,11 @@ export default function AdminPanel({
             const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ currentPassword, newPassword })
+                body: JSON.stringify({ currentPassword, newUsername, newPassword })
             });
             const data = await response.json();
             if (response.ok) {
-                setPasswordSuccess('Admin password changed successfully!');
+                setPasswordSuccess('Admin credentials changed successfully!');
                 setCurrentPassword('');
                 setNewPassword('');
                 setConfirmPassword('');
@@ -1018,6 +1020,17 @@ export default function AdminPanel({
                                     value={currentPassword} 
                                     onChange={e => setCurrentPassword(e.target.value)} 
                                     placeholder="Enter current password"
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label>New Admin Username *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={newUsername} 
+                                    onChange={e => setNewUsername(e.target.value)} 
+                                    placeholder="Enter new admin username"
                                 />
                             </div>
 

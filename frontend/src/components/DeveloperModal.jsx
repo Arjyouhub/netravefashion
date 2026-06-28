@@ -35,6 +35,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     const [passwordError, setPasswordError] = useState('');
     const [passwordSuccess, setPasswordSuccess] = useState('');
 
+    const [newAdminUsername, setNewAdminUsername] = useState('admin');
     const [newAdminPassword, setNewAdminPassword] = useState('');
     const [adminResetError, setAdminResetError] = useState('');
     const [adminResetSuccess, setAdminResetSuccess] = useState('');
@@ -197,7 +198,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
         }
     };
 
-    // Admin Password Overwrite/Reset Handler
+    // Admin Credentials Overwrite/Reset Handler
     const handleResetAdminPasswordSubmit = async (e) => {
         e.preventDefault();
         setAdminResetError('');
@@ -207,18 +208,18 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             const response = await fetch(`${API_BASE_URL}/developer/change-admin-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ newAdminPassword })
+                body: JSON.stringify({ newAdminUsername, newAdminPassword })
             });
             const data = await response.json();
             if (response.ok) {
-                setAdminResetSuccess('Admin password reset successfully!');
+                setAdminResetSuccess('Admin credentials override succeeded!');
                 setNewAdminPassword('');
             } else {
-                setAdminResetError(data.error || 'Failed to reset admin password.');
+                setAdminResetError(data.error || 'Failed to reset admin credentials.');
             }
         } catch (err) {
             console.error('Admin reset error:', err);
-            setAdminResetError('Network error resetting admin password.');
+            setAdminResetError('Network error resetting admin credentials.');
         }
     };
 
@@ -598,8 +599,24 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                 <div style={{ fontSize: '13px', color: '#94a3b8' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                         <span>Active Connection URI:</span>
-                                        <span style={{ fontFamily: 'monospace', color: '#fff' }}>{systemStatus.mongoUri}</span>
+                                        <span style={{ fontFamily: 'monospace', color: '#fff', wordBreak: 'break-all' }}>{systemStatus.mongoUri}</span>
                                     </div>
+                                    {systemStatus.useMongo && (
+                                        <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                                <span>MongoDB Cloud Storage:</span>
+                                                <span style={{ fontWeight: 'bold', color: '#fff' }}>{systemStatus.mongoStorageUsedMB} MB / {systemStatus.mongoStorageLimit} MB</span>
+                                            </div>
+                                            <div style={{ width: '100%', height: '10px', background: '#1e293b', borderRadius: '5px', overflow: 'hidden' }}>
+                                                <div style={{ 
+                                                    width: `${Math.min(100, (systemStatus.mongoStorageUsedMB / systemStatus.mongoStorageLimit) * 100)}%`, 
+                                                    height: '100%', 
+                                                    background: systemStatus.mongoStorageUsedMB > 400 ? '#ef4444' : systemStatus.mongoStorageUsedMB > 300 ? '#f59e0b' : '#10b981',
+                                                    transition: 'width 0.3s ease-out'
+                                                }} />
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
@@ -652,12 +669,24 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                     
                     {/* Reset Admin Credentials */}
                     <div className="settings-card" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-                        <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: '800', marginTop: 0, marginBottom: '8px' }}>Force Reset Admin Password</h3>
+                        <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: '800', marginTop: 0, marginBottom: '8px' }}>Force Reset Admin Credentials</h3>
                         <p style={{ color: '#64748b', fontSize: '13px', lineHeight: '1.5', marginBottom: '20px' }}>
-                            Overwrite the administrator portal password immediately. This bypasses the current admin password and does not require verification of the previous password.
+                            Overwrite the administrator portal username and password immediately. This bypasses the current admin settings.
                         </p>
 
                         <form onSubmit={handleResetAdminPasswordSubmit} className="admin-settings-form">
+                            <div className="form-field" style={{ marginBottom: '16px' }}>
+                                <label style={{ color: '#94a3b8' }}>New Admin Username *</label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={newAdminUsername} 
+                                    onChange={e => setNewAdminUsername(e.target.value)} 
+                                    placeholder="Enter new admin username"
+                                    style={inputStyle}
+                                />
+                            </div>
+
                             <div className="form-field">
                                 <label style={{ color: '#94a3b8' }}>New Admin Password *</label>
                                 <input 
@@ -683,7 +712,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                             )}
 
                             <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '20px', background: '#06b6d4', color: '#090d16', fontWeight: 'bold' }}>
-                                Overwrite Admin Password
+                                Overwrite Admin Credentials
                             </button>
                         </form>
                     </div>

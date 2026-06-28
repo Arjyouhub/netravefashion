@@ -137,8 +137,8 @@ const BookingModel = mongoose.models.Booking || mongoose.model('Booking', Bookin
 
 // Settings Schema
 const SettingsSchema = new mongoose.Schema({
-    key: { type: String, default: 'main', unique: true },
     whatsappNumber: { type: String, default: '919946550713' },
+    adminUsername: { type: String, default: 'admin' },
     adminPassword: { type: String, default: 'admin123' },
     developerPassword: { type: String, default: 'developer123' }
 });
@@ -222,6 +222,7 @@ if (useMongo) {
             await SettingsModel.create({ 
                 key: 'main', 
                 whatsappNumber: fileSettings.whatsappNumber || '919946550713',
+                adminUsername: fileSettings.adminUsername || 'admin',
                 adminPassword: fileSettings.adminPassword || 'admin123',
                 developerPassword: fileSettings.developerPassword || 'developer123'
             });
@@ -1120,9 +1121,6 @@ app.post('/api/admin/users/block/:phone', async (req, res) => {
 app.post('/api/admin/login', async (req, res) => {
     try {
         const { username, password } = req.body;
-        if (username !== 'admin') {
-            return res.status(401).json({ error: 'Invalid admin credentials' });
-        }
 
         let settings = null;
         if (useMongo) {
@@ -1132,8 +1130,10 @@ app.post('/api/admin/login', async (req, res) => {
             settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
         }
 
-        const currentPassword = settings?.adminPassword || 'admin123';
-        if (password === currentPassword) {
+        const expectedUsername = settings?.adminUsername || 'admin';
+        const expectedPassword = settings?.adminPassword || 'admin123';
+
+        if (username === expectedUsername && password === expectedPassword) {
             res.json({ success: true, message: 'Logged in successfully.' });
         } else {
             res.status(401).json({ error: 'Invalid admin credentials' });
@@ -1144,12 +1144,12 @@ app.post('/api/admin/login', async (req, res) => {
     }
 });
 
-// Admin Password Update/Change
+// Admin Credentials Update/Change
 app.post('/api/admin/change-password', async (req, res) => {
     try {
-        const { currentPassword, newPassword } = req.body;
-        if (!currentPassword || !newPassword) {
-            return res.status(400).json({ error: 'Current password and new password are required.' });
+        const { currentPassword, newUsername, newPassword } = req.body;
+        if (!currentPassword || !newUsername || !newPassword) {
+            return res.status(400).json({ error: 'Current password, new username, and new password are required.' });
         }
 
         let settings = null;
@@ -1167,22 +1167,24 @@ app.post('/api/admin/change-password', async (req, res) => {
 
         if (useMongo) {
             if (!settings) {
-                await SettingsModel.create({ key: 'main', adminPassword: newPassword });
+                await SettingsModel.create({ key: 'main', adminUsername: newUsername, adminPassword: newPassword });
             } else {
+                settings.adminUsername = newUsername;
                 settings.adminPassword = newPassword;
                 await settings.save();
             }
         } else {
             let data = settings;
             if (!data) data = { whatsappNumber: '919946550713' };
+            data.adminUsername = newUsername;
             data.adminPassword = newPassword;
             await writeJson(settingsPath, [data]);
         }
 
-        res.json({ success: true, message: 'Admin password changed successfully.' });
+        res.json({ success: true, message: 'Admin credentials changed successfully.' });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Failed to update admin password.' });
+        res.status(500).json({ error: 'Failed to update admin credentials.' });
     }
 });
 
@@ -1259,10 +1261,12 @@ app.post('/api/developer/change-password', async (req, res) => {
 // Developer Overwrite/Reset Admin Password Directly
 app.post('/api/developer/change-admin-password', async (req, res) => {
     try {
-        const { newAdminPassword } = req.body;
+        const { newAdminUsername, newAdminPassword } = req.body;
         if (!newAdminPassword) {
             return res.status(400).json({ error: 'New admin password is required.' });
         }
+        
+        const finalUsername = newAdminUsername || 'admin';
 
         let settings = null;
         if (useMongo) {
@@ -1274,22 +1278,24 @@ app.post('/api/developer/change-admin-password', async (req, res) => {
 
         if (useMongo) {
             if (!settings) {
-                await SettingsModel.create({ key: 'main', adminPassword: newAdminPassword });
+                await SettingsModel.create({ key: 'main', adminUsername: finalUsername, adminPassword: newAdminPassword });
             } else {
+                settings.adminUsername = finalUsername;
                 settings.adminPassword = newAdminPassword;
                 await settings.save();
             }
         } else {
             let data = settings;
             if (!data) data = { whatsappNumber: '919946550713' };
+            data.adminUsername = finalUsername;
             data.adminPassword = newAdminPassword;
             await writeJson(settingsPath, [data]);
         }
 
-        res.json({ success: true, message: 'Admin password reset successfully by developer.' });
+        res.json({ success: true, message: 'Admin credentials reset successfully by developer.' });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Failed to reset admin password.' });
+        res.status(500).json({ error: 'Failed to reset admin credentials.' });
     }
 });
 
@@ -1333,12 +1339,25 @@ app.get('/api/developer/system-status', async (req, res) => {
         const ramUsed = Math.round(memoryUsage.heapUsed / 1024 / 1024 * 100) / 100;
         const ramTotal = Math.round(memoryUsage.rss / 1024 / 1024 * 100) / 100;
 
+        let mongoStorageUsedMB = 0;
+        if (useMongo && mongoose.connection.readyState === 1) {
+            try {
+                const stats = await mongoose.connection.db.command({ dbStats: 1 });
+                const bytes = stats.storageSize || stats.dataSize || 0;
+                mongoStorageUsedMB = Math.round(bytes / 1024 / 1024 * 100) / 100;
+            } catch (dbErr) {
+                console.error('Failed to get MongoDB stats:', dbErr.message);
+            }
+        }
+
         const systemStatus = {
             useMongo: useMongo,
             mongoUri: process.env.MONGODB_URI ? process.env.MONGODB_URI.replace(/:([^@]+)@/, ':****@') : 'mongodb://127.0.0.1:27017/netravestore',
             ramLimit: 512,
             ramUsed,
             ramTotal,
+            mongoStorageLimit: 512,
+            mongoStorageUsedMB,
             uptime: process.uptime(),
             nodeVersion: process.version,
             platform: process.platform
