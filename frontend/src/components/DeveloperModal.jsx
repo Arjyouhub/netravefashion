@@ -211,7 +211,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     if (!isLoggedIn) {
         return (
             <div className="admin-login-wrapper" style={{ zIndex: 1050 }}>
-                <div className="admin-login-card" style={{ background: '#090d16', border: '1px solid rgba(6,182,212,0.3)', boxShadow: '0 0 30px rgba(6,182,212,0.15)', maxWidth: '440px' }}>
+                <div className="admin-login-card" style={{ background: '#090d16', border: '1px solid rgba(6,182,212,0.3)', boxShadow: '0 0 30px rgba(6,182,212,0.15)', maxWidth: '440px', width: '90%' }}>
                     <div className="login-header" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '20px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '12px' }}>
                             <svg viewBox="0 0 24 24" style={{ width: '32px', height: '32px', fill: '#06b6d4' }}>
@@ -401,7 +401,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
 
             {/* TAB CONTENT: CREDENTIALS BYPASS OVERRIDE */}
             {activeTab === 'credentials' && (
-                <div className="admin-tab-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
+                <div className="admin-tab-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '30px' }}>
                     
                     {/* Reset Admin Credentials */}
                     <div className="settings-card" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
