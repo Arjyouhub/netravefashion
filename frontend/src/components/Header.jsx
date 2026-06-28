@@ -124,9 +124,13 @@ export default function Header({
                     {/* Logo */}
                     <a href="#" className="logo" onClick={(e) => { e.preventDefault(); triggerHome(); }}>
                         <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" />
-                        <span className="logo-text-new">
-                            NET<span style={{ color: 'var(--primary)' }}>RAVE</span>
-                        </span>
+                        <div className="logo-text">
+                            <div className="logo-accent">
+                                <span className="logo-net">NET</span>
+                                <span className="logo-rave">RAVE</span>
+                            </div>
+                            <span className="logo-sub">CLOTHING & STYLE</span>
+                        </div>
                     </a>
 
                     {/* Desktop Navigation */}

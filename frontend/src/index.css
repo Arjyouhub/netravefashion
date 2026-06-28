@@ -164,7 +164,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo-img {
-    height: 26px;
+    height: 44px;
     width: auto;
     object-fit: contain;
     filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.2));
@@ -175,14 +175,33 @@ h1, h2, h3, h4, h5, h6 {
     transform: scale(1.08) rotate(3deg);
 }
 
-.logo-text-new {
+.logo-text {
+    display: flex;
+    flex-direction: column;
+}
+
+.logo-accent {
     font-family: var(--font-heading);
-    font-size: 25px;
+    font-size: 24px;
     font-weight: 800;
     letter-spacing: 1.5px;
     display: flex;
-    align-items: center;
+}
+
+.logo-net {
     color: #ffffff;
+}
+
+.logo-rave {
+    color: var(--accent);
+}
+
+.logo-sub {
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--primary);
+    margin-top: 2px;
 }
 
 /* Desktop Navigation */
@@ -3066,8 +3085,11 @@ h1, h2, h3, h4, h5, h6 {
         gap: 15px;
     }
     
-    .logo-text-new {
+    .logo-accent {
         font-size: 21px;
+    }
+    .logo-sub {
+        font-size: 8.5px;
     }
 
     .hero-container {
@@ -3228,13 +3250,17 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     /* Logo size */
-    .logo-text-new {
-        font-size: 16px !important;
-        letter-spacing: 1px !important;
+    .logo-accent {
+        font-size: 17px !important;
+    }
+    
+    .logo-sub {
+        font-size: 7.5px !important;
+        letter-spacing: 1.5px !important;
     }
     
     .logo-img {
-        height: 22px !important;
+        height: 34px !important;
     }
     
     .logo {

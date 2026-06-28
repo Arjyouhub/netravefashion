@@ -602,9 +602,13 @@ export default function App() {
                     <div className="footer-info">
                         <div className="logo" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                             <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" style={{ height: '42px' }} />
-                            <span className="logo-text-new">
-                                NET<span style={{ color: 'var(--primary)' }}>RAVE</span>
-                            </span>
+                            <div className="logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
+                                <div className="logo-accent" style={{ fontSize: '20px', display: 'flex' }}>
+                                    <span className="logo-net">NET</span>
+                                    <span className="logo-rave" style={{ color: 'var(--primary)' }}>RAVE</span>
+                                </div>
+                                <span className="logo-sub" style={{ fontSize: '8px', letterSpacing: '1.5px', color: 'var(--primary)' }}>CLOTHING & STYLE</span>
+                            </div>
                         </div>
                         <p>We supply high quality men's shirts, custom streetwear t-shirts, and stylish summer apparel.</p>
                         <div className="social-links">
