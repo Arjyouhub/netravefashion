@@ -2,6 +2,19 @@ import React, { useState, useEffect } from 'react';
 import { getCookie, setCookie, eraseCookie } from '../utils/cookies';
 
 export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
+    // Style configurations for standard dark inputs
+    const inputStyle = {
+        width: '100%',
+        padding: '12px 16px',
+        background: '#131b2e',
+        border: '1px solid rgba(255,255,255,0.08)',
+        color: '#ffffff',
+        borderRadius: '8px',
+        fontSize: '14px',
+        marginTop: '6px',
+        boxSizing: 'border-box'
+    };
+
     // Auth States
     const [isLoggedIn, setIsLoggedIn] = useState(() => getCookie('isDeveloperLoggedIn') === 'true');
     const [username, setUsername] = useState('');
@@ -217,7 +230,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
                                 placeholder="Enter dev username"
-                                style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px' }}
+                                style={inputStyle}
                                 required
                             />
                         </div>
@@ -229,7 +242,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 placeholder="Enter dev password"
-                                style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px' }}
+                                style={inputStyle}
                                 required
                             />
                         </div>
@@ -406,7 +419,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                     value={newAdminPassword} 
                                     onChange={e => setNewAdminPassword(e.target.value)} 
                                     placeholder="Enter new admin password"
-                                    style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px' }}
+                                    style={inputStyle}
                                 />
                             </div>
 
@@ -444,7 +457,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                     value={currentPassword} 
                                     onChange={e => setCurrentPassword(e.target.value)} 
                                     placeholder="Verify current password"
-                                    style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px' }}
+                                    style={inputStyle}
                                 />
                             </div>
 
@@ -456,7 +469,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                     value={newPassword} 
                                     onChange={e => setNewPassword(e.target.value)} 
                                     placeholder="Enter new password"
-                                    style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px' }}
+                                    style={inputStyle}
                                 />
                             </div>
 
@@ -468,7 +481,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                     value={confirmPassword} 
                                     onChange={e => setConfirmPassword(e.target.value)} 
                                     placeholder="Confirm new password"
-                                    style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px' }}
+                                    style={inputStyle}
                                 />
                             </div>
 
