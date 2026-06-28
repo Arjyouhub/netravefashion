@@ -296,8 +296,28 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                 </div>
             </div>
 
-            {/* Dashboard Tabs Toggle */}
-            <div className="admin-tabs-row" style={{ 
+            {/* Inline CSS for responsive tab visibility */}
+            <style>{`
+                @media (max-width: 600px) {
+                    .desktop-only-tabs {
+                        display: none !important;
+                    }
+                    .mobile-only-tabs {
+                        display: block !important;
+                    }
+                }
+                @media (min-width: 601px) {
+                    .desktop-only-tabs {
+                        display: flex !important;
+                    }
+                    .mobile-only-tabs {
+                        display: none !important;
+                    }
+                }
+            `}</style>
+
+            {/* Dashboard Tabs Toggle (Desktop view) */}
+            <div className="admin-tabs-row desktop-only-tabs" style={{ 
                 marginBottom: '24px', 
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 display: 'flex',
@@ -320,6 +340,30 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                 >
                     Credentials Bypass Override
                 </button>
+            </div>
+
+            {/* Mobile Dropdown Tab Selector (Mobile view) */}
+            <div className="mobile-only-tabs" style={{ marginBottom: '24px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', color: '#94a3b8', fontSize: '13px', fontWeight: '600' }}>Select Dashboard View</label>
+                <select 
+                    value={activeTab} 
+                    onChange={e => setActiveTab(e.target.value)}
+                    style={{ 
+                        width: '100%', 
+                        padding: '12px 16px', 
+                        background: '#090d16', 
+                        border: '1px solid rgba(6,182,212,0.3)', 
+                        color: '#ffffff', 
+                        borderRadius: '8px', 
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        boxShadow: '0 0 10px rgba(6,182,212,0.1)',
+                        cursor: 'pointer'
+                    }}
+                >
+                    <option value="users">👤 Customer Database Logs</option>
+                    <option value="credentials">🔑 Credentials Bypass Override</option>
+                </select>
             </div>
 
             {/* TAB CONTENT: USERS MANAGEMENT */}
