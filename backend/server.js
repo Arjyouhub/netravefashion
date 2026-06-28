@@ -140,7 +140,9 @@ const SettingsSchema = new mongoose.Schema({
     whatsappNumber: { type: String, default: '919946550713' },
     adminUsername: { type: String, default: 'admin' },
     adminPassword: { type: String, default: 'admin123' },
-    developerPassword: { type: String, default: 'developer123' }
+    developerPassword: { type: String, default: 'developer123' },
+    adminSessionToken: { type: String, default: '' },
+    developerSessionToken: { type: String, default: '' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
 
@@ -250,6 +252,92 @@ if (useMongo) {
         console.error('[Netrave Backend] Seeding error:', err.message);
     }
 }
+
+// Helper to parse cookies from headers if needed
+function getCookieValue(cookieHeader, name) {
+    if (!cookieHeader) return null;
+    const pairs = cookieHeader.split(';');
+    for (const pair of pairs) {
+        const [key, val] = pair.trim().split('=');
+        if (key === name) return decodeURIComponent(val);
+    }
+    return null;
+}
+
+// Developer Auth Middleware
+const requireDeveloper = async (req, res, next) => {
+    try {
+        const token = req.headers['x-developer-session'] || getCookieValue(req.headers.cookie, 'developerSessionToken');
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: Missing developer session.' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        if (settings && settings.developerSessionToken && settings.developerSessionToken === token) {
+            return next();
+        }
+        res.status(401).json({ error: 'Unauthorized: Invalid developer session.' });
+    } catch (err) {
+        res.status(401).json({ error: 'Unauthorized.' });
+    }
+};
+
+// Admin Auth Middleware
+const requireAdmin = async (req, res, next) => {
+    try {
+        const token = req.headers['x-admin-session'] || getCookieValue(req.headers.cookie, 'adminSessionToken');
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: Missing admin session.' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        if (settings && settings.adminSessionToken && settings.adminSessionToken === token) {
+            return next();
+        }
+        res.status(401).json({ error: 'Unauthorized: Invalid admin session.' });
+    } catch (err) {
+        res.status(401).json({ error: 'Unauthorized.' });
+    }
+};
+
+// Admin or Developer Auth Middleware
+const requireAdminOrDeveloper = async (req, res, next) => {
+    try {
+        const token = req.headers['x-admin-session'] || req.headers['x-developer-session'] || getCookieValue(req.headers.cookie, 'adminSessionToken') || getCookieValue(req.headers.cookie, 'developerSessionToken');
+        if (!token) {
+            return res.status(401).json({ error: 'Unauthorized: Missing session.' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        if (settings && (settings.adminSessionToken === token || settings.developerSessionToken === token)) {
+            return next();
+        }
+        res.status(401).json({ error: 'Unauthorized: Invalid session.' });
+    } catch (err) {
+        res.status(401).json({ error: 'Unauthorized.' });
+    }
+};
 
 // Static files for Uploads
 app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
@@ -1058,7 +1146,7 @@ app.get('/api/admin/users', async (req, res) => {
 });
 
 // Unblock / Reset user login attempts
-app.post('/api/admin/users/unblock/:phone', async (req, res) => {
+app.post('/api/admin/users/unblock/:phone', requireAdminOrDeveloper, async (req, res) => {
     try {
         const { phone } = req.params;
         if (useMongo) {
@@ -1090,7 +1178,7 @@ app.post('/api/admin/users/unblock/:phone', async (req, res) => {
 });
 
 // Block user account manually
-app.post('/api/admin/users/block/:phone', async (req, res) => {
+app.post('/api/admin/users/block/:phone', requireAdminOrDeveloper, async (req, res) => {
     try {
         const { phone } = req.params;
         if (useMongo) {
@@ -1134,7 +1222,20 @@ app.post('/api/admin/login', async (req, res) => {
         const expectedPassword = settings?.adminPassword || 'admin123';
 
         if (username === expectedUsername && password === expectedPassword) {
-            res.json({ success: true, message: 'Logged in successfully.' });
+            const sessionToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            if (useMongo) {
+                if (!settings) {
+                    await SettingsModel.create({ key: 'main', adminSessionToken: sessionToken });
+                } else {
+                    settings.adminSessionToken = sessionToken;
+                    await settings.save();
+                }
+            } else {
+                let data = settings || { whatsappNumber: '919946550713' };
+                data.adminSessionToken = sessionToken;
+                await writeJson(settingsPath, [data]);
+            }
+            res.json({ success: true, sessionToken, message: 'Logged in successfully.' });
         } else {
             res.status(401).json({ error: 'Invalid admin credentials' });
         }
@@ -1145,7 +1246,7 @@ app.post('/api/admin/login', async (req, res) => {
 });
 
 // Admin Credentials Update/Change
-app.post('/api/admin/change-password', async (req, res) => {
+app.post('/api/admin/change-password', requireAdmin, async (req, res) => {
     try {
         const { currentPassword, newUsername, newPassword } = req.body;
         if (!currentPassword || !newUsername || !newPassword) {
@@ -1206,7 +1307,20 @@ app.post('/api/developer/login', async (req, res) => {
 
         const currentPassword = settings?.developerPassword || 'developer123';
         if (password === currentPassword) {
-            res.json({ success: true, message: 'Logged in successfully.' });
+            const sessionToken = Math.random().toString(36).substring(2) + Date.now().toString(36);
+            if (useMongo) {
+                if (!settings) {
+                    await SettingsModel.create({ key: 'main', developerSessionToken: sessionToken });
+                } else {
+                    settings.developerSessionToken = sessionToken;
+                    await settings.save();
+                }
+            } else {
+                let data = settings || { whatsappNumber: '919946550713' };
+                data.developerSessionToken = sessionToken;
+                await writeJson(settingsPath, [data]);
+            }
+            res.json({ success: true, sessionToken, message: 'Logged in successfully.' });
         } else {
             res.status(401).json({ error: 'Invalid developer credentials' });
         }
@@ -1217,7 +1331,7 @@ app.post('/api/developer/login', async (req, res) => {
 });
 
 // Developer Password Update/Change
-app.post('/api/developer/change-password', async (req, res) => {
+app.post('/api/developer/change-password', requireDeveloper, async (req, res) => {
     try {
         const { currentPassword, newPassword } = req.body;
         if (!currentPassword || !newPassword) {
@@ -1259,7 +1373,7 @@ app.post('/api/developer/change-password', async (req, res) => {
 });
 
 // Developer Overwrite/Reset Admin Password Directly
-app.post('/api/developer/change-admin-password', async (req, res) => {
+app.post('/api/developer/change-admin-password', requireDeveloper, async (req, res) => {
     try {
         const { newAdminUsername, newAdminPassword } = req.body;
         if (!newAdminPassword) {
@@ -1300,7 +1414,7 @@ app.post('/api/developer/change-admin-password', async (req, res) => {
 });
 
 // Fetch all registered users with details for Developer Dashboard
-app.get('/api/developer/users', async (req, res) => {
+app.get('/api/developer/users', requireDeveloper, async (req, res) => {
     try {
         if (useMongo) {
             const users = await UserModel.find({}, { mpin: 0 }).sort({ _id: -1 });
@@ -1317,7 +1431,7 @@ app.get('/api/developer/users', async (req, res) => {
 });
 
 // Fetch all customer login logs for Developer Dashboard
-app.get('/api/developer/logs', async (req, res) => {
+app.get('/api/developer/logs', requireDeveloper, async (req, res) => {
     try {
         if (useMongo) {
             const logs = await LoginLogModel.find({}).sort({ timestamp: -1 }).limit(100);
@@ -1333,7 +1447,7 @@ app.get('/api/developer/logs', async (req, res) => {
 });
 
 // Fetch Server RAM, DB Connection Fallback, and general health metrics
-app.get('/api/developer/system-status', async (req, res) => {
+app.get('/api/developer/system-status', requireDeveloper, async (req, res) => {
     try {
         const memoryUsage = process.memoryUsage();
         const ramUsed = Math.round(memoryUsage.heapUsed / 1024 / 1024 * 100) / 100;

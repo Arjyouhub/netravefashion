@@ -43,7 +43,11 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     // Fetch users list from backend
     const fetchUsers = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/developer/users`);
+            const devToken = getCookie('developerSessionToken');
+            if (!devToken) return;
+            const response = await fetch(`${API_BASE_URL}/developer/users`, {
+                headers: { 'x-developer-session': devToken }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
@@ -56,7 +60,11 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     // Fetch login logs from backend
     const fetchLogs = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/developer/logs`);
+            const devToken = getCookie('developerSessionToken');
+            if (!devToken) return;
+            const response = await fetch(`${API_BASE_URL}/developer/logs`, {
+                headers: { 'x-developer-session': devToken }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setLogs(data);
@@ -69,7 +77,11 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     // Fetch server status from backend
     const fetchSystemStatus = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/developer/system-status`);
+            const devToken = getCookie('developerSessionToken');
+            if (!devToken) return;
+            const response = await fetch(`${API_BASE_URL}/developer/system-status`, {
+                headers: { 'x-developer-session': devToken }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setSystemStatus(data);
@@ -113,6 +125,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             const data = await response.json();
             if (response.ok && data.success) {
                 setCookie('isDeveloperLoggedIn', 'true');
+                setCookie('developerSessionToken', data.sessionToken);
                 setIsLoggedIn(true);
                 setLoginError('');
                 setUsername('');
@@ -129,6 +142,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     // Logout Handler
     const handleLogout = () => {
         eraseCookie('isDeveloperLoggedIn');
+        eraseCookie('developerSessionToken');
         setIsLoggedIn(false);
     };
 
@@ -136,8 +150,10 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     const handleBlockUser = async (phone) => {
         if (!window.confirm(`Are you sure you want to block this user (${phone})?`)) return;
         try {
+            const devToken = getCookie('developerSessionToken');
             const response = await fetch(`${API_BASE_URL}/admin/users/block/${phone}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'x-developer-session': devToken }
             });
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true } : u));
@@ -152,8 +168,10 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
 
     const handleUnblockUser = async (phone) => {
         try {
+            const devToken = getCookie('developerSessionToken');
             const response = await fetch(`${API_BASE_URL}/admin/users/unblock/${phone}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'x-developer-session': devToken }
             });
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, loginAttempts: 0, lockUntil: 0 } : u));
@@ -178,9 +196,13 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
         }
 
         try {
+            const devToken = getCookie('developerSessionToken');
             const response = await fetch(`${API_BASE_URL}/developer/change-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-developer-session': devToken
+                },
                 body: JSON.stringify({ currentPassword, newPassword })
             });
             const data = await response.json();
@@ -205,9 +227,13 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
         setAdminResetSuccess('');
 
         try {
+            const devToken = getCookie('developerSessionToken');
             const response = await fetch(`${API_BASE_URL}/developer/change-admin-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-developer-session': devToken
+                },
                 body: JSON.stringify({ newAdminUsername, newAdminPassword })
             });
             const data = await response.json();

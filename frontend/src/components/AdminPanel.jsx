@@ -140,7 +140,9 @@ export default function AdminPanel({
 
     const fetchUsers = async () => {
         try {
-            const response = await fetch(`${API_BASE_URL}/admin/users`);
+            const response = await fetch(`${API_BASE_URL}/admin/users`, {
+                headers: { 'x-admin-session': getCookie('adminSessionToken') }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
@@ -159,7 +161,8 @@ export default function AdminPanel({
     const handleUnblockUser = async (phone) => {
         try {
             const response = await fetch(`${API_BASE_URL}/admin/users/unblock/${phone}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'x-admin-session': getCookie('adminSessionToken') }
             });
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, loginAttempts: 0, lockUntil: 0 } : u));
@@ -176,7 +179,8 @@ export default function AdminPanel({
         if (!window.confirm(`Are you sure you want to block this user (${phone})?`)) return;
         try {
             const response = await fetch(`${API_BASE_URL}/admin/users/block/${phone}`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'x-admin-session': getCookie('adminSessionToken') }
             });
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true } : u));
@@ -210,6 +214,7 @@ export default function AdminPanel({
             const data = await response.json();
             if (response.ok && data.success) {
                 setCookie('isAdminLoggedIn', 'true');
+                setCookie('adminSessionToken', data.sessionToken);
                 setIsLoggedIn(true);
                 setLoginError('');
                 setUsername('');
@@ -417,7 +422,10 @@ export default function AdminPanel({
         try {
             const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-admin-session': getCookie('adminSessionToken')
+                },
                 body: JSON.stringify({ currentPassword, newUsername, newPassword })
             });
             const data = await response.json();
