@@ -91,8 +91,8 @@ const FALLBACK_PRODUCTS = [
     }
 ];
 
-// const API_BASE_URL = 'https://netravefashion.onrender.com/api';
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://netravefashion.onrender.com/api';
+// const API_BASE_URL = 'http://localhost:5000/api';
 
 export default function App() {
     // A. Main State

@@ -354,7 +354,7 @@ export default function AdminPanel({
 
         setUploading(true);
         try {
-            const response = await fetch('http://localhost:5000/api/upload', {
+            const response = await fetch(`${API_BASE_URL}/upload`, {
                 method: 'POST',
                 body: formData
             });
