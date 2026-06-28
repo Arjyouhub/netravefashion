@@ -342,7 +342,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
 
             {/* Inline CSS for responsive tab visibility */}
             <style>{`
-                @media (max-width: 600px) {
+                @media (max-width: 992px) {
                     .desktop-only-tabs {
                         display: none !important;
                     }
@@ -350,7 +350,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                         display: block !important;
                     }
                 }
-                @media (min-width: 601px) {
+                @media (min-width: 993px) {
                     .desktop-only-tabs {
                         display: flex !important;
                     }
