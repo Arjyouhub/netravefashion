@@ -61,6 +61,17 @@ async function readJson(filePath) {
         const data = await fs.readFile(filePath, 'utf-8');
         return JSON.parse(data);
     } catch (err) {
+        if (err.code === 'ENOENT') {
+            const isSettings = filePath.includes('settings.json');
+            const defaultContent = isSettings ? { whatsappNumber: '919946550713' } : [];
+            try {
+                await fs.mkdir(path.dirname(filePath), { recursive: true });
+                await fs.writeFile(filePath, JSON.stringify(defaultContent, null, 2), 'utf-8');
+            } catch (wErr) {
+                console.error(`[Netrave Backend] Failed to auto-create file ${filePath}:`, wErr.message);
+            }
+            return defaultContent;
+        }
         console.error(`Error reading ${filePath}:`, err.message);
         return [];
     }
