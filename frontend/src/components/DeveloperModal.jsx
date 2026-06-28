@@ -297,18 +297,26 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             </div>
 
             {/* Dashboard Tabs Toggle */}
-            <div className="admin-tabs-row" style={{ marginBottom: '24px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <div className="admin-tabs-row" style={{ 
+                marginBottom: '24px', 
+                borderBottom: '1px solid rgba(255,255,255,0.05)',
+                display: 'flex',
+                overflowX: 'auto',
+                whiteSpace: 'nowrap',
+                flexWrap: 'nowrap',
+                scrollbarWidth: 'none'
+            }}>
                 <button 
                     className={`tab-btn ${activeTab === 'users' ? 'active' : ''}`}
                     onClick={() => setActiveTab('users')}
-                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'users' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'users' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}
+                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'users' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'users' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
                 >
                     Customer Database Logs
                 </button>
                 <button 
                     className={`tab-btn ${activeTab === 'credentials' ? 'active' : ''}`}
                     onClick={() => setActiveTab('credentials')}
-                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'credentials' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'credentials' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}
+                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'credentials' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'credentials' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
                 >
                     Credentials Bypass Override
                 </button>
@@ -337,7 +345,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                         </button>
                     </div>
 
-                    <div className="responsive-table-wrapper" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                    <div className="responsive-table-wrapper" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '100%' }}>
                         <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
                             <thead>
                                 <tr style={{ background: '#121929', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
