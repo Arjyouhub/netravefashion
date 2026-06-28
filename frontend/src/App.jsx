@@ -670,6 +670,7 @@ export default function App() {
                 product={activeProduct}
                 onClose={() => setSelectedProductId(null)}
                 onAddToCart={handleAddToCart}
+                API_BASE_URL={API_BASE_URL}
             />
 
             <CartDrawer
@@ -716,8 +717,11 @@ export default function App() {
             <BookingsModal
                 isOpen={isBookingsOpen}
                 bookings={bookings}
+                user={user}
+                onCancelSuccess={fetchBookings}
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsBookingsOpen(false)}
+                API_BASE_URL={API_BASE_URL}
             />
 
             {/* Mobile Bottom Navigation Bar completely removed */}

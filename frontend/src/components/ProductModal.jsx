@@ -1,16 +1,36 @@
 import React, { useState, useEffect } from 'react';
 
-export default function ProductModal({ isOpen, product, onClose, onAddToCart }) {
+export default function ProductModal({ isOpen, product, onClose, onAddToCart, API_BASE_URL }) {
     const [selectedSize, setSelectedSize] = useState('');
     const [qty, setQty] = useState(1);
     const [sizeError, setSizeError] = useState(false);
 
-    // Reset local state when product changes or modal opens
+    // Reviews states
+    const [reviews, setReviews] = useState([]);
+    const [reviewsLoading, setReviewsLoading] = useState(false);
+
+    // Reset local state & fetch reviews when product changes
     useEffect(() => {
         setSelectedSize('');
         setQty(1);
         setSizeError(false);
-    }, [product]);
+
+        if (isOpen && product && API_BASE_URL) {
+            setReviewsLoading(true);
+            fetch(`${API_BASE_URL}/products/${product.id}/reviews`)
+                .then(res => res.json())
+                .then(data => {
+                    setReviews(data);
+                    setReviewsLoading(false);
+                })
+                .catch(err => {
+                    console.error('Error loading reviews:', err);
+                    setReviewsLoading(false);
+                });
+        } else {
+            setReviews([]);
+        }
+    }, [product, isOpen, API_BASE_URL]);
 
     if (!isOpen || !product) return null;
 
@@ -35,12 +55,18 @@ export default function ProductModal({ isOpen, product, onClose, onAddToCart }) 
         return stars;
     };
 
+    const formatReviewDate = (dateStr) => {
+        if (!dateStr) return '';
+        const d = new Date(dateStr);
+        return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    };
+
     const hasDiscount = product.originalPrice > product.price;
     const discountPct = hasDiscount ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
 
     return (
         <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }}>
-            <div className="modal-content product-quickview">
+            <div className="modal-content product-quickview" style={{ overflowY: 'auto', maxHeight: '90vh' }}>
                 <button className="close-btn modal-close" onClick={onClose}>&times;</button>
                 
                 <div className="quickview-container">
@@ -142,7 +168,7 @@ export default function ProductModal({ isOpen, product, onClose, onAddToCart }) 
                             </button>
                         </div>
 
-                        <div className="quick-highlights">
+                        <div className="quick-highlights" style={{ borderBottom: 'none', paddingBottom: 0, marginBottom: 0 }}>
                             <div className="highlight-item">
                                 <svg viewBox="0 0 24 24" className="h-icon"><path d="M9 16.2L4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4L9 16.2z"/></svg>
                                 <span>100% Breathable Material</span>
@@ -154,6 +180,49 @@ export default function ProductModal({ isOpen, product, onClose, onAddToCart }) 
                         </div>
                     </div>
                 </div>
+
+                {/* VERIFIED BUYER REVIEWS LOG SECTION */}
+                <div className="reviews-section-wrapper" style={{ marginTop: '30px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '24px', paddingLeft: '20px', paddingRight: '20px', paddingBottom: '20px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#fff', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        🛡️ Verified Purchase Reviews
+                        <span style={{ fontSize: '12px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b', padding: '3px 8px', borderRadius: '10px' }}>
+                            {reviews.length} reviews
+                        </span>
+                    </h3>
+
+                    {reviewsLoading ? (
+                        <p style={{ color: '#64748b', fontSize: '13px' }}>Loading product feedback...</p>
+                    ) : reviews.length === 0 ? (
+                        <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.06)', borderRadius: '10px', padding: '24px', textAlign: 'center' }}>
+                            <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>No purchase reviews available for this product yet.</p>
+                        </div>
+                    ) : (
+                        <div style={{ display: 'grid', gap: '14px' }}>
+                            {reviews.map((rev, index) => (
+                                <div key={index} style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '10px', padding: '16px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+                                        <div>
+                                            <span style={{ fontWeight: '700', color: '#ffffff', fontSize: '13.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                {rev.customerName}
+                                                <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px', fontWeight: '600' }}>
+                                                    ✓ Verified Buyer
+                                                </span>
+                                            </span>
+                                            <div style={{ display: 'flex', color: '#f59e0b', fontSize: '12px', marginTop: '4px' }}>
+                                                {'★'.repeat(rev.rating)}{'☆'.repeat(5 - rev.rating)}
+                                            </div>
+                                        </div>
+                                        <span style={{ color: '#64748b', fontSize: '11.5px' }}>{formatReviewDate(rev.date)}</span>
+                                    </div>
+                                    <p style={{ color: '#cbd5e1', fontSize: '13px', margin: 0, lineHeight: '1.5' }}>
+                                        {rev.comment}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
             </div>
         </div>
     );

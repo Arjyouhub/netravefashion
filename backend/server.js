@@ -7,6 +7,7 @@ import { fileURLToPath } from 'url';
 import mongoose from 'mongoose';
 import multer from 'multer';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 
@@ -25,6 +26,7 @@ const settingsPath = path.join(__dirname, 'data', 'settings.json');
 const usersPath = path.join(__dirname, 'data', 'users.json');
 const couponsPath = path.join(__dirname, 'data', 'coupons.json');
 const loginLogsPath = path.join(__dirname, 'data', 'login_logs.json');
+const reviewsPath = path.join(__dirname, 'data', 'reviews.json');
 
 // Ensure data folder and default JSON files exist to prevent log warnings on Render
 async function initDataFolder() {
@@ -51,6 +53,7 @@ async function initDataFolder() {
         await ensureFile(usersPath, []);
         await ensureFile(couponsPath, []);
         await ensureFile(loginLogsPath, []);
+        await ensureFile(reviewsPath, []);
     } catch (err) {
         console.error('[Netrave Backend] Error initializing data folder:', err.message);
     }
@@ -145,6 +148,24 @@ const SettingsSchema = new mongoose.Schema({
     developerSessionToken: { type: String, default: '' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
+
+// Review Schema
+const ReviewSchema = new mongoose.Schema({
+    productId: { type: Number, required: true },
+    orderId: { type: String, required: true },
+    customerName: { type: String, required: true },
+    customerPhone: { type: String, required: true },
+    rating: { type: Number, required: true, min: 1, max: 5 },
+    comment: { type: String, required: true },
+    date: { type: Date, default: Date.now }
+});
+const ReviewModel = mongoose.models.Review || mongoose.model('Review', ReviewSchema);
+
+// Secure MPIN Hashing Helper (PBKDF2 with unique salt per user)
+function hashMpin(mpin, phone) {
+    const salt = phone + 'netravefashion_salt_2026';
+    return crypto.pbkdf2Sync(mpin, salt, 1000, 64, 'sha512').toString('hex');
+}
 
 // User Schema
 const UserSchema = new mongoose.Schema({
@@ -819,6 +840,193 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
     }
 });
 
+// Order Cancel Endpoint (Customer Self-Service)
+app.post('/api/bookings/:orderId/cancel', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { phone } = req.body;
+
+        if (!phone) {
+            return res.status(400).json({ error: 'Customer phone verification is required.' });
+        }
+
+        let booking = null;
+        if (useMongo) {
+            booking = await BookingModel.findOne({ orderId });
+        } else {
+            const fileBookings = await readJson(bookingsPath);
+            booking = fileBookings.find(b => b.orderId === orderId);
+        }
+
+        if (!booking) {
+            return res.status(404).json({ error: 'Order not found.' });
+        }
+
+        // Verify phone matches the order
+        const customerPhone = booking.customer?.phone || booking.customerPhone;
+        if (customerPhone !== phone) {
+            return res.status(403).json({ error: 'Unauthorized to cancel this order.' });
+        }
+
+        if (booking.status.toLowerCase() !== 'pending') {
+            return res.status(400).json({ error: `Cannot cancel order with status: ${booking.status}` });
+        }
+
+        // Restore stocks
+        let products = [];
+        if (useMongo) {
+            products = await ProductModel.find().lean();
+        } else {
+            products = await readJson(productsPath);
+        }
+
+        if (useMongo) {
+            for (const item of booking.items) {
+                await ProductModel.findOneAndUpdate(
+                    { id: item.id },
+                    { $inc: { stock: item.quantity }, $set: { inStock: true } }
+                );
+            }
+            booking.status = 'Cancelled';
+            await booking.save();
+        } else {
+            const updatedProductsList = products.map(p => {
+                const boughtItem = booking.items.find(vi => vi.id === p.id);
+                if (boughtItem) {
+                    const newStock = p.stock + boughtItem.quantity;
+                    return { ...p, stock: newStock, inStock: true };
+                }
+                return p;
+            });
+            await writeJson(productsPath, updatedProductsList);
+
+            const fileBookings = await readJson(bookingsPath);
+            const updatedBookings = fileBookings.map(b => {
+                if (b.orderId === orderId) {
+                    return { ...b, status: 'Cancelled' };
+                }
+                return b;
+            });
+            await writeJson(bookingsPath, updatedBookings);
+        }
+
+        res.json({ success: true, message: 'Order cancelled successfully.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to cancel order.' });
+    }
+});
+
+// Fetch reviews for a specific product
+app.get('/api/products/:id/reviews', async (req, res) => {
+    try {
+        const { id } = req.params;
+        let reviews = [];
+        if (useMongo) {
+            reviews = await ReviewModel.find({ productId: parseInt(id) }).sort({ date: -1 });
+        } else {
+            const fileReviews = await readJson(reviewsPath);
+            reviews = fileReviews.filter(r => r.productId === parseInt(id));
+        }
+        res.json(reviews);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch reviews.' });
+    }
+});
+
+// Submit a product review
+app.post('/api/reviews', async (req, res) => {
+    try {
+        const { productId, orderId, rating, comment, customerName, customerPhone } = req.body;
+        if (!productId || !orderId || !rating || !comment || !customerPhone) {
+            return res.status(400).json({ error: 'Missing review payload data.' });
+        }
+
+        // Verify the order exists and is delivered
+        let booking = null;
+        if (useMongo) {
+            booking = await BookingModel.findOne({ orderId });
+        } else {
+            const fileBookings = await readJson(bookingsPath);
+            booking = fileBookings.find(b => b.orderId === orderId);
+        }
+
+        if (!booking) {
+            return res.status(400).json({ error: 'Invalid Order ID.' });
+        }
+
+        const phoneNum = booking.customer?.phone || booking.customerPhone;
+        if (phoneNum !== customerPhone) {
+            return res.status(403).json({ error: 'Unauthorized to review this order.' });
+        }
+
+        if (booking.status.toLowerCase() !== 'delivered') {
+            return res.status(400).json({ error: 'Reviews can only be submitted after the order is Delivered.' });
+        }
+
+        // Check if already reviewed
+        let alreadyReviewed = false;
+        if (useMongo) {
+            alreadyReviewed = await ReviewModel.exists({ orderId, productId });
+        } else {
+            const fileReviews = await readJson(reviewsPath);
+            alreadyReviewed = fileReviews.some(r => r.orderId === orderId && r.productId === productId);
+        }
+
+        if (alreadyReviewed) {
+            return res.status(400).json({ error: 'You have already reviewed this product for this order.' });
+        }
+
+        const newReview = {
+            productId: parseInt(productId),
+            orderId,
+            customerName: customerName || 'Verified Customer',
+            customerPhone,
+            rating: parseInt(rating),
+            comment,
+            date: new Date()
+        };
+
+        if (useMongo) {
+            const reviewDoc = new ReviewModel(newReview);
+            await reviewDoc.save();
+
+            // Update product rating and reviews count
+            const reviewsList = await ReviewModel.find({ productId: parseInt(productId) });
+            const avgRating = reviewsList.reduce((sum, r) => sum + r.rating, 0) / reviewsList.length;
+            await ProductModel.findOneAndUpdate(
+                { id: parseInt(productId) },
+                { $set: { rating: Math.round(avgRating * 10) / 10 }, $inc: { reviews: 1 } }
+            );
+        } else {
+            const fileReviews = await readJson(reviewsPath);
+            fileReviews.unshift(newReview);
+            await writeJson(reviewsPath, fileReviews);
+
+            const productsList = await readJson(productsPath);
+            const updatedProducts = productsList.map(p => {
+                if (p.id === parseInt(productId)) {
+                    const productReviews = fileReviews.filter(r => r.productId === p.id);
+                    const avgRating = productReviews.reduce((sum, r) => sum + r.rating, 0) / productReviews.length;
+                    return {
+                        ...p,
+                        rating: Math.round(avgRating * 10) / 10,
+                        reviews: p.reviews + 1
+                    };
+                }
+                return p;
+            });
+            await writeJson(productsPath, updatedProducts);
+        }
+
+        res.status(201).json({ success: true, message: 'Review submitted successfully.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to submit review.' });
+    }
+});
+
 // --------------------------------------------------------------------------
 // USER AUTHENTICATION & LOGIN ENDPOINTS
 // --------------------------------------------------------------------------
@@ -842,7 +1050,8 @@ app.post('/api/auth/register', async (req, res) => {
             if (existingUser) {
                 return res.status(400).json({ error: 'User already registered with this mobile number.' });
             }
-            const newUser = new UserModel({ phone, name, mpin });
+            const hashedPassword = hashMpin(mpin, phone);
+            const newUser = new UserModel({ phone, name, mpin: hashedPassword });
             await newUser.save();
             res.status(201).json({ success: true, user: { phone: newUser.phone, name: newUser.name } });
         } else {
@@ -851,7 +1060,8 @@ app.post('/api/auth/register', async (req, res) => {
             if (existingUser) {
                 return res.status(400).json({ error: 'User already registered with this mobile number.' });
             }
-            const newUser = { phone, name, mpin };
+            const hashedPassword = hashMpin(mpin, phone);
+            const newUser = { phone, name, mpin: hashedPassword };
             users.push(newUser);
             await writeJson(usersPath, users);
             res.status(201).json({ success: true, user: { phone, name } });
@@ -890,8 +1100,21 @@ app.post('/api/auth/login', async (req, res) => {
                 return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
             }
 
-            // 3. Verify MPIN
-            if (user.mpin !== mpin) {
+            // 3. Verify MPIN (support auto-migration for plain text to hash)
+            const incomingHash = hashMpin(mpin, phone);
+            let isMpinValid = false;
+            let needsMigration = false;
+
+            if (/^\d{6}$/.test(user.mpin)) {
+                if (user.mpin === mpin) {
+                    isMpinValid = true;
+                    needsMigration = true;
+                }
+            } else {
+                isMpinValid = (user.mpin === incomingHash);
+            }
+
+            if (!isMpinValid) {
                 const attempts = (user.loginAttempts || 0) + 1;
                 let errMsg = 'Incorrect MPIN.';
                 
@@ -912,9 +1135,12 @@ app.post('/api/auth/login', async (req, res) => {
                 return res.status(400).json({ error: errMsg });
             }
 
-            // 4. Success: Reset retries
+            // 4. Success: Reset retries and upgrade credentials to secure hash if necessary
             user.loginAttempts = 0;
             user.lockUntil = 0;
+            if (needsMigration) {
+                user.mpin = incomingHash;
+            }
             await user.save();
 
             await logUserLogin(user.phone, user.name, 'success', req);
@@ -942,8 +1168,21 @@ app.post('/api/auth/login', async (req, res) => {
                 return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
             }
 
-            // 3. Verify MPIN
-            if (user.mpin !== mpin) {
+            // 3. Verify MPIN (support auto-migration for plain text to hash)
+            const incomingHash = hashMpin(mpin, phone);
+            let isMpinValid = false;
+            let needsMigration = false;
+
+            if (/^\d{6}$/.test(user.mpin)) {
+                if (user.mpin === mpin) {
+                    isMpinValid = true;
+                    needsMigration = true;
+                }
+            } else {
+                isMpinValid = (user.mpin === incomingHash);
+            }
+
+            if (!isMpinValid) {
                 const attempts = (user.loginAttempts || 0) + 1;
                 let errMsg = 'Incorrect MPIN.';
                 
@@ -965,9 +1204,12 @@ app.post('/api/auth/login', async (req, res) => {
                 return res.status(400).json({ error: errMsg });
             }
 
-            // 4. Success: Reset retries
+            // 4. Success: Reset retries and upgrade credentials to secure hash if necessary
             user.loginAttempts = 0;
             user.lockUntil = 0;
+            if (needsMigration) {
+                user.mpin = incomingHash;
+            }
             users[userIndex] = user;
             await writeJson(usersPath, users);
 
