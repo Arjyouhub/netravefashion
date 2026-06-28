@@ -28,7 +28,7 @@
     --font-heading: 'Space Grotesk', sans-serif;
     --font-body: 'Plus Jakarta Sans', sans-serif;
     
-    --header-height: 70px;
+    --header-height: 80px;
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     --transition-bounce: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     
@@ -164,7 +164,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo-img {
-    height: 48px;
+    height: 56px;
     width: auto;
     object-fit: contain;
     filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.2));
@@ -2306,7 +2306,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .logo-img {
-        height: 38px;
+        height: 46px;
     }
     
     .hero-section {
