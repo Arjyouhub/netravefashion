@@ -203,7 +203,7 @@ export default function App() {
         fetchSettings();
     }, []);
 
-    // 2c. Listen to client-side path / route changes to toggle Admin view
+    // 2c. Listen to client-side path / route changes to toggle Admin / Developer view
     useEffect(() => {
         const checkRoute = () => {
             const path = window.location.pathname;
@@ -212,6 +212,12 @@ export default function App() {
                 setIsAdminView(true);
             } else {
                 setIsAdminView(false);
+            }
+
+            if (path === '/developer' || hash === '#/developer') {
+                setIsDeveloperOpen(true);
+            } else {
+                setIsDeveloperOpen(false);
             }
         };
         checkRoute();
@@ -500,7 +506,10 @@ export default function App() {
         return (
             <DeveloperModal
                 isOpen={isDeveloperOpen}
-                onClose={() => setIsDeveloperOpen(false)}
+                onClose={() => {
+                    setIsDeveloperOpen(false);
+                    window.history.pushState({}, '', '/');
+                }}
             />
         );
     }
@@ -650,7 +659,7 @@ export default function App() {
                 </div>
 
                 <div className="footer-bottom">
-                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala. | <button onClick={() => setIsDeveloperOpen(true)} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontFamily: 'inherit', fontWeight: '600' }}>Developer Page</button></p>
+                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala. | <button onClick={() => { window.history.pushState({}, '', '/developer'); setIsDeveloperOpen(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontFamily: 'inherit', fontWeight: '600' }}>Developer Page</button></p>
                 </div>
             </footer>
 
