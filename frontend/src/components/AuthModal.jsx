@@ -73,11 +73,11 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
 
     const inputStyle = {
         width: '100%',
-        padding: '12px 14px',
+        padding: '12px 18px',
         background: '#12141c',
         border: '1px solid rgba(255,255,255,0.08)',
         color: '#ffffff',
-        borderRadius: '8px',
+        borderRadius: '24px',
         fontSize: '13.5px',
         marginTop: '6px',
         outline: 'none',
@@ -99,31 +99,33 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                     background: #161924 !important;
                 }
                 .modern-auth-btn {
-                    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
-                    color: #0a0b0e !important;
-                    border: none !important;
-                    border-radius: 8px !important;
-                    font-weight: 800 !important;
-                    font-size: 14px !important;
-                    padding: 13px !important;
+                    background: rgba(245, 158, 11, 0.08) !important;
+                    color: #f59e0b !important;
+                    border: 1px solid rgba(245, 158, 11, 0.4) !important;
+                    border-radius: 24px !important;
+                    font-weight: 700 !important;
+                    font-size: 13.5px !important;
+                    padding: 12px 24px !important;
                     cursor: pointer !important;
-                    transition: all 0.3s ease !important;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
                     width: 100% !important;
                     display: flex !important;
                     align-items: center !important;
                     justify-content: center !important;
                     text-transform: uppercase !important;
-                    letter-spacing: 0.5px !important;
+                    letter-spacing: 1px !important;
                 }
                 .modern-auth-btn:hover:not(:disabled) {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35) !important;
+                    background: #f59e0b !important;
+                    color: #0a0b0e !important;
+                    box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4) !important;
+                    transform: translateY(-2px) !important;
                 }
                 .modern-auth-btn:active:not(:disabled) {
-                    transform: translateY(0);
+                    transform: translateY(0) !important;
                 }
                 .modern-auth-btn:disabled {
-                    opacity: 0.6;
+                    opacity: 0.5;
                     cursor: not-allowed;
                 }
                 .auth-close-btn {
@@ -145,7 +147,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                     .modern-auth-card {
                         padding: 28px 20px !important;
                         width: 100% !important;
-                        border-radius: 12px !important;
+                        border-radius: 16px !important;
                     }
                     .modern-auth-title {
                         font-size: 20px !important;
@@ -154,8 +156,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                         font-size: 12px !important;
                     }
                     .modern-auth-btn {
-                        font-size: 13px !important;
-                        padding: 12px !important;
+                        font-size: 12.5px !important;
+                        padding: 11px 20px !important;
                     }
                 }
             `}</style>
