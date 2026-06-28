@@ -71,76 +71,186 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
         }
     };
 
-    return (
-        <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }}>
-            <div className="modal-content checkout-modal-content" style={{ maxWidth: '420px', padding: '30px' }}>
-                <button className="close-btn modal-close" onClick={onClose}>&times;</button>
-                
-                <h2 style={{ fontSize: '24px', marginBottom: '6px', textAlign: 'center', color: '#fff' }}>
-                    {isRegister ? 'Register Account' : 'Sign In / My Orders'}
-                </h2>
-                <p className="form-subtitle" style={{ textAlign: 'center', marginBottom: '24px' }}>
-                    {isRegister ? 'Set up your 6-digit login MPIN' : 'Enter your registered mobile & MPIN'}
-                </p>
+    const inputStyle = {
+        width: '100%',
+        padding: '13px 16px',
+        background: '#12141c',
+        border: '1px solid rgba(255,255,255,0.08)',
+        color: '#ffffff',
+        borderRadius: '10px',
+        fontSize: '14px',
+        marginTop: '6px',
+        outline: 'none',
+        transition: 'all 0.3s ease',
+        boxSizing: 'border-box'
+    };
 
-                <form onSubmit={handleSubmit} className="booking-form">
+    return (
+        <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }} style={{ zIndex: 1100 }}>
+            {/* Inline styles for interactive premium classes */}
+            <style>{`
+                .modern-auth-input:focus {
+                    border-color: #f59e0b !important;
+                    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
+                    background: #161924 !important;
+                }
+                .modern-auth-btn {
+                    background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+                    color: #0a0b0e !important;
+                    border: none !important;
+                    border-radius: 10px !important;
+                    font-weight: 800 !important;
+                    font-size: 15px !important;
+                    padding: 14px !important;
+                    cursor: pointer !important;
+                    transition: all 0.3s ease !important;
+                    width: 100% !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    text-transform: uppercase !important;
+                    letter-spacing: 0.5px !important;
+                }
+                .modern-auth-btn:hover:not(:disabled) {
+                    transform: translateY(-2px);
+                    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35) !important;
+                }
+                .modern-auth-btn:active:not(:disabled) {
+                    transform: translateY(0);
+                }
+                .modern-auth-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                }
+                .auth-close-btn {
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    background: none;
+                    border: none;
+                    color: #64748b;
+                    font-size: 28px;
+                    cursor: pointer;
+                    line-height: 1;
+                    transition: color 0.2s;
+                }
+                .auth-close-btn:hover {
+                    color: #fff;
+                }
+            `}</style>
+
+            <div className="modal-content" style={{ 
+                maxWidth: '430px', 
+                width: '90%',
+                padding: '40px 32px', 
+                background: 'rgba(10, 11, 14, 0.95)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(245, 158, 11, 0.25)', 
+                boxShadow: '0 20px 50px rgba(0,0,0,0.6), 0 0 35px rgba(245,158,11,0.08)',
+                borderRadius: '16px',
+                position: 'relative'
+            }}>
+                <button className="auth-close-btn" onClick={onClose}>&times;</button>
+                
+                {/* Visual Header Icon */}
+                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                    <div style={{ 
+                        width: '64px', 
+                        height: '64px', 
+                        background: 'rgba(245, 158, 11, 0.1)', 
+                        border: '1px solid rgba(245, 158, 11, 0.2)',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px',
+                        boxShadow: '0 0 15px rgba(245,158,11,0.05)'
+                    }}>
+                        <svg viewBox="0 0 24 24" style={{ width: '28px', height: '28px', fill: '#f59e0b' }}>
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
+                        </svg>
+                    </div>
+
+                    <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 8px', color: '#fff', letterSpacing: '0.5px' }}>
+                        {isRegister ? 'Register Account' : 'Welcome Back'}
+                    </h2>
+                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: '1.4' }}>
+                        {isRegister ? 'Set up a custom secure 6-digit login MPIN' : 'Enter your registered phone and 6-digit MPIN'}
+                    </p>
+                </div>
+
+                <form onSubmit={handleSubmit}>
                     {isRegister && (
-                        <div className="form-group">
-                            <label htmlFor="authName">Full Name *</label>
+                        <div style={{ marginBottom: '20px' }}>
+                            <label htmlFor="authName" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600' }}>Full Name *</label>
                             <input 
                                 type="text" 
                                 id="authName" 
+                                className="modern-auth-input"
                                 placeholder="Enter your full name" 
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
+                                style={inputStyle}
                                 required 
                             />
                         </div>
                     )}
 
-                    <div className="form-group">
-                        <label htmlFor="authPhone">Mobile Number *</label>
+                    <div style={{ marginBottom: '20px' }}>
+                        <label htmlFor="authPhone" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600' }}>Mobile Number *</label>
                         <input 
                             type="tel" 
                             id="authPhone" 
+                            className="modern-auth-input"
                             placeholder="10-digit mobile number" 
                             value={phone}
                             onChange={handlePhoneChange}
+                            style={inputStyle}
                             required 
                         />
                     </div>
 
-                    <div className="form-group">
-                        <label htmlFor="authMpin">6-Digit MPIN *</label>
+                    <div style={{ marginBottom: '24px' }}>
+                        <label htmlFor="authMpin" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600' }}>6-Digit MPIN *</label>
                         <input 
                             type="password" 
                             id="authMpin" 
-                            placeholder="Enter 6-digit MPIN" 
+                            className="modern-auth-input"
+                            placeholder="••••••" 
                             value={mpin}
                             onChange={handleMpinChange}
                             maxLength={6}
-                            style={{ letterSpacing: '4px', textAlign: 'center' }}
+                            style={{ ...inputStyle, letterSpacing: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '16px' }}
                             required 
                         />
                     </div>
 
                     {error && (
-                        <div className="validation-err" style={{ display: 'block', textAlign: 'center', marginTop: '10px' }}>
+                        <div style={{ 
+                            background: 'rgba(239,68,68,0.1)', 
+                            color: '#ef4444', 
+                            border: '1px solid rgba(239,68,68,0.2)', 
+                            padding: '12px 16px', 
+                            borderRadius: '8px', 
+                            fontSize: '13px', 
+                            marginBottom: '20px',
+                            textAlign: 'center',
+                            fontWeight: '500'
+                        }}>
                             {error}
                         </div>
                     )}
 
                     <button 
                         type="submit" 
-                        className="cta-btn primary-cta" 
+                        className="modern-auth-btn" 
                         disabled={loading}
-                        style={{ marginTop: '20px', width: '100%', justifyContent: 'center' }}
                     >
-                        {loading ? 'Processing...' : (isRegister ? 'Set MPIN & Register' : 'Login & View Orders')}
+                        {loading ? 'Processing...' : (isRegister ? 'Register & Set MPIN' : 'Login & Open Dashboard')}
                     </button>
 
-                    <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '13px' }}>
-                        <span style={{ color: 'var(--text-muted)' }}>
+                    <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px' }}>
+                        <span style={{ color: '#94a3b8' }}>
                             {isRegister ? 'Already registered? ' : 'New customer? '}
                         </span>
                         <button 
@@ -149,13 +259,14 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                             style={{ 
                                 background: 'none', 
                                 border: 'none', 
-                                color: 'var(--primary)', 
-                                fontWeight: '600', 
+                                color: '#f59e0b', 
+                                fontWeight: '700', 
                                 cursor: 'pointer', 
-                                textDecoration: 'underline' 
+                                textDecoration: 'none',
+                                marginLeft: '4px'
                             }}
                         >
-                            {isRegister ? 'Login here' : 'Register with MPIN'}
+                            {isRegister ? 'Login here' : 'Register here'}
                         </button>
                     </div>
                 </form>

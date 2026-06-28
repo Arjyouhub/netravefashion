@@ -235,40 +235,113 @@ export default function AdminPanel({
 
     if (!isLoggedIn) {
         return (
-            <div className="admin-login-wrapper">
-                <div className="admin-login-card">
-                    <div className="login-header">
-                        <h3>Admin Portal Login</h3>
-                        <p>Sign in to manage your store catalog and bookings</p>
+            <div className="admin-login-wrapper" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#05070c', padding: '20px' }}>
+                <style>{`
+                    .modern-admin-input:focus {
+                        border-color: #f59e0b !important;
+                        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
+                        background: #161924 !important;
+                    }
+                    .modern-admin-btn {
+                        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
+                        color: #0a0b0e !important;
+                        border: none !important;
+                        border-radius: 10px !important;
+                        font-weight: 800 !important;
+                        font-size: 15px !important;
+                        padding: 14px !important;
+                        cursor: pointer !important;
+                        transition: all 0.3s ease !important;
+                        width: 100% !important;
+                        display: flex !important;
+                        align-items: center !important;
+                        justify-content: center !important;
+                        text-transform: uppercase !important;
+                        letter-spacing: 0.5px !important;
+                    }
+                    .modern-admin-btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35) !important;
+                    }
+                    .modern-admin-btn:active {
+                        transform: translateY(0);
+                    }
+                `}</style>
+                <div className="admin-login-card" style={{ 
+                    maxWidth: '430px', 
+                    width: '100%', 
+                    padding: '40px 32px', 
+                    background: 'rgba(10, 11, 14, 0.95)',
+                    backdropFilter: 'blur(20px)',
+                    border: '1px solid rgba(245, 158, 11, 0.25)', 
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.6), 0 0 35px rgba(245,158,11,0.08)',
+                    borderRadius: '16px',
+                    position: 'relative'
+                }}>
+                    <div className="login-header" style={{ textAlign: 'center', marginBottom: '24px' }}>
+                        <div style={{ 
+                            width: '64px', 
+                            height: '64px', 
+                            background: 'rgba(245, 158, 11, 0.1)', 
+                            border: '1px solid rgba(245, 158, 11, 0.2)',
+                            borderRadius: '50%',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 16px',
+                            boxShadow: '0 0 15px rgba(245,158,11,0.05)'
+                        }}>
+                            <svg viewBox="0 0 24 24" style={{ width: '28px', height: '28px', fill: '#f59e0b' }}>
+                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
+                            </svg>
+                        </div>
+                        <h3 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 8px', color: '#fff', letterSpacing: '0.5px' }}>Admin Portal Login</h3>
+                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: '1.4' }}>Sign in to manage your store catalog and bookings</p>
                     </div>
                     <form onSubmit={handleLoginSubmit} className="admin-login-form">
-                        <div className="form-field">
-                            <label htmlFor="admin-username">Username</label>
+                        <div className="form-field" style={{ marginBottom: '20px' }}>
+                            <label htmlFor="admin-username" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Username</label>
                             <input
                                 id="admin-username"
                                 type="text"
+                                className="modern-admin-input"
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
                                 placeholder="Enter admin username"
+                                style={{ width: '100%', padding: '13px 16px', background: '#12141c', border: '1px solid rgba(255,255,255,0.08)', color: '#ffffff', borderRadius: '10px', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' }}
                                 required
                             />
                         </div>
-                        <div className="form-field">
-                            <label htmlFor="admin-password">Password</label>
+                        <div className="form-field" style={{ marginBottom: '24px' }}>
+                            <label htmlFor="admin-password" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Password</label>
                             <input
                                 id="admin-password"
                                 type="password"
+                                className="modern-admin-input"
                                 value={password}
                                 onChange={e => setPassword(e.target.value)}
                                 placeholder="Enter admin password"
+                                style={{ width: '100%', padding: '13px 16px', background: '#12141c', border: '1px solid rgba(255,255,255,0.08)', color: '#ffffff', borderRadius: '10px', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' }}
                                 required
                             />
                         </div>
-                        {loginError && <div className="login-error-msg">{loginError}</div>}
-                        <button type="submit" className="cta-btn primary-cta login-submit-btn">
+                        {loginError && (
+                            <div style={{ 
+                                background: 'rgba(239,68,68,0.1)', 
+                                color: '#ef4444', 
+                                border: '1px solid rgba(239,68,68,0.2)', 
+                                padding: '12px 16px', 
+                                borderRadius: '8px', 
+                                fontSize: '13px', 
+                                marginBottom: '20px',
+                                textAlign: 'center',
+                                fontWeight: '500'
+                            }}>{loginError}</div>
+                        )}
+                        <button type="submit" className="modern-admin-btn">
                             Sign In
                         </button>
-                        <button type="button" className="cta-btn secondary-cta login-cancel-btn" onClick={onClose} style={{ marginTop: '10px', width: '100%' }}>
+                        <button type="button" className="cta-btn secondary-cta login-cancel-btn" onClick={onClose} style={{ marginTop: '12px', width: '100%', borderRadius: '10px', borderColor: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>
                             Return to Store
                         </button>
                     </form>
