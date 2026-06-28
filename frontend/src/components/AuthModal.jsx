@@ -73,12 +73,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
 
     const inputStyle = {
         width: '100%',
-        padding: '13px 16px',
+        padding: '12px 14px',
         background: '#12141c',
         border: '1px solid rgba(255,255,255,0.08)',
         color: '#ffffff',
-        borderRadius: '10px',
-        fontSize: '14px',
+        borderRadius: '8px',
+        fontSize: '13.5px',
         marginTop: '6px',
         outline: 'none',
         transition: 'all 0.3s ease',
@@ -86,9 +86,13 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
     };
 
     return (
-        <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }} style={{ zIndex: 1100 }}>
+        <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }} style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '12px' }}>
             {/* Inline styles for interactive premium classes */}
             <style>{`
+                .modern-auth-card {
+                    margin: auto !important;
+                    box-sizing: border-box !important;
+                }
                 .modern-auth-input:focus {
                     border-color: #f59e0b !important;
                     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
@@ -98,10 +102,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                     background: linear-gradient(135deg, #f59e0b, #d97706) !important;
                     color: #0a0b0e !important;
                     border: none !important;
-                    border-radius: 10px !important;
+                    border-radius: 8px !important;
                     font-weight: 800 !important;
-                    font-size: 15px !important;
-                    padding: 14px !important;
+                    font-size: 14px !important;
+                    padding: 13px !important;
                     cursor: pointer !important;
                     transition: all 0.3s ease !important;
                     width: 100% !important;
@@ -124,12 +128,12 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                 }
                 .auth-close-btn {
                     position: absolute;
-                    top: 20px;
-                    right: 20px;
+                    top: 16px;
+                    right: 16px;
                     background: none;
                     border: none;
                     color: #64748b;
-                    font-size: 28px;
+                    font-size: 26px;
                     cursor: pointer;
                     line-height: 1;
                     transition: color 0.2s;
@@ -137,12 +141,29 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                 .auth-close-btn:hover {
                     color: #fff;
                 }
+                @media (max-width: 480px) {
+                    .modern-auth-card {
+                        padding: 28px 20px !important;
+                        width: 100% !important;
+                        border-radius: 12px !important;
+                    }
+                    .modern-auth-title {
+                        font-size: 20px !important;
+                    }
+                    .modern-auth-sub {
+                        font-size: 12px !important;
+                    }
+                    .modern-auth-btn {
+                        font-size: 13px !important;
+                        padding: 12px !important;
+                    }
+                }
             `}</style>
 
-            <div className="modal-content" style={{ 
-                maxWidth: '430px', 
-                width: '90%',
-                padding: '40px 32px', 
+            <div className="modal-content modern-auth-card" style={{ 
+                maxWidth: '400px', 
+                width: '100%',
+                padding: '36px 28px', 
                 background: 'rgba(10, 11, 14, 0.95)',
                 backdropFilter: 'blur(20px)',
                 border: '1px solid rgba(245, 158, 11, 0.25)', 
@@ -153,36 +174,36 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                 <button className="auth-close-btn" onClick={onClose}>&times;</button>
                 
                 {/* Visual Header Icon */}
-                <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                     <div style={{ 
-                        width: '64px', 
-                        height: '64px', 
+                        width: '56px', 
+                        height: '56px', 
                         background: 'rgba(245, 158, 11, 0.1)', 
                         border: '1px solid rgba(245, 158, 11, 0.2)',
                         borderRadius: '50%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        margin: '0 auto 16px',
+                        margin: '0 auto 12px',
                         boxShadow: '0 0 15px rgba(245,158,11,0.05)'
                     }}>
-                        <svg viewBox="0 0 24 24" style={{ width: '28px', height: '28px', fill: '#f59e0b' }}>
+                        <svg viewBox="0 0 24 24" style={{ width: '24px', height: '24px', fill: '#f59e0b' }}>
                             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/>
                         </svg>
                     </div>
 
-                    <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 8px', color: '#fff', letterSpacing: '0.5px' }}>
+                    <h2 className="modern-auth-title" style={{ fontSize: '22px', fontWeight: '800', margin: '0 0 6px', color: '#fff', letterSpacing: '0.5px' }}>
                         {isRegister ? 'Register Account' : 'Welcome Back'}
                     </h2>
-                    <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: '1.4' }}>
+                    <p className="modern-auth-sub" style={{ color: '#94a3b8', fontSize: '12.5px', margin: 0, lineHeight: '1.4' }}>
                         {isRegister ? 'Set up a custom secure 6-digit login MPIN' : 'Enter your registered phone and 6-digit MPIN'}
                     </p>
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     {isRegister && (
-                        <div style={{ marginBottom: '20px' }}>
-                            <label htmlFor="authName" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600' }}>Full Name *</label>
+                        <div style={{ marginBottom: '16px' }}>
+                            <label htmlFor="authName" style={{ color: '#cbd5e1', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name *</label>
                             <input 
                                 type="text" 
                                 id="authName" 
@@ -196,8 +217,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                         </div>
                     )}
 
-                    <div style={{ marginBottom: '20px' }}>
-                        <label htmlFor="authPhone" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600' }}>Mobile Number *</label>
+                    <div style={{ marginBottom: '16px' }}>
+                        <label htmlFor="authPhone" style={{ color: '#cbd5e1', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Mobile Number *</label>
                         <input 
                             type="tel" 
                             id="authPhone" 
@@ -210,8 +231,8 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                         />
                     </div>
 
-                    <div style={{ marginBottom: '24px' }}>
-                        <label htmlFor="authMpin" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600' }}>6-Digit MPIN *</label>
+                    <div style={{ marginBottom: '20px' }}>
+                        <label htmlFor="authMpin" style={{ color: '#cbd5e1', fontSize: '12px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>6-Digit MPIN *</label>
                         <input 
                             type="password" 
                             id="authMpin" 
@@ -220,7 +241,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                             value={mpin}
                             onChange={handleMpinChange}
                             maxLength={6}
-                            style={{ ...inputStyle, letterSpacing: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '16px' }}
+                            style={{ ...inputStyle, letterSpacing: '8px', textAlign: 'center', fontWeight: 'bold', fontSize: '15px' }}
                             required 
                         />
                     </div>
@@ -230,10 +251,10 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                             background: 'rgba(239,68,68,0.1)', 
                             color: '#ef4444', 
                             border: '1px solid rgba(239,68,68,0.2)', 
-                            padding: '12px 16px', 
+                            padding: '10px 14px', 
                             borderRadius: '8px', 
-                            fontSize: '13px', 
-                            marginBottom: '20px',
+                            fontSize: '12.5px', 
+                            marginBottom: '16px',
                             textAlign: 'center',
                             fontWeight: '500'
                         }}>
@@ -249,7 +270,7 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
                         {loading ? 'Processing...' : (isRegister ? 'Register & Set MPIN' : 'Login & Open Dashboard')}
                     </button>
 
-                    <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px' }}>
+                    <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '12.5px' }}>
                         <span style={{ color: '#94a3b8' }}>
                             {isRegister ? 'Already registered? ' : 'New customer? '}
                         </span>
