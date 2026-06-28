@@ -597,12 +597,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                     </div>
                                 )}
                                 <div style={{ fontSize: '13px', color: '#94a3b8' }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                                        <span>Active Connection URI:</span>
-                                        <span style={{ fontFamily: 'monospace', color: '#fff', wordBreak: 'break-all' }}>{systemStatus.mongoUri}</span>
-                                    </div>
                                     {systemStatus.useMongo && (
-                                        <div style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '16px' }}>
+                                        <div style={{ marginTop: '0px' }}>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                                                 <span>MongoDB Cloud Storage:</span>
                                                 <span style={{ fontWeight: 'bold', color: '#fff' }}>{systemStatus.mongoStorageUsedMB} MB / {systemStatus.mongoStorageLimit} MB</span>
