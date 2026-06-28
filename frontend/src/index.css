@@ -164,7 +164,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .logo-img {
-    height: 44px;
+    height: 38px;
     width: auto;
     object-fit: contain;
     filter: drop-shadow(0 2px 8px rgba(245, 158, 11, 0.2));
@@ -3260,7 +3260,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .logo-img {
-        height: 34px !important;
+        height: 28px !important;
     }
     
     .logo {
