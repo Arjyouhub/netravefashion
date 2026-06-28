@@ -137,7 +137,8 @@ const BookingModel = mongoose.models.Booking || mongoose.model('Booking', Bookin
 const SettingsSchema = new mongoose.Schema({
     key: { type: String, default: 'main', unique: true },
     whatsappNumber: { type: String, default: '919946550713' },
-    adminPassword: { type: String, default: 'admin123' }
+    adminPassword: { type: String, default: 'admin123' },
+    developerPassword: { type: String, default: 'developer123' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
 
@@ -183,7 +184,8 @@ if (useMongo) {
             await SettingsModel.create({ 
                 key: 'main', 
                 whatsappNumber: fileSettings.whatsappNumber || '919946550713',
-                adminPassword: fileSettings.adminPassword || 'admin123'
+                adminPassword: fileSettings.adminPassword || 'admin123',
+                developerPassword: fileSettings.developerPassword || 'developer123'
             });
             console.log('[Netrave Backend] Seeded MongoDB settings collection');
         }
@@ -1133,6 +1135,130 @@ app.post('/api/admin/change-password', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to update admin password.' });
+    }
+});
+
+// Developer Authentication Login
+app.post('/api/developer/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (username !== 'developer') {
+            return res.status(401).json({ error: 'Invalid developer credentials' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        const currentPassword = settings?.developerPassword || 'developer123';
+        if (password === currentPassword) {
+            res.json({ success: true, message: 'Logged in successfully.' });
+        } else {
+            res.status(401).json({ error: 'Invalid developer credentials' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Developer login failed.' });
+    }
+});
+
+// Developer Password Update/Change
+app.post('/api/developer/change-password', async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current password and new password are required.' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        const activePassword = settings?.developerPassword || 'developer123';
+        if (currentPassword !== activePassword) {
+            return res.status(400).json({ error: 'Current password is incorrect.' });
+        }
+
+        if (useMongo) {
+            if (!settings) {
+                await SettingsModel.create({ key: 'main', developerPassword: newPassword });
+            } else {
+                settings.developerPassword = newPassword;
+                await settings.save();
+            }
+        } else {
+            let data = settings;
+            if (!data) data = { whatsappNumber: '919946550713' };
+            data.developerPassword = newPassword;
+            await writeJson(settingsPath, [data]);
+        }
+
+        res.json({ success: true, message: 'Developer password changed successfully.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update developer password.' });
+    }
+});
+
+// Developer Overwrite/Reset Admin Password Directly
+app.post('/api/developer/change-admin-password', async (req, res) => {
+    try {
+        const { newAdminPassword } = req.body;
+        if (!newAdminPassword) {
+            return res.status(400).json({ error: 'New admin password is required.' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        if (useMongo) {
+            if (!settings) {
+                await SettingsModel.create({ key: 'main', adminPassword: newAdminPassword });
+            } else {
+                settings.adminPassword = newAdminPassword;
+                await settings.save();
+            }
+        } else {
+            let data = settings;
+            if (!data) data = { whatsappNumber: '919946550713' };
+            data.adminPassword = newAdminPassword;
+            await writeJson(settingsPath, [data]);
+        }
+
+        res.json({ success: true, message: 'Admin password reset successfully by developer.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to reset admin password.' });
+    }
+});
+
+// Fetch all registered users with details for Developer Dashboard
+app.get('/api/developer/users', async (req, res) => {
+    try {
+        if (useMongo) {
+            const users = await UserModel.find({}, { mpin: 0 }).sort({ _id: -1 });
+            res.json(users);
+        } else {
+            const users = await readJson(usersPath);
+            const sanitized = users.map(({ mpin, ...rest }) => rest);
+            res.json(sanitized);
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to fetch users list for developer.' });
     }
 });
 

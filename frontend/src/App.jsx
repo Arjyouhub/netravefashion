@@ -506,6 +506,7 @@ export default function App() {
         return (
             <DeveloperModal
                 isOpen={isDeveloperOpen}
+                API_BASE_URL={API_BASE_URL}
                 onClose={() => {
                     setIsDeveloperOpen(false);
                     window.history.pushState({}, '', '/');
