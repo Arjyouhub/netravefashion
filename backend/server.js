@@ -1,3 +1,4 @@
+import './dns-setup.js';
 import express from 'express';
 import cors from 'cors';
 import fs from 'fs/promises';
@@ -24,11 +25,26 @@ const settingsPath = path.join(__dirname, 'data', 'settings.json');
 const usersPath = path.join(__dirname, 'data', 'users.json');
 const couponsPath = path.join(__dirname, 'data', 'coupons.json');
 
-// Ensure data folder exists
+// Ensure data folder and default JSON files exist to prevent log warnings on Render
 async function initDataFolder() {
     try {
-        await fs.mkdir(path.join(__dirname, 'data'), { recursive: true });
+        const dataDir = path.join(__dirname, 'data');
+        await fs.mkdir(dataDir, { recursive: true });
         await fs.mkdir(path.join(__dirname, 'public', 'uploads'), { recursive: true });
+
+        const ensureFile = async (filePath, defaultContent) => {
+            try {
+                await fs.access(filePath);
+            } catch {
+                await fs.writeFile(filePath, JSON.stringify(defaultContent, null, 2), 'utf-8');
+            }
+        };
+
+        await ensureFile(productsPath, []);
+        await ensureFile(bookingsPath, []);
+        await ensureFile(settingsPath, { whatsappNumber: '919946550713' });
+        await ensureFile(usersPath, []);
+        await ensureFile(couponsPath, []);
     } catch {}
 }
 await initDataFolder();
@@ -49,7 +65,7 @@ async function writeJson(filePath, data) {
 }
 
 // --------------------------------------------------------------------------
-// MONGODB CONNECTION & SCHEMAS
+// MONGODB CONNECTION & SCHEMAS (Cloud Atlas Connection)
 // --------------------------------------------------------------------------
 let useMongo = false;
 try {
@@ -103,7 +119,8 @@ const BookingModel = mongoose.models.Booking || mongoose.model('Booking', Bookin
 // Settings Schema
 const SettingsSchema = new mongoose.Schema({
     key: { type: String, default: 'main', unique: true },
-    whatsappNumber: { type: String, default: '919946550713' }
+    whatsappNumber: { type: String, default: '919946550713' },
+    adminPassword: { type: String, default: 'admin123' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
 
@@ -146,7 +163,11 @@ if (useMongo) {
         if (settingsCount === 0) {
             let fileSettings = await readJson(settingsPath);
             if (Array.isArray(fileSettings)) fileSettings = fileSettings[0] || {};
-            await SettingsModel.create({ key: 'main', whatsappNumber: fileSettings.whatsappNumber || '919946550713' });
+            await SettingsModel.create({ 
+                key: 'main', 
+                whatsappNumber: fileSettings.whatsappNumber || '919946550713',
+                adminPassword: fileSettings.adminPassword || 'admin123'
+            });
             console.log('[Netrave Backend] Seeded MongoDB settings collection');
         }
         // Seed Coupons
@@ -212,12 +233,13 @@ app.get('/api/settings', async (req, res) => {
         if (useMongo) {
             let settings = await SettingsModel.findOne({ key: 'main' });
             if (!settings) {
-                settings = await SettingsModel.create({ key: 'main', whatsappNumber: '919876543210' });
+                settings = await SettingsModel.create({ key: 'main', whatsappNumber: '919876543210', adminPassword: 'admin123' });
             }
-            res.json(settings);
+            res.json({ whatsappNumber: settings.whatsappNumber });
         } else {
             const settings = await readJson(settingsPath);
-            res.json(settings || { whatsappNumber: '919876543210' });
+            const data = Array.isArray(settings) ? settings[0] : settings;
+            res.json({ whatsappNumber: data?.whatsappNumber || '919876543210' });
         }
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch settings.' });
@@ -237,11 +259,14 @@ app.post('/api/settings', async (req, res) => {
                 { whatsappNumber },
                 { new: true, upsert: true }
             );
-            res.json(settings);
+            res.json({ whatsappNumber: settings.whatsappNumber });
         } else {
-            const settings = { whatsappNumber };
-            await writeJson(settingsPath, settings);
-            res.json(settings);
+            let fileSettings = await readJson(settingsPath);
+            let data = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+            if (!data) data = { adminPassword: 'admin123' };
+            data.whatsappNumber = whatsappNumber;
+            await writeJson(settingsPath, [data]);
+            res.json({ whatsappNumber: data.whatsappNumber });
         }
     } catch (err) {
         res.status(500).json({ error: 'Failed to save settings.' });
@@ -993,6 +1018,104 @@ app.post('/api/admin/users/unblock/:phone', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to unblock user.' });
+    }
+});
+
+// Block user account manually
+app.post('/api/admin/users/block/:phone', async (req, res) => {
+    try {
+        const { phone } = req.params;
+        if (useMongo) {
+            const user = await UserModel.findOne({ phone });
+            if (!user) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            user.isBlocked = true;
+            await user.save();
+            res.json({ success: true, message: 'User blocked successfully.' });
+        } else {
+            const users = await readJson(usersPath);
+            const userIndex = users.findIndex(u => u.phone === phone);
+            if (userIndex === -1) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            users[userIndex].isBlocked = true;
+            await writeJson(usersPath, users);
+            res.json({ success: true, message: 'User blocked successfully.' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to block user.' });
+    }
+});
+
+// Admin Authentication Login
+app.post('/api/admin/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (username !== 'admin') {
+            return res.status(401).json({ error: 'Invalid admin credentials' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        const currentPassword = settings?.adminPassword || 'admin123';
+        if (password === currentPassword) {
+            res.json({ success: true, message: 'Logged in successfully.' });
+        } else {
+            res.status(401).json({ error: 'Invalid admin credentials' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Admin login failed.' });
+    }
+});
+
+// Admin Password Update/Change
+app.post('/api/admin/change-password', async (req, res) => {
+    try {
+        const { currentPassword, newPassword } = req.body;
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current password and new password are required.' });
+        }
+
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+
+        const activePassword = settings?.adminPassword || 'admin123';
+        if (currentPassword !== activePassword) {
+            return res.status(400).json({ error: 'Current password is incorrect.' });
+        }
+
+        if (useMongo) {
+            if (!settings) {
+                await SettingsModel.create({ key: 'main', adminPassword: newPassword });
+            } else {
+                settings.adminPassword = newPassword;
+                await settings.save();
+            }
+        } else {
+            let data = settings;
+            if (!data) data = { whatsappNumber: '919946550713' };
+            data.adminPassword = newPassword;
+            await writeJson(settingsPath, [data]);
+        }
+
+        res.json({ success: true, message: 'Admin password changed successfully.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to update admin password.' });
     }
 });
 

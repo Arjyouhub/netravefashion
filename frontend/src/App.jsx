@@ -10,6 +10,7 @@ import BookingsModal from './components/BookingsModal';
 import AdminPanel from './components/AdminPanel';
 import AuthModal from './components/AuthModal';
 import DeveloperModal from './components/DeveloperModal';
+import { getCookie, setCookie, eraseCookie } from './utils/cookies';
 
 // Backup fallback database to ensure frontend works gracefully even if backend is offline
 const FALLBACK_PRODUCTS = [
@@ -90,7 +91,8 @@ const FALLBACK_PRODUCTS = [
     }
 ];
 
-const API_BASE_URL = 'https://netravefashion.onrender.com/api';
+// const API_BASE_URL = 'https://netravefashion.onrender.com/api';
+const API_BASE_URL = 'http://localhost:5000/api';
 
 export default function App() {
     // A. Main State
@@ -118,13 +120,7 @@ export default function App() {
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
     const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
-    const [user, setUser] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('netrave_user')) || null;
-        } catch {
-            return null;
-        }
-    });
+    const [user, setUser] = useState(() => getCookie('netrave_user'));
 
     // D. Focused Items
     const [selectedProductId, setSelectedProductId] = useState(null);
@@ -181,12 +177,12 @@ export default function App() {
 
     const handleAuthSuccess = (userData) => {
         setUser(userData);
-        localStorage.setItem('netrave_user', JSON.stringify(userData));
+        setCookie('netrave_user', userData);
     };
 
     const handleLogout = () => {
         setUser(null);
-        localStorage.removeItem('netrave_user');
+        eraseCookie('netrave_user');
         setBookings([]);
     };
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getCookie, setCookie, eraseCookie } from '../utils/cookies';
 
 export default function AdminPanel({
     products,
@@ -27,10 +28,17 @@ export default function AdminPanel({
     const [userError, setUserError] = useState('');
 
     // Admin Auth States
-    const [isLoggedIn, setIsLoggedIn] = useState(() => sessionStorage.getItem('isAdminLoggedIn') === 'true');
+    const [isLoggedIn, setIsLoggedIn] = useState(() => getCookie('isAdminLoggedIn') === 'true');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [loginError, setLoginError] = useState('');
+
+    // Admin Password Change States
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [passwordError, setPasswordError] = useState('');
+    const [passwordSuccess, setPasswordSuccess] = useState('');
 
     // 1. Products Tab States
     const [isProductFormOpen, setIsProductFormOpen] = useState(false);
@@ -162,6 +170,23 @@ export default function AdminPanel({
         }
     };
 
+    const handleBlockUser = async (phone) => {
+        if (!window.confirm(`Are you sure you want to block this user (${phone})?`)) return;
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/users/block/${phone}`, {
+                method: 'POST'
+            });
+            if (response.ok) {
+                setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true } : u));
+                alert('User blocked successfully!');
+            } else {
+                alert('Failed to block user.');
+            }
+        } catch (err) {
+            console.error('Block error:', err);
+        }
+    };
+
     const getUserStatus = (user) => {
         if (user.isBlocked) return { label: 'Blocked', class: 'inactive' };
         if (user.lockUntil && user.lockUntil > Date.now()) {
@@ -171,21 +196,33 @@ export default function AdminPanel({
         return { label: 'Active', class: 'active' };
     };
 
-    const handleLoginSubmit = (e) => {
+    const handleLoginSubmit = async (e) => {
         e.preventDefault();
-        if (username === 'admin' && password === 'admin123') {
-            sessionStorage.setItem('isAdminLoggedIn', 'true');
-            setIsLoggedIn(true);
-            setLoginError('');
-            setUsername('');
-            setPassword('');
-        } else {
-            setLoginError('Invalid username or password');
+        setLoginError('');
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password })
+            });
+            const data = await response.json();
+            if (response.ok && data.success) {
+                setCookie('isAdminLoggedIn', 'true');
+                setIsLoggedIn(true);
+                setLoginError('');
+                setUsername('');
+                setPassword('');
+            } else {
+                setLoginError(data.error || 'Invalid username or password');
+            }
+        } catch (err) {
+            console.error('Admin login error:', err);
+            setLoginError('Network error connecting to backend.');
         }
     };
 
     const handleLogout = () => {
-        sessionStorage.removeItem('isAdminLoggedIn');
+        eraseCookie('isAdminLoggedIn');
         setIsLoggedIn(false);
     };
 
@@ -363,6 +400,37 @@ export default function AdminPanel({
     const handleSaveSettingsSubmit = (e) => {
         e.preventDefault();
         onSaveSettings({ whatsappNumber: whatsappNum });
+    };
+
+    const handleChangePasswordSubmit = async (e) => {
+        e.preventDefault();
+        setPasswordError('');
+        setPasswordSuccess('');
+
+        if (newPassword !== confirmPassword) {
+            setPasswordError('New passwords do not match.');
+            return;
+        }
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/change-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentPassword, newPassword })
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setPasswordSuccess('Admin password changed successfully!');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                setPasswordError(data.error || 'Failed to change password.');
+            }
+        } catch (err) {
+            console.error('Password change error:', err);
+            setPasswordError('Network error changing password.');
+        }
     };
 
     return (
@@ -886,7 +954,13 @@ export default function AdminPanel({
                                                             Unblock Account
                                                         </button>
                                                     ) : (
-                                                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>No actions needed</span>
+                                                        <button 
+                                                            className="cta-btn secondary-cta" 
+                                                            onClick={() => handleBlockUser(u.phone)}
+                                                            style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: 'var(--error)', color: 'var(--error)', background: 'transparent' }}
+                                                        >
+                                                            Block Account
+                                                        </button>
                                                     )}
                                                 </td>
                                             </tr>
@@ -925,6 +999,64 @@ export default function AdminPanel({
 
                             <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '20px' }}>
                                 Save Configurations
+                            </button>
+                        </form>
+                    </div>
+
+                    <div className="settings-card" style={{ marginTop: '30px' }}>
+                        <h3>Change Admin Portal Password</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '14px', marginBottom: '20px' }}>
+                            Update the credentials used to log in to the admin dashboard.
+                        </p>
+
+                        <form onSubmit={handleChangePasswordSubmit} className="admin-settings-form" style={{ maxWidth: '400px' }}>
+                            <div className="form-field">
+                                <label>Current Admin Password *</label>
+                                <input 
+                                    type="password" 
+                                    required 
+                                    value={currentPassword} 
+                                    onChange={e => setCurrentPassword(e.target.value)} 
+                                    placeholder="Enter current password"
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label>New Password *</label>
+                                <input 
+                                    type="password" 
+                                    required 
+                                    value={newPassword} 
+                                    onChange={e => setNewPassword(e.target.value)} 
+                                    placeholder="Enter new password"
+                                />
+                            </div>
+
+                            <div className="form-field">
+                                <label>Confirm New Password *</label>
+                                <input 
+                                    type="password" 
+                                    required 
+                                    value={confirmPassword} 
+                                    onChange={e => setConfirmPassword(e.target.value)} 
+                                    placeholder="Confirm new password"
+                                />
+                            </div>
+
+                            {passwordError && (
+                                <div className="validation-err" style={{ display: 'block', marginTop: '10px' }}>
+                                    {passwordError}
+                                </div>
+                            )}
+
+                            {passwordSuccess && (
+                                <div className="validation-success" style={{ display: 'block', color: '#10B981', fontWeight: 'bold', fontSize: '13px', marginTop: '10px' }}>
+                                    {passwordSuccess}
+                                </div>
+                            )}
+
+                            <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '20px' }}>
+                                Update Password
                             </button>
                         </form>
                     </div>
