@@ -36,7 +36,11 @@ async function initDataFolder() {
             try {
                 await fs.access(filePath);
             } catch {
-                await fs.writeFile(filePath, JSON.stringify(defaultContent, null, 2), 'utf-8');
+                try {
+                    await fs.writeFile(filePath, JSON.stringify(defaultContent, null, 2), 'utf-8');
+                } catch (err) {
+                    console.error(`[Netrave Backend] Failed to create missing file ${filePath}:`, err.message);
+                }
             }
         };
 
@@ -45,7 +49,9 @@ async function initDataFolder() {
         await ensureFile(settingsPath, { whatsappNumber: '919946550713' });
         await ensureFile(usersPath, []);
         await ensureFile(couponsPath, []);
-    } catch {}
+    } catch (err) {
+        console.error('[Netrave Backend] Error initializing data folder:', err.message);
+    }
 }
 await initDataFolder();
 
