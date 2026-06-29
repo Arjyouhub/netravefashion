@@ -1412,7 +1412,7 @@ app.post('/api/coupons/validate', async (req, res) => {
 // --------------------------------------------------------------------------
 
 // Fetch all registered users (Admin view)
-app.get('/api/admin/users', async (req, res) => {
+app.get('/api/admin/users', requireAdminOrDeveloper, async (req, res) => {
     try {
         if (useMongo) {
             const users = await UserModel.find({}, { mpin: 0 }).sort({ _id: -1 });

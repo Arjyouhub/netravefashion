@@ -192,6 +192,10 @@ export default function AdminPanel({
                 method: 'POST',
                 headers: { 'x-admin-session': getCookie('adminSessionToken') }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, blockedAt: 0, loginAttempts: 0, lockUntil: 0 } : u));
                 showSuccess(`User account ${phone} has been unblocked.`);
@@ -211,6 +215,10 @@ export default function AdminPanel({
                 method: 'POST',
                 headers: { 'x-admin-session': getCookie('adminSessionToken') }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true, blockedAt: Date.now() } : u));
                 setBlockingUserPhone(null);
@@ -231,6 +239,10 @@ export default function AdminPanel({
                 method: 'DELETE',
                 headers: { 'x-admin-session': getCookie('adminSessionToken') }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 setUsers(users.filter(u => u.phone !== phone));
                 setDeletingUserPhone(null);
