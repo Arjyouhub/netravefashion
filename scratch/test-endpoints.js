@@ -1,14 +1,15 @@
 async function check() {
     const urls = [
-        'https://netravefashion.onrender.com/api/developer/login',
-        'https://netravefashion.onrender.com/api/settings'
+        'https://netravefashion.onrender.com/api/developer/system-status'
     ];
     for (const url of urls) {
         try {
             const res = await fetch(url, {
-                method: url.includes('login') ? 'POST' : 'GET',
-                headers: { 'Content-Type': 'application/json' },
-                body: url.includes('login') ? JSON.stringify({ username: 'test', password: 'test' }) : undefined
+                method: 'GET',
+                headers: { 
+                    'Content-Type': 'application/json',
+                    'x-developer-session': 'test_token'
+                }
             });
             console.log(url, '=> Status:', res.status);
             const text = await res.text();

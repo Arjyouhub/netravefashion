@@ -26,6 +26,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     const [users, setUsers] = useState([]);
     const [logs, setLogs] = useState([]);
     const [systemStatus, setSystemStatus] = useState(null);
+    const [loadingSystemStatus, setLoadingSystemStatus] = useState(true);
+    const [systemStatusError, setSystemStatusError] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [deletingUserPhone, setDeletingUserPhone] = useState(null);
     const [blockingUserPhone, setBlockingUserPhone] = useState(null);
@@ -80,18 +82,29 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
 
     // Fetch server status from backend
     const fetchSystemStatus = async () => {
+        setSystemStatusError('');
+        setLoadingSystemStatus(true);
         try {
             const devToken = getCookie('developerSessionToken');
-            if (!devToken) return;
+            if (!devToken) {
+                setLoadingSystemStatus(false);
+                return;
+            }
             const response = await fetch(`${API_BASE_URL}/developer/system-status`, {
                 headers: { 'x-developer-session': devToken }
             });
             if (response.ok) {
                 const data = await response.json();
                 setSystemStatus(data);
+                setSystemStatusError('');
+            } else {
+                setSystemStatusError(`Failed to fetch system status (Server responded with status ${response.status}).`);
             }
         } catch (err) {
             console.error('Error fetching system status:', err);
+            setSystemStatusError('Network error connecting to backend diagnostics.');
+        } finally {
+            setLoadingSystemStatus(false);
         }
     };
 
@@ -724,7 +737,18 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                         </button>
                     </div>
 
-                    {systemStatus ? (
+                    {loadingSystemStatus ? (
+                        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                            ⏳ Fetching diagnostics data from Render backend engine...
+                        </div>
+                    ) : systemStatusError ? (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', padding: '20px', borderRadius: '12px', textAlign: 'center', fontWeight: 'bold' }}>
+                            ⚠️ {systemStatusError}
+                            <p style={{ fontSize: '13px', fontWeight: 'normal', color: '#fca5a5', margin: '10px 0 0' }}>
+                                Please verify that your backend server is online and running the latest code version.
+                            </p>
+                        </div>
+                    ) : systemStatus ? (
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px' }}>
                             {/* DB Status & Fallback Alert */}
                             <div style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
@@ -805,9 +829,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                 </div>
                             </div>
                         </div>
-                    ) : (
-                        <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>Fetching diagnostics data from Render backend engine...</div>
-                    )}
+                    ) : null}
                 </div>
             )}
 
