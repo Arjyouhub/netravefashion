@@ -140,6 +140,7 @@ const BookingModel = mongoose.models.Booking || mongoose.model('Booking', Bookin
 
 // Settings Schema
 const SettingsSchema = new mongoose.Schema({
+    key: { type: String, default: 'main' },
     whatsappNumber: { type: String, default: '919946550713' },
     adminUsername: { type: String, default: 'admin' },
     adminPassword: { type: String, default: 'admin123' },
