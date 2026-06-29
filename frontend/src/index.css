@@ -2302,12 +2302,12 @@ h1, h2, h3, h4, h5, h6 {
         display: flex;
         flex-direction: row;
         align-items: center;
-        gap: 8px;
+        gap: 16px !important;
     }
     
     .logo-text {
-        align-items: flex-start;
-        text-align: left;
+        align-items: center;
+        text-align: center;
     }
     
     .logo-img {
@@ -3293,7 +3293,7 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .logo {
-        gap: 6px !important;
+        gap: 14px !important;
     }
     
     .header-actions {
