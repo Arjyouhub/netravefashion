@@ -30,6 +30,9 @@ export default function AdminPanel({
     const [blockingUserPhone, setBlockingUserPhone] = useState(null);
     const [successBanner, setSuccessBanner] = useState('');
     const [actionError, setActionError] = useState('');
+    const [deletingProductId, setDeletingProductId] = useState(null);
+    const [deletingCouponCode, setDeletingCouponCode] = useState(null);
+    const [productFormError, setProductFormError] = useState('');
 
     // Admin Auth States
     const [isLoggedIn, setIsLoggedIn] = useState(() => getCookie('isAdminLoggedIn') === 'true');
@@ -126,19 +129,16 @@ export default function AdminPanel({
     };
 
     const handleDeleteCoupon = async (code) => {
-        if (!window.confirm(`Are you sure you want to delete coupon "${code}"?`)) return;
-
         try {
             const response = await fetch(`${API_BASE_URL}/coupons/${code}`, {
                 method: 'DELETE'
             });
             if (response.ok) {
                 setCoupons(coupons.filter(c => c.code !== code));
-            } else {
-                alert('Failed to delete coupon.');
+                setDeletingCouponCode(null);
             }
         } catch (err) {
-            console.error(err);
+            console.error('Delete coupon error:', err);
         }
     };
 
@@ -426,6 +426,7 @@ export default function AdminPanel({
         setProdTags([]);
         setProdStock(50);
         setProdInStock(true);
+        setProductFormError('');
     };
 
     // Open Add Form
@@ -453,8 +454,9 @@ export default function AdminPanel({
     // Submit Product Form (Add or Edit)
     const handleProductSubmit = (e) => {
         e.preventDefault();
+        setProductFormError('');
         if (!prodTitle || !prodCategory || !prodPrice) {
-            alert('Please fill out all required fields.');
+            setProductFormError('Please fill out all required fields.');
             return;
         }
 
@@ -771,6 +773,12 @@ export default function AdminPanel({
                                         />
                                     </div>
 
+                                    {productFormError && (
+                                        <div className="validation-err" style={{ display: 'block', marginBottom: '15px' }}>
+                                            {productFormError}
+                                        </div>
+                                    )}
+
                                     <div className="modal-footer-actions">
                                         <button type="button" className="cta-btn secondary-cta" onClick={() => setIsProductFormOpen(false)}>Cancel</button>
                                         <button type="submit" className="cta-btn primary-cta">Save Product</button>
@@ -811,16 +819,33 @@ export default function AdminPanel({
                                         </td>
                                         <td>
                                             <div className="table-actions">
-                                                <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
-                                                    Edit
-                                                </button>
-                                                <button className="delete-action-btn" onClick={() => {
-                                                    if(confirm(`Are you sure you want to delete "${prod.title}"?`)) {
-                                                        onDeleteProduct(prod.id);
-                                                    }
-                                                }}>
-                                                    Delete
-                                                </button>
+                                                {deletingProductId === prod.id ? (
+                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                        <button 
+                                                            className="edit-action-btn" 
+                                                            onClick={() => onDeleteProduct(prod.id)}
+                                                            style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', padding: '4px 10px', fontSize: '12px' }}
+                                                        >
+                                                            Confirm
+                                                        </button>
+                                                        <button 
+                                                            className="delete-action-btn" 
+                                                            onClick={() => setDeletingProductId(null)}
+                                                            style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)', background: 'transparent', padding: '4px 10px', fontSize: '12px' }}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
+                                                            Edit
+                                                        </button>
+                                                        <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)}>
+                                                            Delete
+                                                        </button>
+                                                    </>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -1035,13 +1060,32 @@ export default function AdminPanel({
                                                     <td>{c.discountType === 'flat' ? `₹${c.discountValue}` : `${c.discountValue}%`}</td>
                                                     <td>₹{c.minSubtotal || 0}</td>
                                                     <td>
-                                                        <button 
-                                                            className="cta-btn secondary-cta" 
-                                                            onClick={() => handleDeleteCoupon(c.code)}
-                                                            style={{ padding: '4px 10px', fontSize: '12px', minHeight: 'unset', color: 'var(--error)', background: 'transparent' }}
-                                                        >
-                                                            Delete
-                                                        </button>
+                                                        {deletingCouponCode === c.code ? (
+                                                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                                <button 
+                                                                    className="cta-btn primary-cta" 
+                                                                    onClick={() => handleDeleteCoupon(c.code)}
+                                                                    style={{ padding: '4px 10px', fontSize: '12px', minHeight: 'unset', width: 'auto', background: 'var(--error)', color: '#ffffff', borderColor: 'var(--error)' }}
+                                                                >
+                                                                    Confirm
+                                                                </button>
+                                                                <button 
+                                                                    className="cta-btn secondary-cta" 
+                                                                    onClick={() => setDeletingCouponCode(null)}
+                                                                    style={{ padding: '4px 10px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: 'var(--border-color)', color: 'var(--text-muted)', background: 'transparent' }}
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button 
+                                                                className="cta-btn secondary-cta" 
+                                                                onClick={() => setDeletingCouponCode(c.code)}
+                                                                style={{ padding: '4px 10px', fontSize: '12px', minHeight: 'unset', color: 'var(--error)', background: 'transparent' }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        )}
                                                     </td>
                                                 </tr>
                                             ))

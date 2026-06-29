@@ -129,6 +129,14 @@ export default function App() {
     // E. Admin Control Panel States
     const [isAdminView, setIsAdminView] = useState(false);
     const [settings, setSettings] = useState({ whatsappNumber: '919946550713' });
+    const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+
+    const showToast = (message, type = 'success') => {
+        setToast({ message, type, visible: true });
+        setTimeout(() => {
+            setToast(prev => ({ ...prev, visible: false }));
+        }, 4000);
+    };
 
     // 1. Fetch products from API on Mount
     useEffect(() => {
@@ -380,11 +388,11 @@ export default function App() {
                     setProducts(data);
                 }
             } else {
-                alert('Failed to save new product on backend.');
+                showToast('Failed to save new product on server.', 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Backend offline. Product added locally only.');
+            showToast('Backend offline. Product added locally only.', 'info');
             const nextId = products.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
             setProducts([...products, { id: nextId, ...productPayload, rating: 5, reviews: 0 }]);
         }
@@ -404,11 +412,11 @@ export default function App() {
                     setProducts(data);
                 }
             } else {
-                alert('Failed to update product details.');
+                showToast('Failed to update product details.', 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Backend offline. Product updated locally only.');
+            showToast('Backend offline. Product updated locally only.', 'info');
             setProducts(products.map(p => p.id === id ? { ...p, ...productPayload } : p));
         }
     };
@@ -425,11 +433,11 @@ export default function App() {
                     setProducts(data);
                 }
             } else {
-                alert('Failed to delete product.');
+                showToast('Failed to delete product.', 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Backend offline. Product deleted locally only.');
+            showToast('Backend offline. Product deleted locally only.', 'info');
             setProducts(products.filter(p => p.id !== id));
         }
     };
@@ -450,11 +458,11 @@ export default function App() {
                     setProducts(data);
                 }
             } else {
-                alert('Failed to update booking status.');
+                showToast('Failed to update booking status.', 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Backend offline. Booking status updated locally only.');
+            showToast('Backend offline. Booking status updated locally only.', 'info');
             setBookings(bookings.map(b => b.orderId === orderId ? { ...b, status: newStatus } : b));
         }
     };
@@ -469,13 +477,13 @@ export default function App() {
             if (response.ok) {
                 const data = await response.json();
                 setSettings(data);
-                alert('Shop configurations saved successfully.');
+                showToast('Shop configurations saved successfully.', 'success');
             } else {
-                alert('Failed to save settings.');
+                showToast('Failed to save settings.', 'error');
             }
         } catch (err) {
             console.error(err);
-            alert('Backend offline. Configurations saved locally only.');
+            showToast('Backend offline. Configurations saved locally only.', 'info');
             setSettings(settingsPayload);
         }
     };
@@ -507,6 +515,7 @@ export default function App() {
             <DeveloperModal
                 isOpen={isDeveloperOpen}
                 API_BASE_URL={API_BASE_URL}
+                showToast={showToast}
                 onClose={() => {
                     setIsDeveloperOpen(false);
                     window.history.pushState({}, '', '/');
@@ -530,6 +539,7 @@ export default function App() {
                         onUpdateBookingStatus={handleUpdateBookingStatus}
                         onSaveSettings={handleSaveSettings}
                         API_BASE_URL={API_BASE_URL}
+                        showToast={showToast}
                         onClose={() => {
                             setIsAdminView(false);
                             window.history.pushState({}, '', '/');
@@ -681,7 +691,7 @@ export default function App() {
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onCheckoutTrigger={() => {
                     if (!user) {
-                        alert('Please login or register to place your order.');
+                        showToast('Please login or register to place your order.', 'info');
                         setIsAuthOpen(true);
                         setIsCartOpen(false);
                     } else {
@@ -725,6 +735,12 @@ export default function App() {
             />
 
             {/* Mobile Bottom Navigation Bar completely removed */}
+            {toast.visible && (
+                <div className={`toast-container visible toast-${toast.type}`}>
+                    <span>{toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}</span>
+                    <div>{toast.message}</div>
+                </div>
+            )}
         </div>
     );
 }
