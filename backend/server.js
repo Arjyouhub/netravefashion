@@ -1725,6 +1725,23 @@ app.get('/api/developer/system-status', requireDeveloper, async (req, res) => {
     }
 });
 
+// Serve frontend static files from the dist folder if it exists
+const frontendDistPath = path.join(__dirname, '../frontend/dist');
+try {
+    await fs.access(frontendDistPath);
+    app.use(express.static(frontendDistPath));
+    app.get('*', (req, res, next) => {
+        // Bypass API routes and uploads
+        if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+            return next();
+        }
+        res.sendFile(path.join(frontendDistPath, 'index.html'));
+    });
+    console.log(`[Netrave Backend] Serving frontend static files from ${frontendDistPath}`);
+} catch (err) {
+    console.log('[Netrave Backend] Frontend build folder not found at ../frontend/dist. Running in API-only mode.');
+}
+
 // Start Server
 app.listen(PORT, () => {
     console.log(`[Netrave Backend] Server is active and listening on port ${PORT}`);

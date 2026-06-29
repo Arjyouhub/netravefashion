@@ -660,7 +660,7 @@ export default function App() {
                 </div>
 
                 <div className="footer-bottom">
-                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala. | <button onClick={() => { window.history.pushState({}, '', '/developer'); setIsDeveloperOpen(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontFamily: 'inherit', fontWeight: '600' }}>Developer Page</button></p>
+                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala. | <button onClick={() => { window.history.pushState({}, '', '#/developer'); setIsDeveloperOpen(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontFamily: 'inherit', fontWeight: '600' }}>Developer Page</button></p>
                 </div>
             </footer>
 
