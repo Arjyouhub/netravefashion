@@ -2677,7 +2677,8 @@ h1, h2, h3, h4, h5, h6 {
     color: #ffffff;
 }
 
-.admin-product-form {
+.admin-product-form,
+.admin-settings-form {
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -2705,6 +2706,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .form-field input[type="text"],
 .form-field input[type="number"],
+.form-field input[type="password"],
 .form-field select,
 .form-field textarea {
     background: var(--bg-dark);
