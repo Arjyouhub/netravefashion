@@ -69,6 +69,7 @@ export default function AdminPanel({
     const bookingsPerPage = 8;
 
     // 3. Settings Tab States
+    const [bookingsList, setBookingsList] = useState([]);
     const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
     const [newUsername, setNewUsername] = useState(settings?.adminUsername || 'admin');
     const [maintMode, setMaintMode] = useState(settings?.maintenanceMode || false);
@@ -168,9 +169,33 @@ export default function AdminPanel({
         }
     };
 
+    const fetchAllBookings = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/bookings`);
+            if (response.ok) {
+                const data = await response.json();
+                setBookingsList(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch bookings list:', err);
+        }
+    };
+
+    const handleUpdateStatusLocal = async (orderId, newStatus) => {
+        try {
+            if (onUpdateBookingStatus) {
+                await onUpdateBookingStatus(orderId, newStatus);
+            }
+            await fetchAllBookings();
+        } catch (err) {
+            console.error('Failed to update booking status locally:', err);
+        }
+    };
+
     useEffect(() => {
         if (isLoggedIn) {
             fetchUsers();
+            fetchAllBookings();
         }
     }, [isLoggedIn]);
 
@@ -546,11 +571,11 @@ export default function AdminPanel({
     };
 
     // Booking Filtering and Searching
-    const filteredBookings = bookings.filter(b => {
+    const filteredBookings = bookingsList.filter(b => {
         const matchesQuery = 
             b.orderId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.customer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            b.customer.phone.includes(searchQuery);
+            b.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            b.customer?.phone?.includes(searchQuery);
         
         const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
         return matchesQuery && matchesStatus;
@@ -633,7 +658,7 @@ export default function AdminPanel({
                     className={`admin-tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
                     onClick={() => { setActiveTab('bookings'); setCurrentPage(1); }}
                 >
-                    Orders & Bookings ({bookings.length})
+                    Orders & Bookings ({bookingsList.length})
                 </button>
                 <button 
                     className={`admin-tab-btn ${activeTab === 'coupons' ? 'active' : ''}`}
@@ -953,7 +978,7 @@ export default function AdminPanel({
                                                 <select 
                                                     value={book.status || 'Pending'} 
                                                     className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
-                                                    onChange={e => onUpdateBookingStatus(book.orderId, e.target.value)}
+                                                    onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
                                                 >
                                                     <option value="Pending">Pending</option>
                                                     <option value="Order Placed">Order Placed</option>
