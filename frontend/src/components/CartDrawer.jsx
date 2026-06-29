@@ -52,7 +52,7 @@ export default function CartDrawer({
                             {cart.map((item, index) => (
                                 <div className="cart-item" key={`${item.id}-${item.size}`}>
                                     <div className="cart-item-img-wrapper">
-                                        <img src={item.image} alt={item.title} />
+                                        <img src={item.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={item.title} />
                                     </div>
                                     <div className="cart-item-info">
                                         <h4 className="cart-item-title">{item.title}</h4>

@@ -73,7 +73,7 @@ export default function ProductModal({ isOpen, product, onClose, onAddToCart, AP
                     {/* Left: Images */}
                     <div className="quickview-gallery">
                         <div className="main-image-container">
-                            <img src={product.image} alt={product.title} />
+                            <img src={product.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={product.title} />
                         </div>
                     </div>
 

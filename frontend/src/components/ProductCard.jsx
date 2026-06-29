@@ -41,7 +41,7 @@ export default function ProductCard({ product, onQuickView }) {
                     </>
                 )}
                 <img 
-                    src={product.image} 
+                    src={product.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} 
                     alt={product.title} 
                     className="product-img" 
                     style={{ filter: isOutOfStock ? 'grayscale(0.6) opacity(0.5)' : 'none' }}
