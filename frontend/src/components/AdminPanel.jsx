@@ -70,6 +70,7 @@ export default function AdminPanel({
 
     // 3. Settings Tab States
     const [bookingsList, setBookingsList] = useState([]);
+    const [selectedAdminBooking, setSelectedAdminBooking] = useState(null);
     const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
     const [newUsername, setNewUsername] = useState(settings?.adminUsername || 'admin');
     const [maintMode, setMaintMode] = useState(settings?.maintenanceMode || false);
@@ -187,6 +188,9 @@ export default function AdminPanel({
                 await onUpdateBookingStatus(orderId, newStatus);
             }
             await fetchAllBookings();
+            if (selectedAdminBooking && selectedAdminBooking.orderId === orderId) {
+                setSelectedAdminBooking(prev => ({ ...prev, status: newStatus }));
+            }
         } catch (err) {
             console.error('Failed to update booking status locally:', err);
         }
@@ -957,7 +961,16 @@ export default function AdminPanel({
                                 ) : (
                                     currentBookings.map(book => (
                                         <tr key={book.orderId}>
-                                            <td className="bold-td highlight-order-id">{book.orderId}</td>
+                                            <td className="bold-td highlight-order-id">
+                                                <span 
+                                                    className="order-id-badge" 
+                                                    style={{ cursor: 'pointer', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px' }}
+                                                    onClick={() => setSelectedAdminBooking(book)}
+                                                    title="Click to view full order details"
+                                                >
+                                                    {book.orderId}
+                                                </span>
+                                            </td>
                                             <td style={{ fontSize: '13px' }}>{book.date}</td>
                                             <td className="bold-td">{book.customer.name}</td>
                                             <td>
@@ -1399,6 +1412,139 @@ export default function AdminPanel({
                                 Update Password
                             </button>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ADMIN BOOKING DETAIL MODAL */}
+            {selectedAdminBooking && (
+                <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) setSelectedAdminBooking(null); }} style={{ zIndex: 1200 }}>
+                    <div className="modal-content admin-modal-content" style={{ maxWidth: '650px', background: '#12141c', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '20px', padding: '24px', overflowY: 'auto', maxHeight: '90vh' }}>
+                        <button className="close-btn modal-close" onClick={() => setSelectedAdminBooking(null)}>&times;</button>
+                        
+                        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px', marginBottom: '20px' }}>
+                            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Order Details</h2>
+                            <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>
+                                Booking ID: <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{selectedAdminBooking.orderId}</span>
+                            </p>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
+                            {/* Status Section */}
+                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px' }}>
+                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '8px' }}>Update Booking Status</label>
+                                <select 
+                                    value={selectedAdminBooking.status || 'Pending'} 
+                                    className={`status-select-dropdown ${selectedAdminBooking.status ? selectedAdminBooking.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
+                                    onChange={e => handleUpdateStatusLocal(selectedAdminBooking.orderId, e.target.value)}
+                                    style={{ width: '100%', boxSizing: 'border-box' }}
+                                >
+                                    <option value="Pending">Pending</option>
+                                    <option value="Order Placed">Order Placed</option>
+                                    <option value="Payment Confirmed">Payment Confirmed</option>
+                                    <option value="Dispatched">Dispatched</option>
+                                    <option value="Delivered">Delivered</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                </select>
+                            </div>
+
+                            {/* Customer & Shipping Section */}
+                            <div>
+                                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                                    Customer & Shipping Details
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px', color: '#cbd5e1' }}>
+                                    <div><strong>Name:</strong> {selectedAdminBooking.customer?.name}</div>
+                                    <div>
+                                        <strong>Phone (Calling):</strong>{' '}
+                                        <a href={`tel:${selectedAdminBooking.customer?.phone}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                                            {selectedAdminBooking.customer?.phone}
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <strong>WhatsApp:</strong>{' '}
+                                        <a href={`https://wa.me/91${selectedAdminBooking.customer?.whatsapp}`} target="_blank" rel="noopener noreferrer" style={{ color: '#25d366', textDecoration: 'none', fontWeight: '600' }}>
+                                            {selectedAdminBooking.customer?.whatsapp} (Chat)
+                                        </a>
+                                    </div>
+                                    <div><strong>District:</strong> {selectedAdminBooking.customer?.district}</div>
+                                    <div><strong>Pincode:</strong> {selectedAdminBooking.customer?.pincode}</div>
+                                    <div style={{ marginTop: '4px', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                        <strong>Full Delivery Address:</strong>
+                                        <p style={{ margin: '4px 0 0', color: '#94a3b8', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                                            {selectedAdminBooking.customer?.address}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Items Section */}
+                            <div>
+                                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                                    Items Ordered ({selectedAdminBooking.items?.reduce((sum, item) => sum + item.quantity, 0)})
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    {selectedAdminBooking.items?.map((item, idx) => (
+                                        <div key={idx} style={{ display: 'flex', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                                            <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', background: '#1b1e2a', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                {item.image ? (
+                                                    <img src={item.image} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                ) : (
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: '#1e293b' }}>
+                                                        <svg style={{ width: '20px', height: '20px', stroke: '#64748b', strokeWidth: 1.5, fill: 'none' }} viewBox="0 0 24 24">
+                                                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                                                            <circle cx="8.5" cy="8.5" r="1.5"/>
+                                                            <polyline points="21 15 16 10 5 21"/>
+                                                        </svg>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                                                <span style={{ fontSize: '13.5px', fontWeight: '600', color: '#fff' }}>{item.title}</span>
+                                                <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Size: {item.size} | Qty: {item.quantity}</span>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', fontWeight: '700', color: '#fff', fontSize: '13.5px' }}>
+                                                ₹{item.price * item.quantity}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Summary & Metadata Section */}
+                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px', marginTop: '10px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#94a3b8' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Booking Date/Time:</span>
+                                        <span style={{ color: '#fff' }}>{selectedAdminBooking.date}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Payment Method:</span>
+                                        <span style={{ color: '#fff', fontWeight: '600' }}>
+                                            {selectedAdminBooking.customer?.payment === 'COD' ? 'Cash on Delivery (COD)' : 'UPI Confirmation'}
+                                        </span>
+                                    </div>
+                                    {selectedAdminBooking.customer?.couponCode && (
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)' }}>
+                                            <span>Coupon Applied:</span>
+                                            <span>{selectedAdminBooking.customer.couponCode}</span>
+                                        </div>
+                                    )}
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Subtotal:</span>
+                                        <span style={{ color: '#fff' }}>₹{selectedAdminBooking.subtotal || selectedAdminBooking.total - (selectedAdminBooking.delivery || 0)}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span>Delivery Fee:</span>
+                                        <span style={{ color: '#fff' }}>{selectedAdminBooking.delivery === 0 ? 'FREE' : `₹${selectedAdminBooking.delivery || 60}`}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', color: '#fff', marginTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                                        <span>Grand Total:</span>
+                                        <span style={{ color: 'var(--primary)' }}>₹{selectedAdminBooking.total}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
