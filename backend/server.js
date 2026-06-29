@@ -755,9 +755,10 @@ app.post('/api/bookings', async (req, res) => {
         } else {
             // Update stock in products.json
             const updatedProductsList = products.map(p => {
-                const boughtItem = validatedItems.find(vi => vi.id === p.id);
-                if (boughtItem) {
-                    const newStock = Math.max(0, p.stock - boughtItem.quantity);
+                const boughtItems = validatedItems.filter(vi => vi.id === p.id);
+                if (boughtItems.length > 0) {
+                    const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
+                    const newStock = Math.max(0, p.stock - totalBoughtQty);
                     return {
                         ...p,
                         stock: newStock,
@@ -845,11 +846,12 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
             if (status === 'Cancelled' && oldStatus !== 'Cancelled') {
                 const productsList = await readJson(productsPath);
                 const updated = productsList.map(p => {
-                    const boughtItem = targetBooking.items.find(vi => vi.id === p.id);
-                    if (boughtItem) {
+                    const boughtItems = targetBooking.items.filter(vi => vi.id === p.id);
+                    if (boughtItems.length > 0) {
+                        const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
                         return {
                             ...p,
-                            stock: p.stock + boughtItem.quantity,
+                            stock: p.stock + totalBoughtQty,
                             inStock: true
                         };
                     }
@@ -859,9 +861,10 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
             } else if (oldStatus === 'Cancelled' && status !== 'Cancelled') {
                 const productsList = await readJson(productsPath);
                 const updated = productsList.map(p => {
-                    const boughtItem = targetBooking.items.find(vi => vi.id === p.id);
-                    if (boughtItem) {
-                        const newStock = Math.max(0, p.stock - boughtItem.quantity);
+                    const boughtItems = targetBooking.items.filter(vi => vi.id === p.id);
+                    if (boughtItems.length > 0) {
+                        const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
+                        const newStock = Math.max(0, p.stock - totalBoughtQty);
                         return {
                             ...p,
                             stock: newStock,

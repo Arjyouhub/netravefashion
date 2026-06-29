@@ -367,6 +367,19 @@ h1, h2, h3, h4, h5, h6 {
     border: none;
     color: #ffffff;
     cursor: pointer;
+    padding: 8px;
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-menu-btn .icon {
+    width: 28px;
+    height: 28px;
+    transition: transform 0.2s ease;
+}
+
+.mobile-menu-btn:active .icon {
+    transform: scale(0.9);
 }
 
 /* 5. Mobile Navigation Drawer */
@@ -3321,9 +3334,14 @@ h1, h2, h3, h4, h5, h6 {
         padding: 6px !important;
     }
     
-    .action-btn .icon, .mobile-menu-btn .icon {
+    .action-btn .icon {
         width: 22px !important;
         height: 22px !important;
+    }
+    
+    .mobile-menu-btn .icon {
+        width: 26px !important;
+        height: 26px !important;
     }
 
     /* Header container padding and cart badge */
@@ -3956,3 +3974,68 @@ h1, h2, h3, h4, h5, h6 {
         display: block !important;
     }
 }
+
+/* Coupon Section */
+.coupon-section {
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 15px 0;
+    margin: 15px 0;
+}
+
+.coupon-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 8px;
+    display: block;
+}
+
+.coupon-input-group {
+    display: flex;
+    gap: 8px;
+    align-items: stretch;
+    width: 100%;
+}
+
+.coupon-input {
+    flex-grow: 1;
+    min-width: 0; /* CRITICAL: allows input to shrink to fit small screen widths */
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 12px;
+    color: #fff;
+    text-transform: uppercase;
+    font-family: var(--font-body);
+    font-size: 13px;
+    outline: none;
+    transition: var(--transition-smooth);
+    box-sizing: border-box;
+}
+
+.coupon-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 2px var(--primary-glow);
+}
+
+.coupon-btn {
+    padding: 8px 16px;
+    font-size: 13px;
+    border-radius: 8px;
+    min-height: unset;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+@media (max-width: 360px) {
+    .coupon-input-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .coupon-btn {
+        width: 100%;
+        text-align: center;
+    }
+}
+

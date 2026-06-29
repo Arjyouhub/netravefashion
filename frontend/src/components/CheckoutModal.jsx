@@ -347,42 +347,30 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking, 
                         </div>
 
                         {/* Coupon Code Section */}
-                        <div className="coupon-section" style={{ borderTop: '1px solid var(--border-color)', borderBottom: '1px solid var(--border-color)', padding: '15px 0', margin: '15px 0' }}>
-                            <label style={{ fontSize: '13px', fontWeight: '600', color: '#fff', marginBottom: '8px', display: 'block' }}>Have a Coupon Code?</label>
-                            <div style={{ display: 'flex', gap: '8px' }}>
+                        <div className="coupon-section">
+                            <label className="coupon-label">Have a Coupon Code?</label>
+                            <div className="coupon-input-group">
                                 <input 
                                     type="text" 
                                     placeholder="ENTER CODE" 
                                     value={couponCode} 
                                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                                    style={{ 
-                                        flexGrow: 1, 
-                                        background: 'var(--bg-dark)', 
-                                        border: '1px solid var(--border-color)', 
-                                        borderRadius: '8px', 
-                                        padding: '8px 12px', 
-                                        color: '#fff', 
-                                        textTransform: 'uppercase',
-                                        fontFamily: 'var(--font-body)',
-                                        fontSize: '13px'
-                                    }}
+                                    className="coupon-input"
                                     disabled={appliedCoupon !== null}
                                 />
                                 {appliedCoupon ? (
                                     <button 
                                         type="button" 
-                                        className="cta-btn secondary-cta" 
+                                        className="cta-btn secondary-cta coupon-btn" 
                                         onClick={handleRemoveCoupon}
-                                        style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', minHeight: 'unset' }}
                                     >
                                         Remove
                                     </button>
                                 ) : (
                                     <button 
                                         type="button" 
-                                        className="cta-btn primary-cta" 
+                                        className="cta-btn primary-cta coupon-btn" 
                                         onClick={handleApplyCoupon}
-                                        style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', minHeight: 'unset' }}
                                     >
                                         Apply
                                     </button>

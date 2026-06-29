@@ -412,9 +412,10 @@ export default function App() {
 
             // Decrement offline fallback products stock in state
             const updatedProductsList = products.map(p => {
-                const boughtItem = cart.find(ci => ci.id === p.id);
-                if (boughtItem) {
-                    const newStock = Math.max(0, p.stock - boughtItem.quantity);
+                const boughtItems = cart.filter(ci => ci.id === p.id);
+                if (boughtItems.length > 0) {
+                    const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
+                    const newStock = Math.max(0, p.stock - totalBoughtQty);
                     return {
                         ...p,
                         stock: newStock,
