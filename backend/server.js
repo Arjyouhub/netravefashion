@@ -145,7 +145,11 @@ const SettingsSchema = new mongoose.Schema({
     adminPassword: { type: String, default: 'admin123' },
     developerPassword: { type: String, default: 'developer123' },
     adminSessionToken: { type: String, default: '' },
-    developerSessionToken: { type: String, default: '' }
+    developerSessionToken: { type: String, default: '' },
+    maintenanceMode: { type: Boolean, default: false },
+    maintenanceMessage: { type: String, default: 'We are currently performing scheduled maintenance.' },
+    maintenanceExpiry: { type: Number, default: 0 },
+    offerNotification: { type: String, default: '' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
 
@@ -404,11 +408,23 @@ app.get('/api/settings', async (req, res) => {
             if (!settings) {
                 settings = await SettingsModel.create({ key: 'main', whatsappNumber: '919876543210', adminPassword: 'admin123' });
             }
-            res.json({ whatsappNumber: settings.whatsappNumber });
+            res.json({
+                whatsappNumber: settings.whatsappNumber,
+                maintenanceMode: settings.maintenanceMode || false,
+                maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
+                maintenanceExpiry: settings.maintenanceExpiry || 0,
+                offerNotification: settings.offerNotification || ''
+            });
         } else {
             const settings = await readJson(settingsPath);
             const data = Array.isArray(settings) ? settings[0] : settings;
-            res.json({ whatsappNumber: data?.whatsappNumber || '919876543210' });
+            res.json({
+                whatsappNumber: data?.whatsappNumber || '919876543210',
+                maintenanceMode: data?.maintenanceMode || false,
+                maintenanceMessage: data?.maintenanceMessage || 'We are currently performing scheduled maintenance.',
+                maintenanceExpiry: data?.maintenanceExpiry || 0,
+                offerNotification: data?.offerNotification || ''
+            });
         }
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch settings.' });
@@ -418,24 +434,46 @@ app.get('/api/settings', async (req, res) => {
 // 3. Save Shop Settings
 app.post('/api/settings', async (req, res) => {
     try {
-        const { whatsappNumber } = req.body;
+        const { whatsappNumber, maintenanceMode, maintenanceMessage, maintenanceExpiry, offerNotification } = req.body;
         if (!whatsappNumber) {
             return res.status(400).json({ error: 'WhatsApp number is required.' });
         }
         if (useMongo) {
             const settings = await SettingsModel.findOneAndUpdate(
                 { key: 'main' },
-                { whatsappNumber },
+                {
+                    whatsappNumber,
+                    maintenanceMode: maintenanceMode !== undefined ? Boolean(maintenanceMode) : undefined,
+                    maintenanceMessage: maintenanceMessage !== undefined ? maintenanceMessage : undefined,
+                    maintenanceExpiry: maintenanceExpiry !== undefined ? Number(maintenanceExpiry) : undefined,
+                    offerNotification: offerNotification !== undefined ? offerNotification : undefined
+                },
                 { new: true, upsert: true }
             );
-            res.json({ whatsappNumber: settings.whatsappNumber });
+            res.json({
+                whatsappNumber: settings.whatsappNumber,
+                maintenanceMode: settings.maintenanceMode,
+                maintenanceMessage: settings.maintenanceMessage,
+                maintenanceExpiry: settings.maintenanceExpiry,
+                offerNotification: settings.offerNotification
+            });
         } else {
             let fileSettings = await readJson(settingsPath);
             let data = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
             if (!data) data = { adminPassword: 'admin123' };
             data.whatsappNumber = whatsappNumber;
+            if (maintenanceMode !== undefined) data.maintenanceMode = Boolean(maintenanceMode);
+            if (maintenanceMessage !== undefined) data.maintenanceMessage = maintenanceMessage;
+            if (maintenanceExpiry !== undefined) data.maintenanceExpiry = Number(maintenanceExpiry);
+            if (offerNotification !== undefined) data.offerNotification = offerNotification;
             await writeJson(settingsPath, [data]);
-            res.json({ whatsappNumber: data.whatsappNumber });
+            res.json({
+                whatsappNumber: data.whatsappNumber,
+                maintenanceMode: data.maintenanceMode || false,
+                maintenanceMessage: data.maintenanceMessage || '',
+                maintenanceExpiry: data.maintenanceExpiry || 0,
+                offerNotification: data.offerNotification || ''
+            });
         }
     } catch (err) {
         res.status(500).json({ error: 'Failed to save settings.' });

@@ -71,11 +71,19 @@ export default function AdminPanel({
     // 3. Settings Tab States
     const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
     const [newUsername, setNewUsername] = useState(settings?.adminUsername || 'admin');
+    const [maintMode, setMaintMode] = useState(settings?.maintenanceMode || false);
+    const [maintMsg, setMaintMsg] = useState(settings?.maintenanceMessage || 'We are currently performing scheduled maintenance.');
+    const [maintExpiry, setMaintExpiry] = useState(settings?.maintenanceExpiry ? new Date(settings.maintenanceExpiry - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '');
+    const [offerNotif, setOfferNotif] = useState(settings?.offerNotification || '');
 
     useEffect(() => {
         if (settings) {
             setWhatsappNum(settings.whatsappNumber);
             setNewUsername(settings.adminUsername || 'admin');
+            setMaintMode(settings.maintenanceMode || false);
+            setMaintMsg(settings.maintenanceMessage || 'We are currently performing scheduled maintenance.');
+            setMaintExpiry(settings.maintenanceExpiry ? new Date(settings.maintenanceExpiry - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '');
+            setOfferNotif(settings.offerNotification || '');
         }
     }, [settings]);
 
@@ -544,7 +552,13 @@ export default function AdminPanel({
 
     const handleSaveSettingsSubmit = (e) => {
         e.preventDefault();
-        onSaveSettings({ whatsappNumber: whatsappNum });
+        onSaveSettings({ 
+            whatsappNumber: whatsappNum,
+            maintenanceMode: maintMode,
+            maintenanceMessage: maintMsg,
+            maintenanceExpiry: maintExpiry ? new Date(maintExpiry).getTime() : 0,
+            offerNotification: offerNotif
+        });
     };
 
     const handleChangePasswordSubmit = async (e) => {
@@ -1259,7 +1273,69 @@ export default function AdminPanel({
                                 </small>
                             </div>
 
-                            <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '20px' }}>
+                            <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '30px 0' }} />
+
+                            <h3>Maintenance Mode Setup</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
+                                Lock the checkout process and display a warning countdown banner at the top of all pages.
+                            </p>
+
+                            <div className="form-field toggle-field" style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    id="maintenanceModeCheckbox"
+                                    checked={maintMode} 
+                                    onChange={e => setMaintMode(e.target.checked)}
+                                    style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                                />
+                                <label htmlFor="maintenanceModeCheckbox" style={{ margin: 0, cursor: 'pointer', fontWeight: '600' }}>
+                                    Enable Scheduled Maintenance Mode
+                                </label>
+                            </div>
+
+                            {maintMode && (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '20px', background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.15)', borderRadius: '8px', marginBottom: '25px', maxWidth: '600px' }}>
+                                    <div className="form-field" style={{ margin: 0 }}>
+                                        <label style={{ color: '#fca5a5' }}>Maintenance Message (Warning banner text)</label>
+                                        <textarea 
+                                            value={maintMsg} 
+                                            onChange={e => setMaintMsg(e.target.value)} 
+                                            rows="2"
+                                            placeholder="e.g. We will be back shortly with a new collection!"
+                                            style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '6px', padding: '12px', width: '100%', fontFamily: 'inherit' }}
+                                        />
+                                    </div>
+                                    <div className="form-field" style={{ margin: 0 }}>
+                                        <label style={{ color: '#fca5a5' }}>Maintenance Expiry (Date & Time when timer ends)</label>
+                                        <input 
+                                            type="datetime-local" 
+                                            value={maintExpiry} 
+                                            onChange={e => setMaintExpiry(e.target.value)} 
+                                            style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '6px', padding: '10px', width: '100%' }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
+
+                            <hr style={{ border: '0', borderTop: '1px solid var(--border-color)', margin: '30px 0' }} />
+
+                            <h3>Offer & Announcement Broadcast</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '20px' }}>
+                                Display a glowing promotional announcement banner at the top of the storefront.
+                            </p>
+
+                            <div className="form-field" style={{ maxWidth: '600px' }}>
+                                <label>Offer Notification Banner Text (Leave blank to hide)</label>
+                                <textarea 
+                                    value={offerNotif} 
+                                    onChange={e => setOfferNotif(e.target.value)} 
+                                    rows="2"
+                                    placeholder="e.g. 🔥 MID-SUMMER OFFER: Use code SUMMER20 to get 20% flat discount!"
+                                    style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '6px', padding: '12px', width: '100%', fontFamily: 'inherit' }}
+                                />
+                            </div>
+
+                            <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '30px' }}>
                                 Save Configurations
                             </button>
                         </form>

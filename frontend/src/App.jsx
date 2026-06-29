@@ -94,6 +94,40 @@ const FALLBACK_PRODUCTS = [
 const API_BASE_URL = 'https://netravefashion.onrender.com/api';
 // const API_BASE_URL = 'http://localhost:5000/api';
 
+function MaintenanceCountdown({ expiryTimestamp }) {
+    const [timeLeft, setTimeLeft] = useState('');
+
+    useEffect(() => {
+        if (!expiryTimestamp) return;
+
+        const updateTimer = () => {
+            const diff = expiryTimestamp - Date.now();
+            if (diff <= 0) {
+                setTimeLeft('Ended');
+                return;
+            }
+
+            const hrs = Math.floor(diff / (1000 * 60 * 60));
+            const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+            setTimeLeft(`${hrs.toString().padStart(2, '0')}h ${mins.toString().padStart(2, '0')}m ${secs.toString().padStart(2, '0')}s`);
+        };
+
+        updateTimer();
+        const timer = setInterval(updateTimer, 1000);
+        return () => clearInterval(timer);
+    }, [expiryTimestamp]);
+
+    if (timeLeft === 'Ended' || !timeLeft) return null;
+
+    return (
+        <span className="maintenance-timer">
+            ⏱️ Ends in: {timeLeft}
+        </span>
+    );
+}
+
 export default function App() {
     // A. Main State
     const [products, setProducts] = useState(FALLBACK_PRODUCTS);
@@ -131,6 +165,7 @@ export default function App() {
     const [settings, setSettings] = useState({ whatsappNumber: '919946550713' });
     const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
     const [loadingProducts, setLoadingProducts] = useState(true);
+    const [isOfferDismissed, setIsOfferDismissed] = useState(false);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type, visible: true });
@@ -139,7 +174,7 @@ export default function App() {
         }, 4000);
     };
 
-    // 1. Fetch products from API on Mount
+    // 1. Fetch products and settings from API on Mount
     useEffect(() => {
         const fetchProducts = async () => {
             try {
@@ -156,7 +191,21 @@ export default function App() {
                 setLoadingProducts(false);
             }
         };
+
+        const fetchSettings = async () => {
+            try {
+                const response = await fetch(`${API_BASE_URL}/settings`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setSettings(data);
+                }
+            } catch (err) {
+                console.warn('Could not load settings from backend:', err.message);
+            }
+        };
+
         fetchProducts();
+        fetchSettings();
     }, []);
 
     // 2. Fetch booking history for the logged-in user
@@ -560,6 +609,22 @@ export default function App() {
 
     return (
         <div className="app-container">
+            {/* Maintenance Mode Banner */}
+            {settings.maintenanceMode && (
+                <div className="maintenance-banner">
+                    🚨 {settings.maintenanceMessage || 'Under scheduled maintenance.'}
+                    {settings.maintenanceExpiry > 0 && <MaintenanceCountdown expiryTimestamp={settings.maintenanceExpiry} />}
+                </div>
+            )}
+
+            {/* Offer Announcement Banner */}
+            {(settings.offerNotification && !isOfferDismissed && !settings.maintenanceMode) && (
+                <div className="offer-banner">
+                    📢 {settings.offerNotification}
+                    <button className="offer-close-btn" onClick={() => setIsOfferDismissed(true)}>×</button>
+                </div>
+            )}
+
             {/* Header Navigation */}
             <Header
                 cartCount={cartCount}
@@ -694,6 +759,10 @@ export default function App() {
                 onRemoveItem={handleRemoveCartItem}
                 onUpdateQuantity={handleUpdateCartQuantity}
                 onCheckoutTrigger={() => {
+                    if (settings.maintenanceMode) {
+                        showToast('Shop is currently undergoing maintenance. Checkout is temporarily disabled.', 'error');
+                        return;
+                    }
                     if (!user) {
                         showToast('Please login or register to place your order.', 'info');
                         setIsAuthOpen(true);
