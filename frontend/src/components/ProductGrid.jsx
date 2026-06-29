@@ -3,6 +3,7 @@ import ProductCard from './ProductCard';
 
 export default function ProductGrid({
     products,
+    loading = false,
     activeCategory,
     onCategoryChange,
     searchQuery,
@@ -145,7 +146,21 @@ export default function ProductGrid({
             )}
 
             {/* Products Grid */}
-            {filtered.length > 0 ? (
+            {loading ? (
+                <div className="products-grid">
+                    {[1, 2, 3, 4, 5, 6].map(n => (
+                        <div key={n} className="skeleton-card">
+                            <div className="skeleton-image" />
+                            <div className="skeleton-info">
+                                <div className="skeleton-title" />
+                                <div className="skeleton-text" style={{ width: '40%' }} />
+                                <div className="skeleton-text" style={{ width: '60%' }} />
+                                <div className="skeleton-button" />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            ) : filtered.length > 0 ? (
                 <div className="products-grid">
                     {filtered.map(product => (
                         <ProductCard 
@@ -158,7 +173,7 @@ export default function ProductGrid({
             ) : (
                 /* Empty State */
                 <div className="products-empty-state">
-                    <svg viewBox="0 0 24 24" class="empty-icon">
+                    <svg viewBox="0 0 24 24" className="empty-icon">
                         <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
                     </svg>
                     <h3>No Products Found</h3>

@@ -130,6 +130,7 @@ export default function App() {
     const [isAdminView, setIsAdminView] = useState(false);
     const [settings, setSettings] = useState({ whatsappNumber: '919946550713' });
     const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
+    const [loadingProducts, setLoadingProducts] = useState(true);
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type, visible: true });
@@ -151,6 +152,8 @@ export default function App() {
                 }
             } catch (err) {
                 console.warn('Backend server offline. Running with fallback product data.', err.message);
+            } finally {
+                setLoadingProducts(false);
             }
         };
         fetchProducts();
@@ -591,6 +594,7 @@ export default function App() {
                 />
                 <ProductGrid
                     products={products}
+                    loading={loadingProducts}
                     activeCategory={activeCategory}
                     onCategoryChange={(catId) => {
                         setActiveCategory(catId);

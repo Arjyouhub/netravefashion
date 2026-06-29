@@ -1,1 +1,77 @@
-[]
+[
+  {
+    "id": 1,
+    "title": "Oversized Acid-Wash Graphic Tee",
+    "category": "t-shirt",
+    "price": 699,
+    "originalPrice": 1199,
+    "rating": 4.8,
+    "reviews": 24,
+    "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+    "description": "Streetwear aesthetic oversized t-shirt crafted from heavy 240 GSM organic cotton. Featuring a vintage acid-washed finish and custom graphic backprint. Perfect for relaxed casual styling.",
+    "sizes": ["M", "L", "XL", "XXL"],
+    "tags": ["New", "Oversized"],
+    "stock": 50,
+    "inStock": true
+  },
+  {
+    "id": 2,
+    "title": "Classic Vintage Crewneck Tee",
+    "category": "t-shirt",
+    "price": 499,
+    "originalPrice": 899,
+    "rating": 4.5,
+    "reviews": 42,
+    "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
+    "description": "Essential everyday crewneck t-shirt made from 100% premium combed cotton. Super-soft feel, breathable fabric, and durable double-needle stitching that retains shape wash after wash.",
+    "sizes": ["M", "L", "XL"],
+    "tags": ["Basic"],
+    "stock": 50,
+    "inStock": true
+  },
+  {
+    "id": 4,
+    "title": "Premium Linen Casual Shirt",
+    "category": "shirt",
+    "price": 1199,
+    "originalPrice": 1999,
+    "rating": 4.6,
+    "reviews": 35,
+    "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+    "description": "Tailored from ultra-breathable pure linen blend fabric. Featuring structured collar, button-up front, and curved hemline. Perfect styling option for humid Kerala weather.",
+    "sizes": ["M", "L", "XL", "XXL"],
+    "tags": ["Breathable"],
+    "stock": 50,
+    "inStock": true
+  },
+  {
+    "id": 7,
+    "title": "Multi-Pocket Athletic Cargo Pants",
+    "category": "pants",
+    "price": 1299,
+    "originalPrice": 2199,
+    "rating": 4.8,
+    "reviews": 31,
+    "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
+    "description": "Rugged and functional cargo pants featuring double side utility pockets, elasticated cuffs, and heavy cotton twill fabric. Designed for outdoor adventure and urban streetwear aesthetic.",
+    "sizes": ["M", "L", "XL", "XXL"],
+    "tags": ["Rugged"],
+    "stock": 50,
+    "inStock": true
+  },
+  {
+    "id": 16,
+    "title": "Sunset Beach Breeze Tee",
+    "category": "summer-t-shirt",
+    "price": 549,
+    "originalPrice": 999,
+    "rating": 4.7,
+    "reviews": 32,
+    "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+    "description": "Ultra-lightweight premium summer t-shirt in a pastel cream tone, designed for hot days. 100% combed cotton, 180 GSM, and a relaxed comfort fit.",
+    "sizes": ["M", "L", "XL"],
+    "tags": ["Summer", "Breathable"],
+    "stock": 45,
+    "inStock": true
+  }
+]
