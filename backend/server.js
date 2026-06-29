@@ -174,7 +174,9 @@ const UserSchema = new mongoose.Schema({
     mpin: { type: String, required: true },
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Number, default: 0 },
-    isBlocked: { type: Boolean, default: false }
+    isBlocked: { type: Boolean, default: false },
+    blockedAt: { type: Number, default: 0 },
+    lastActiveAt: { type: Number, default: 0 }
 });
 const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
 
@@ -1051,7 +1053,7 @@ app.post('/api/auth/register', async (req, res) => {
                 return res.status(400).json({ error: 'User already registered with this mobile number.' });
             }
             const hashedPassword = hashMpin(mpin, phone);
-            const newUser = new UserModel({ phone, name, mpin: hashedPassword });
+            const newUser = new UserModel({ phone, name, mpin: hashedPassword, lastActiveAt: Date.now() });
             await newUser.save();
             res.status(201).json({ success: true, user: { phone: newUser.phone, name: newUser.name } });
         } else {
@@ -1061,7 +1063,7 @@ app.post('/api/auth/register', async (req, res) => {
                 return res.status(400).json({ error: 'User already registered with this mobile number.' });
             }
             const hashedPassword = hashMpin(mpin, phone);
-            const newUser = { phone, name, mpin: hashedPassword };
+            const newUser = { phone, name, mpin: hashedPassword, lastActiveAt: Date.now() };
             users.push(newUser);
             await writeJson(usersPath, users);
             res.status(201).json({ success: true, user: { phone, name } });
@@ -1141,6 +1143,7 @@ app.post('/api/auth/login', async (req, res) => {
             if (needsMigration) {
                 user.mpin = incomingHash;
             }
+            user.lastActiveAt = Date.now();
             await user.save();
 
             await logUserLogin(user.phone, user.name, 'success', req);
@@ -1210,6 +1213,7 @@ app.post('/api/auth/login', async (req, res) => {
             if (needsMigration) {
                 user.mpin = incomingHash;
             }
+            user.lastActiveAt = Date.now();
             users[userIndex] = user;
             await writeJson(usersPath, users);
 
@@ -1399,6 +1403,7 @@ app.post('/api/admin/users/unblock/:phone', requireAdminOrDeveloper, async (req,
             user.loginAttempts = 0;
             user.lockUntil = 0;
             user.isBlocked = false;
+            user.blockedAt = 0;
             await user.save();
             res.json({ success: true, message: 'User unblocked successfully.' });
         } else {
@@ -1410,6 +1415,7 @@ app.post('/api/admin/users/unblock/:phone', requireAdminOrDeveloper, async (req,
             users[userIndex].loginAttempts = 0;
             users[userIndex].lockUntil = 0;
             users[userIndex].isBlocked = false;
+            users[userIndex].blockedAt = 0;
             await writeJson(usersPath, users);
             res.json({ success: true, message: 'User unblocked successfully.' });
         }
@@ -1429,6 +1435,7 @@ app.post('/api/admin/users/block/:phone', requireAdminOrDeveloper, async (req, r
                 return res.status(404).json({ error: 'User not found.' });
             }
             user.isBlocked = true;
+            user.blockedAt = Date.now();
             await user.save();
             res.json({ success: true, message: 'User blocked successfully.' });
         } else {
@@ -1438,6 +1445,7 @@ app.post('/api/admin/users/block/:phone', requireAdminOrDeveloper, async (req, r
                 return res.status(404).json({ error: 'User not found.' });
             }
             users[userIndex].isBlocked = true;
+            users[userIndex].blockedAt = Date.now();
             await writeJson(usersPath, users);
             res.json({ success: true, message: 'User blocked successfully.' });
         }

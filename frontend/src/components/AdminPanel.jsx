@@ -202,6 +202,12 @@ export default function AdminPanel({
         return { label: 'Active', class: 'active' };
     };
 
+    const formatDateTime = (timestamp) => {
+        if (!timestamp) return 'N/A';
+        const d = new Date(timestamp);
+        return d.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+    };
+
     const handleLoginSubmit = async (e) => {
         e.preventDefault();
         setLoginError('');
@@ -1032,7 +1038,22 @@ export default function AdminPanel({
                                         const status = getUserStatus(u);
                                         return (
                                             <tr key={u.phone}>
-                                                <td className="bold-td">{u.name}</td>
+                                                <td className="bold-td">
+                                                    <div>{u.name}</div>
+                                                    {u.isBlocked && u.blockedAt ? (
+                                                        <div style={{ fontSize: '11px', color: 'var(--error)', fontWeight: 'normal', marginTop: '4px', textTransform: 'none', letterSpacing: 'normal' }}>
+                                                            🚫 Blocked: {formatDateTime(u.blockedAt)}
+                                                        </div>
+                                                    ) : u.lastActiveAt ? (
+                                                        <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 'normal', marginTop: '4px', textTransform: 'none', letterSpacing: 'normal' }}>
+                                                            🟢 Active: {formatDateTime(u.lastActiveAt)}
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 'normal', marginTop: '4px', textTransform: 'none', letterSpacing: 'normal' }}>
+                                                            ⚪ No session history
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td>{u.phone}</td>
                                                 <td>{u.loginAttempts || 0} / 5 (lock) / 7 (block)</td>
                                                 <td>

@@ -509,7 +509,22 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                         const status = getUserStatus(u);
                                         return (
                                             <tr key={u.phone} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background-color 0.2s' }}>
-                                                <td className="bold-td" style={{ padding: '16px', fontWeight: '700', color: '#ffffff' }}>{u.name}</td>
+                                                <td className="bold-td" style={{ padding: '16px', fontWeight: '700', color: '#ffffff' }}>
+                                                    <div>{u.name}</div>
+                                                    {u.isBlocked && u.blockedAt ? (
+                                                        <div style={{ fontSize: '11px', color: '#f87171', fontWeight: 'normal', marginTop: '4px' }}>
+                                                            🚫 Blocked: {formatDateTime(u.blockedAt)}
+                                                        </div>
+                                                    ) : u.lastActiveAt ? (
+                                                        <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 'normal', marginTop: '4px' }}>
+                                                            🟢 Active: {formatDateTime(u.lastActiveAt)}
+                                                        </div>
+                                                    ) : (
+                                                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 'normal', marginTop: '4px' }}>
+                                                            ⚪ No session history
+                                                        </div>
+                                                    )}
+                                                </td>
                                                 <td style={{ padding: '16px' }}>{u.phone}</td>
                                                 <td style={{ padding: '16px', fontWeight: '600' }}>
                                                     <span style={{ color: u.loginAttempts >= 5 ? '#f59e0b' : 'inherit' }}>
