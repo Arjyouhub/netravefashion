@@ -27,6 +27,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     const [logs, setLogs] = useState([]);
     const [systemStatus, setSystemStatus] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
+    const [deletingUserPhone, setDeletingUserPhone] = useState(null);
+    const [blockingUserPhone, setBlockingUserPhone] = useState(null);
 
     // Credentials Forms States
     const [currentPassword, setCurrentPassword] = useState('');
@@ -159,9 +161,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
         setIsLoggedIn(false);
     };
 
-    // User block / unblock actions
+    // User block / unblock / delete actions
     const handleBlockUser = async (phone) => {
-        if (!window.confirm(`Are you sure you want to block this user (${phone})?`)) return;
         try {
             const devToken = getCookie('developerSessionToken');
             const response = await fetch(`${API_BASE_URL}/admin/users/block/${phone}`, {
@@ -169,10 +170,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                 headers: { 'x-developer-session': devToken }
             });
             if (response.ok) {
-                setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true } : u));
-                alert('User blocked successfully!');
-            } else {
-                alert('Failed to block user.');
+                setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true, blockedAt: Date.now() } : u));
+                setBlockingUserPhone(null);
             }
         } catch (err) {
             console.error('Block error:', err);
@@ -187,13 +186,26 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                 headers: { 'x-developer-session': devToken }
             });
             if (response.ok) {
-                setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, loginAttempts: 0, lockUntil: 0 } : u));
-                alert('User unblocked successfully!');
-            } else {
-                alert('Failed to unblock user.');
+                setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, blockedAt: 0, loginAttempts: 0, lockUntil: 0 } : u));
             }
         } catch (err) {
             console.error('Unblock error:', err);
+        }
+    };
+
+    const handleDeleteUser = async (phone) => {
+        try {
+            const devToken = getCookie('developerSessionToken');
+            const response = await fetch(`${API_BASE_URL}/admin/users/${phone}`, {
+                method: 'DELETE',
+                headers: { 'x-developer-session': devToken }
+            });
+            if (response.ok) {
+                setUsers(users.filter(u => u.phone !== phone));
+                setDeletingUserPhone(null);
+            }
+        } catch (err) {
+            console.error('Delete user error:', err);
         }
     };
 
@@ -537,22 +549,67 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '16px' }}>
-                                                    {(u.isBlocked || (u.lockUntil && u.lockUntil > Date.now())) ? (
-                                                        <button 
-                                                            className="cta-btn primary-cta" 
-                                                            onClick={() => handleUnblockUser(u.phone)}
-                                                            style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', background: '#10b981', color: '#ffffff' }}
-                                                        >
-                                                            Force Unblock
-                                                        </button>
+                                                    {deletingUserPhone === u.phone ? (
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            <button 
+                                                                className="cta-btn primary-cta" 
+                                                                onClick={() => handleDeleteUser(u.phone)}
+                                                                style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', background: '#ef4444', color: '#ffffff', borderColor: '#ef4444' }}
+                                                            >
+                                                                Confirm Delete
+                                                            </button>
+                                                            <button 
+                                                                className="cta-btn secondary-cta" 
+                                                                onClick={() => setDeletingUserPhone(null)}
+                                                                style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: 'rgba(255,255,255,0.15)', color: '#94a3b8', background: 'transparent' }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    ) : blockingUserPhone === u.phone ? (
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            <button 
+                                                                className="cta-btn primary-cta" 
+                                                                onClick={() => handleBlockUser(u.phone)}
+                                                                style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', background: '#f59e0b', color: '#000000', borderColor: '#f59e0b' }}
+                                                            >
+                                                                Confirm Block
+                                                            </button>
+                                                            <button 
+                                                                className="cta-btn secondary-cta" 
+                                                                onClick={() => setBlockingUserPhone(null)}
+                                                                style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: 'rgba(255,255,255,0.15)', color: '#94a3b8', background: 'transparent' }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
                                                     ) : (
-                                                        <button 
-                                                            className="cta-btn secondary-cta" 
-                                                            onClick={() => handleBlockUser(u.phone)}
-                                                            style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: '#ef4444', color: '#ef4444', background: 'transparent' }}
-                                                        >
-                                                            Force Block
-                                                        </button>
+                                                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                                            {(u.isBlocked || (u.lockUntil && u.lockUntil > Date.now())) ? (
+                                                                <button 
+                                                                    className="cta-btn primary-cta" 
+                                                                    onClick={() => handleUnblockUser(u.phone)}
+                                                                    style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', background: '#10b981', color: '#ffffff', borderColor: '#10b981' }}
+                                                                >
+                                                                    Force Unblock
+                                                                </button>
+                                                            ) : (
+                                                                <button 
+                                                                    className="cta-btn secondary-cta" 
+                                                                    onClick={() => setBlockingUserPhone(u.phone)}
+                                                                    style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: '#f59e0b', color: '#f59e0b', background: 'transparent' }}
+                                                                >
+                                                                    Force Block
+                                                                </button>
+                                                            )}
+                                                            <button 
+                                                                className="cta-btn secondary-cta" 
+                                                                onClick={() => setDeletingUserPhone(u.phone)}
+                                                                style={{ padding: '6px 12px', fontSize: '12px', minHeight: 'unset', width: 'auto', borderColor: '#ef4444', color: '#ef4444', background: 'transparent' }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
                                                     )}
                                                 </td>
                                             </tr>

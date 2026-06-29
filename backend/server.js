@@ -1455,6 +1455,32 @@ app.post('/api/admin/users/block/:phone', requireAdminOrDeveloper, async (req, r
     }
 });
 
+// Delete user account manually
+app.delete('/api/admin/users/:phone', requireAdminOrDeveloper, async (req, res) => {
+    try {
+        const { phone } = req.params;
+        if (useMongo) {
+            const deleted = await UserModel.findOneAndDelete({ phone });
+            if (!deleted) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            res.json({ success: true, message: 'User account deleted successfully.' });
+        } else {
+            const users = await readJson(usersPath);
+            const userIndex = users.findIndex(u => u.phone === phone);
+            if (userIndex === -1) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+            const filtered = users.filter(u => u.phone !== phone);
+            await writeJson(usersPath, filtered);
+            res.json({ success: true, message: 'User account deleted successfully.' });
+        }
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to delete user.' });
+    }
+});
+
 // Admin Authentication Login
 app.post('/api/admin/login', async (req, res) => {
     try {
