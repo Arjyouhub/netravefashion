@@ -2305,6 +2305,11 @@ h1, h2, h3, h4, h5, h6 {
         gap: 8px;
     }
     
+    .logo-text {
+        align-items: center;
+        text-align: center;
+    }
+    
     .logo-img {
         height: 44px;
     }
@@ -3178,6 +3183,28 @@ h1, h2, h3, h4, h5, h6 {
     .footer-container {
         grid-template-columns: 1fr;
         gap: 30px;
+    }
+    
+    .footer-info {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    
+    .footer-info .logo {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        justify-content: center;
+    }
+    
+    .footer-info p {
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    
+    .social-links {
+        justify-content: center;
     }
     
     /* Admin headers and inputs stacking */
