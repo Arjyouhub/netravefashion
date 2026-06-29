@@ -122,6 +122,19 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
+
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const text = await response.text();
+                console.error("Non-JSON response from server:", text);
+                if (response.status === 404) {
+                    setLoginError("Login route not found on server (404). Please ensure your Render backend is deployed with the latest code.");
+                } else {
+                    setLoginError(`Server error: ${response.status} ${response.statusText}`);
+                }
+                return;
+            }
+
             const data = await response.json();
             if (response.ok && data.success) {
                 setCookie('isDeveloperLoggedIn', 'true');
