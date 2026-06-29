@@ -98,13 +98,15 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
     };
 
     // Fetch server status from backend
-    const fetchSystemStatus = async () => {
+    const fetchSystemStatus = async (isSilent = false) => {
         setSystemStatusError('');
-        setLoadingSystemStatus(true);
+        if (!isSilent) {
+            setLoadingSystemStatus(true);
+        }
         try {
             const devToken = getCookie('developerSessionToken');
             if (!devToken) {
-                setLoadingSystemStatus(false);
+                if (!isSilent) setLoadingSystemStatus(false);
                 return;
             }
             const response = await fetch(`${API_BASE_URL}/developer/system-status`, {
@@ -125,7 +127,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
             console.error('Error fetching system status:', err);
             setSystemStatusError('Network error connecting to backend diagnostics.');
         } finally {
-            setLoadingSystemStatus(false);
+            if (!isSilent) setLoadingSystemStatus(false);
         }
     };
 
@@ -187,14 +189,14 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
             // Initial fetches
             fetchUsers();
             fetchLogs();
-            fetchSystemStatus();
+            fetchSystemStatus(false);
             fetchSettings();
 
             // Setup 5-second polling interval
             const interval = setInterval(() => {
                 fetchUsers();
                 fetchLogs();
-                fetchSystemStatus();
+                fetchSystemStatus(true);
             }, 5000);
 
             return () => clearInterval(interval);
@@ -814,7 +816,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
                 <div className="admin-tab-content">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                         <h3 style={{ color: '#ffffff', margin: 0 }}>Render Engine Diagnostics</h3>
-                        <button className="cta-btn secondary-cta" onClick={fetchSystemStatus} style={{ width: 'auto', minHeight: 'unset', padding: '10px 18px', fontSize: '13px', borderColor: 'rgba(255,255,255,0.08)' }}>
+                        <button className="cta-btn secondary-cta" onClick={() => fetchSystemStatus(false)} style={{ width: 'auto', minHeight: 'unset', padding: '10px 18px', fontSize: '13px', borderColor: 'rgba(255,255,255,0.08)' }}>
                             🔄 Refresh Diagnostics
                         </button>
                     </div>
