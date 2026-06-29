@@ -3885,3 +3885,49 @@ h1, h2, h3, h4, h5, h6 {
         background-position: -200% 0;
     }
 }
+
+/* Responsive modal alignments and overflow fixes for small mobile devices */
+@media (max-width: 768px) {
+    .checkout-modal-content, 
+    .success-modal-content, 
+    .bookings-list-modal {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 10px !important;
+        box-sizing: border-box !important;
+    }
+    
+    .checkout-grid {
+        display: flex !important;
+        flex-direction: column !important;
+        width: 100% !important;
+    }
+
+    .checkout-form-container,
+    .checkout-sidebar {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        padding: 20px 12px !important;
+    }
+
+    .form-title {
+        font-size: 20px !important;
+        margin-right: 40px !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+
+    .form-subtitle {
+        margin-right: 40px !important;
+        word-wrap: break-word !important;
+        overflow-wrap: break-word !important;
+    }
+    
+    .whatsapp-prompt-box h3 {
+        font-size: 14px !important;
+    }
+    
+    .whatsapp-prompt-box p {
+        font-size: 12px !important;
+    }
+}
