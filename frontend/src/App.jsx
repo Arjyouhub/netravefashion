@@ -130,7 +130,7 @@ function MaintenanceCountdown({ expiryTimestamp }) {
 
 export default function App() {
     // A. Main State
-    const [products, setProducts] = useState(FALLBACK_PRODUCTS);
+    const [products, setProducts] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [cart, setCart] = useState(() => {
         try {
@@ -183,10 +183,15 @@ export default function App() {
                     const data = await response.json();
                     if (data && data.length > 0) {
                         setProducts(data);
+                    } else {
+                        setProducts(FALLBACK_PRODUCTS);
                     }
+                } else {
+                    setProducts(FALLBACK_PRODUCTS);
                 }
             } catch (err) {
                 console.warn('Backend server offline. Running with fallback product data.', err.message);
+                setProducts(FALLBACK_PRODUCTS);
             } finally {
                 setLoadingProducts(false);
             }
