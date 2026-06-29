@@ -54,6 +54,10 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             const response = await fetch(`${API_BASE_URL}/developer/users`, {
                 headers: { 'x-developer-session': devToken }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
@@ -71,6 +75,10 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             const response = await fetch(`${API_BASE_URL}/developer/logs`, {
                 headers: { 'x-developer-session': devToken }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 const data = await response.json();
                 setLogs(data);
@@ -93,6 +101,10 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             const response = await fetch(`${API_BASE_URL}/developer/system-status`, {
                 headers: { 'x-developer-session': devToken }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 const data = await response.json();
                 setSystemStatus(data);

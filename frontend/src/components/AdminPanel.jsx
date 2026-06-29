@@ -147,6 +147,10 @@ export default function AdminPanel({
             const response = await fetch(`${API_BASE_URL}/admin/users`, {
                 headers: { 'x-admin-session': getCookie('adminSessionToken') }
             });
+            if (response.status === 401) {
+                handleLogout();
+                return;
+            }
             if (response.ok) {
                 const data = await response.json();
                 setUsers(data);
