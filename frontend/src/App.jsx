@@ -153,6 +153,7 @@ export default function App() {
     const [isBookingsOpen, setIsBookingsOpen] = useState(false);
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const [pendingCheckout, setPendingCheckout] = useState(false);
     const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
     const [user, setUser] = useState(() => getCookie('netrave_user'));
 
@@ -243,6 +244,10 @@ export default function App() {
     const handleAuthSuccess = (userData) => {
         setUser(userData);
         setCookie('netrave_user', userData);
+        if (pendingCheckout) {
+            setIsCheckoutOpen(true);
+            setPendingCheckout(false);
+        }
     };
 
     const handleLogout = () => {
@@ -770,6 +775,7 @@ export default function App() {
                     }
                     if (!user) {
                         showToast('Please login or register to place your order.', 'info');
+                        setPendingCheckout(true);
                         setIsAuthOpen(true);
                         setIsCartOpen(false);
                     } else {
@@ -790,7 +796,10 @@ export default function App() {
 
             <AuthModal
                 isOpen={isAuthOpen}
-                onClose={() => setIsAuthOpen(false)}
+                onClose={() => {
+                    setIsAuthOpen(false);
+                    setPendingCheckout(false);
+                }}
                 onAuthSuccess={handleAuthSuccess}
                 API_BASE_URL={API_BASE_URL}
             />
