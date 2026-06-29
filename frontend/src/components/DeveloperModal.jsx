@@ -29,6 +29,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     const [searchQuery, setSearchQuery] = useState('');
     const [deletingUserPhone, setDeletingUserPhone] = useState(null);
     const [blockingUserPhone, setBlockingUserPhone] = useState(null);
+    const [successBanner, setSuccessBanner] = useState('');
+    const [actionError, setActionError] = useState('');
 
     // Credentials Forms States
     const [currentPassword, setCurrentPassword] = useState('');
@@ -161,6 +163,18 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
         setIsLoggedIn(false);
     };
 
+    const showSuccess = (msg) => {
+        setSuccessBanner(msg);
+        setActionError('');
+        setTimeout(() => setSuccessBanner(''), 4000);
+    };
+
+    const showError = (msg) => {
+        setActionError(msg);
+        setSuccessBanner('');
+        setTimeout(() => setActionError(''), 4000);
+    };
+
     // User block / unblock / delete actions
     const handleBlockUser = async (phone) => {
         try {
@@ -172,9 +186,14 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true, blockedAt: Date.now() } : u));
                 setBlockingUserPhone(null);
+                showSuccess(`User account ${phone} has been blocked.`);
+            } else {
+                const data = await response.json();
+                showError(data.error || 'Failed to block user.');
             }
         } catch (err) {
             console.error('Block error:', err);
+            showError('Network error blocking user.');
         }
     };
 
@@ -187,9 +206,14 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             });
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, blockedAt: 0, loginAttempts: 0, lockUntil: 0 } : u));
+                showSuccess(`User account ${phone} has been unblocked.`);
+            } else {
+                const data = await response.json();
+                showError(data.error || 'Failed to unblock user.');
             }
         } catch (err) {
             console.error('Unblock error:', err);
+            showError('Network error unblocking user.');
         }
     };
 
@@ -203,9 +227,14 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             if (response.ok) {
                 setUsers(users.filter(u => u.phone !== phone));
                 setDeletingUserPhone(null);
+                showSuccess(`User account ${phone} has been permanently deleted.`);
+            } else {
+                const data = await response.json();
+                showError(data.error || 'Failed to delete user.');
             }
         } catch (err) {
             console.error('Delete user error:', err);
+            showError('Network error deleting user.');
         }
     };
 
@@ -499,6 +528,18 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                             🔄 Refresh Database Logs
                         </button>
                     </div>
+
+                    {successBanner && (
+                        <div style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', fontWeight: '600' }}>
+                            ✅ {successBanner}
+                        </div>
+                    )}
+
+                    {actionError && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', padding: '12px 16px', borderRadius: '8px', marginBottom: '20px', fontSize: '14px', fontWeight: '600' }}>
+                            ⚠️ {actionError}
+                        </div>
+                    )}
 
                     <div className="responsive-table-wrapper" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', overflowX: 'auto', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', width: '100%' }}>
                         <table className="admin-table" style={{ width: '100%', borderCollapse: 'collapse' }}>

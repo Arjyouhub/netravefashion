@@ -28,6 +28,8 @@ export default function AdminPanel({
     const [userError, setUserError] = useState('');
     const [deletingUserPhone, setDeletingUserPhone] = useState(null);
     const [blockingUserPhone, setBlockingUserPhone] = useState(null);
+    const [successBanner, setSuccessBanner] = useState('');
+    const [actionError, setActionError] = useState('');
 
     // Admin Auth States
     const [isLoggedIn, setIsLoggedIn] = useState(() => getCookie('isAdminLoggedIn') === 'true');
@@ -160,6 +162,18 @@ export default function AdminPanel({
         }
     }, [isLoggedIn]);
 
+    const showSuccess = (msg) => {
+        setSuccessBanner(msg);
+        setActionError('');
+        setTimeout(() => setSuccessBanner(''), 4000);
+    };
+
+    const showError = (msg) => {
+        setActionError(msg);
+        setSuccessBanner('');
+        setTimeout(() => setActionError(''), 4000);
+    };
+
     const handleUnblockUser = async (phone) => {
         try {
             const response = await fetch(`${API_BASE_URL}/admin/users/unblock/${phone}`, {
@@ -168,9 +182,14 @@ export default function AdminPanel({
             });
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: false, blockedAt: 0, loginAttempts: 0, lockUntil: 0 } : u));
+                showSuccess(`User account ${phone} has been unblocked.`);
+            } else {
+                const data = await response.json();
+                showError(data.error || 'Failed to unblock user.');
             }
         } catch (err) {
             console.error('Unblock error:', err);
+            showError('Network error unblocking user.');
         }
     };
 
@@ -183,9 +202,14 @@ export default function AdminPanel({
             if (response.ok) {
                 setUsers(users.map(u => u.phone === phone ? { ...u, isBlocked: true, blockedAt: Date.now() } : u));
                 setBlockingUserPhone(null);
+                showSuccess(`User account ${phone} has been blocked.`);
+            } else {
+                const data = await response.json();
+                showError(data.error || 'Failed to block user.');
             }
         } catch (err) {
             console.error('Block error:', err);
+            showError('Network error blocking user.');
         }
     };
 
@@ -198,9 +222,14 @@ export default function AdminPanel({
             if (response.ok) {
                 setUsers(users.filter(u => u.phone !== phone));
                 setDeletingUserPhone(null);
+                showSuccess(`User account ${phone} has been permanently deleted.`);
+            } else {
+                const data = await response.json();
+                showError(data.error || 'Failed to delete user.');
             }
         } catch (err) {
             console.error('Delete user error:', err);
+            showError('Network error deleting user.');
         }
     };
 
@@ -1027,6 +1056,18 @@ export default function AdminPanel({
                     <div className="tab-actions-bar">
                         <h3>Registered Store Customers</h3>
                     </div>
+
+                    {successBanner && (
+                        <div style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', padding: '12px 16px', borderRadius: '8px', marginTop: '15px', fontSize: '14px', fontWeight: '600' }}>
+                            ✅ {successBanner}
+                        </div>
+                    )}
+
+                    {actionError && (
+                        <div style={{ background: 'rgba(239,68,68,0.1)', color: 'var(--error)', border: '1px solid rgba(239,68,68,0.2)', padding: '12px 16px', borderRadius: '8px', marginTop: '15px', fontSize: '14px', fontWeight: '600' }}>
+                            ⚠️ {actionError}
+                        </div>
+                    )}
 
                     <div className="responsive-table-wrapper" style={{ marginTop: '20px', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
                         <table className="admin-table">
