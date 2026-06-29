@@ -170,7 +170,7 @@ export default function CheckoutModal({ isOpen, cart, onClose, onSubmitBooking, 
 
     return (
         <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }}>
-            <div className="modal-content checkout-modal-content">
+            <div className="modal-content checkout-modal-content" style={{ overflowY: 'auto', maxHeight: '90vh' }}>
                 <button className="close-btn modal-close" onClick={onClose}>&times;</button>
                 
                 <div className="checkout-grid">

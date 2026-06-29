@@ -44,7 +44,7 @@ ${itemsText}
  
     return (
         <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) onClose(); }}>
-            <div className="modal-content success-modal-content">
+            <div className="modal-content success-modal-content" style={{ overflowY: 'auto', maxHeight: '90vh' }}>
                 <div className="success-header">
                     <div className="success-checkmark-wrapper">
                         <div className="checkmark-circle">

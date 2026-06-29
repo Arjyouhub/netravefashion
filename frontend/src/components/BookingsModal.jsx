@@ -205,7 +205,7 @@ ${itemsText}
                 }
             `}</style>
 
-            <div className="modal-content bookings-list-modal" style={{ maxWidth: '650px', background: 'rgba(10,11,14,0.95)', border: '1px solid rgba(245,158,11,0.15)', backdropFilter: 'blur(20px)', borderRadius: '16px', position: 'relative' }}>
+            <div className="modal-content bookings-list-modal" style={{ maxWidth: '650px', background: 'rgba(10,11,14,0.95)', border: '1px solid rgba(245,158,11,0.15)', backdropFilter: 'blur(20px)', borderRadius: '16px', position: 'relative', overflowY: 'auto', maxHeight: '90vh' }}>
                 <button className="close-btn modal-close" onClick={onClose}>&times;</button>
                 
                 <h2 style={{ fontSize: '24px', fontWeight: '800', color: '#fff', marginBottom: '8px' }}>My Order History</h2>
