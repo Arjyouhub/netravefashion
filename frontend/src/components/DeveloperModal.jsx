@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getCookie, setCookie, eraseCookie } from '../utils/cookies';
 
-export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
+export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToast }) {
     // Style configurations for standard dark inputs
     const inputStyle = {
         width: '100%',
@@ -33,6 +33,15 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
     const [blockingUserPhone, setBlockingUserPhone] = useState(null);
     const [successBanner, setSuccessBanner] = useState('');
     const [actionError, setActionError] = useState('');
+
+    // Maintenance Settings States
+    const [maintMode, setMaintMode] = useState(false);
+    const [maintMsg, setMaintMsg] = useState('We are currently performing scheduled maintenance.');
+    const [maintExpiry, setMaintExpiry] = useState('');
+    const [whatsappNum, setWhatsappNum] = useState('919946550713');
+    const [offerNotif, setOfferNotif] = useState('');
+    const [settingsSuccess, setSettingsSuccess] = useState('');
+    const [settingsError, setSettingsError] = useState('');
 
     // Credentials Forms States
     const [currentPassword, setCurrentPassword] = useState('');
@@ -120,6 +129,58 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
         }
     };
 
+    // Fetch settings from backend
+    const fetchSettings = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`);
+            if (response.ok) {
+                const data = await response.json();
+                setWhatsappNum(data.whatsappNumber);
+                setMaintMode(data.maintenanceMode || false);
+                setMaintMsg(data.maintenanceMessage || 'We are currently performing scheduled maintenance.');
+                setMaintExpiry(data.maintenanceExpiry ? new Date(data.maintenanceExpiry - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '');
+                setOfferNotif(data.offerNotification || '');
+            }
+        } catch (err) {
+            console.error('Error fetching settings in dev portal:', err);
+        }
+    };
+
+    // Save configurations
+    const handleSaveSettings = async (e) => {
+        e.preventDefault();
+        setSettingsSuccess('');
+        setSettingsError('');
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    whatsappNumber: whatsappNum,
+                    maintenanceMode: maintMode,
+                    maintenanceMessage: maintMsg,
+                    maintenanceExpiry: maintExpiry ? new Date(maintExpiry).getTime() : 0,
+                    offerNotification: offerNotif
+                })
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setMaintMode(data.maintenanceMode);
+                setMaintMsg(data.maintenanceMessage);
+                setMaintExpiry(data.maintenanceExpiry ? new Date(data.maintenanceExpiry - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '');
+                setSettingsSuccess('Maintenance configurations saved successfully.');
+                if (showToast) {
+                    showToast('Maintenance configurations saved successfully.', 'success');
+                }
+            } else {
+                setSettingsError('Failed to save settings to server.');
+            }
+        } catch (err) {
+            console.error('Error saving settings in dev portal:', err);
+            setSettingsError('Network error saving configurations.');
+        }
+    };
+
     // Poll data periodically when logged in and modal is open
     useEffect(() => {
         if (isLoggedIn && isOpen) {
@@ -127,6 +188,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
             fetchUsers();
             fetchLogs();
             fetchSystemStatus();
+            fetchSettings();
 
             // Setup 5-second polling interval
             const interval = setInterval(() => {
@@ -503,6 +565,13 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                 >
                     Credentials Bypass Override
                 </button>
+                <button 
+                    className={`tab-btn ${activeTab === 'maintenance' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('maintenance')}
+                    style={{ background: 'none', border: 'none', borderBottom: activeTab === 'maintenance' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'maintenance' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
+                >
+                    Storefront Maintenance Mode
+                </button>
             </div>
 
             {/* Mobile Dropdown Tab Selector (Mobile view) */}
@@ -528,6 +597,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                     <option value="logs">📜 Customer Login History</option>
                     <option value="system">🖥️ Server Health & RAM Status</option>
                     <option value="credentials">🔑 Credentials Bypass Override</option>
+                    <option value="maintenance">🛠️ Storefront Maintenance Mode</option>
                 </select>
             </div>
 
@@ -961,6 +1031,73 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL }) {
                         </form>
                     </div>
 
+                </div>
+            )}
+
+            {activeTab === 'maintenance' && (
+                <div className="admin-tab-content" style={{ display: 'block' }}>
+                    <div className="settings-card" style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '24px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxWidth: '700px' }}>
+                        <h3 style={{ color: '#fff', fontSize: '20px', fontWeight: '800', marginTop: 0, marginBottom: '8px' }}>Storefront Maintenance Setup</h3>
+                        <p style={{ color: '#64748b', fontSize: '14px', lineHeight: '1.5', marginBottom: '25px' }}>
+                            Configure scheduled storefront downtime warning alerts. Users will see a countdown calendar notice at the top of the storefront, and checkout will be disabled.
+                        </p>
+
+                        <form onSubmit={handleSaveSettings} className="admin-settings-form">
+                            <div className="form-field toggle-field" style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
+                                <input 
+                                    type="checkbox" 
+                                    id="maintenanceModeCheckboxDev"
+                                    checked={maintMode} 
+                                    onChange={e => setMaintMode(e.target.checked)}
+                                    style={{ width: '22px', height: '22px', cursor: 'pointer', accentColor: '#06b6d4' }}
+                                />
+                                <label htmlFor="maintenanceModeCheckboxDev" style={{ margin: 0, cursor: 'pointer', fontWeight: '600', color: '#fff', fontSize: '15px' }}>
+                                    Enable Storefront Maintenance Mode
+                                </label>
+                            </div>
+
+                            <div className="form-field" style={{ marginBottom: '20px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Maintenance Message (Warning banner text) *</label>
+                                <textarea 
+                                    required
+                                    value={maintMsg} 
+                                    onChange={e => setMaintMsg(e.target.value)} 
+                                    rows="3"
+                                    placeholder="e.g. We are undergoing scheduled maintenance. We will be back shortly!"
+                                    style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px', padding: '12px', width: '100%', fontFamily: 'inherit', boxSizing: 'border-box' }}
+                                />
+                            </div>
+
+                            <div className="form-field" style={{ marginBottom: '24px' }}>
+                                <label style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Maintenance Expiry Calendar Selection (Date & Time when timer ends)</label>
+                                <input 
+                                    type="datetime-local" 
+                                    value={maintExpiry} 
+                                    onChange={e => setMaintExpiry(e.target.value)} 
+                                    style={{ background: '#131b2e', border: '1px solid rgba(255,255,255,0.08)', color: '#fff', borderRadius: '8px', padding: '12px', width: '100%', boxSizing: 'border-box' }}
+                                />
+                                <small style={{ color: '#64748b', display: 'block', marginTop: '6px' }}>
+                                    Leave empty or clear it if you want the banner to display without a countdown timer.
+                                </small>
+                            </div>
+
+                            {settingsSuccess && (
+                                <div style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', border: '1px solid rgba(16,185,129,0.2)', padding: '12px', borderRadius: '8px', fontSize: '14px', marginBottom: '20px', fontWeight: 'bold' }}>
+                                    ✅ {settingsSuccess}
+                                </div>
+                            )}
+
+                            {settingsError && (
+                                <div style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.2)', padding: '12px', borderRadius: '8px', fontSize: '14px', marginBottom: '20px' }}>
+                                    ❌ {settingsError}
+                                </div>
+                            )}
+
+                            <button type="submit" className="cta-btn primary-cta" style={{ background: '#06b6d4', color: '#090d16', fontWeight: 'bold', width: 'auto', minHeight: 'unset', padding: '12px 28px' }}>
+                                Save Maintenance Configurations
+                            </button>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>
