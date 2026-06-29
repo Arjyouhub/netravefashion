@@ -2324,7 +2324,9 @@ h1, h2, h3, h4, h5, h6 {
     }
 
     .logo-sub {
-        display: none !important;
+        font-size: 8px;
+        letter-spacing: 1.5px;
+        display: block !important;
     }
     
     .hero-section {
@@ -3297,7 +3299,9 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .logo-sub {
-        display: none !important;
+        font-size: 7.5px !important;
+        letter-spacing: 1.5px !important;
+        display: block !important;
     }
     
     .logo-img {
