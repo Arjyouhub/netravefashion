@@ -650,7 +650,7 @@ export default function AdminPanel({
                 </div>
             </div>
 
-            {/* Admin Tabs */}
+            {/* Admin Tabs (Desktop) */}
             <div className="admin-tabs-row">
                 <button 
                     className={`admin-tab-btn ${activeTab === 'products' ? 'active' : ''}`}
@@ -682,6 +682,39 @@ export default function AdminPanel({
                 >
                     Shop Settings
                 </button>
+            </div>
+
+            {/* Admin Tabs (Mobile Dropdown) */}
+            <div className="admin-tabs-mobile-dropdown-container">
+                <label htmlFor="adminActiveTabSelect" style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dashboard Navigation</label>
+                <select
+                    id="adminActiveTabSelect"
+                    value={activeTab}
+                    onChange={(e) => {
+                        const val = e.target.value;
+                        setActiveTab(val);
+                        if (val === 'bookings') setCurrentPage(1);
+                    }}
+                    style={{
+                        width: '100%',
+                        background: '#12141c',
+                        color: '#fff',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '10px',
+                        padding: '12px 16px',
+                        fontSize: '14.5px',
+                        fontWeight: '600',
+                        outline: 'none',
+                        cursor: 'pointer',
+                        boxSizing: 'border-box'
+                    }}
+                >
+                    <option value="products">Manage Products ({products.length})</option>
+                    <option value="bookings">Orders & Bookings ({bookingsList.length})</option>
+                    <option value="coupons">Manage Coupons ({coupons.length})</option>
+                    <option value="users">Manage Users ({users.length})</option>
+                    <option value="settings">Shop Settings</option>
+                </select>
             </div>
 
             {/* TAB CONTENT: PRODUCTS */}

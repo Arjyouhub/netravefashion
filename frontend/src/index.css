@@ -2614,6 +2614,11 @@ h1, h2, h3, h4, h5, h6 {
     overflow-x: auto;
 }
 
+.admin-tabs-mobile-dropdown-container {
+    display: none;
+    margin-bottom: 25px;
+}
+
 .admin-tab-btn {
     background: var(--bg-surface);
     border: 1px solid var(--border-color);
@@ -3941,5 +3946,13 @@ h1, h2, h3, h4, h5, h6 {
     
     .whatsapp-prompt-box p {
         font-size: 12px !important;
+    }
+
+    .admin-tabs-row {
+        display: none !important;
+    }
+    
+    .admin-tabs-mobile-dropdown-container {
+        display: block !important;
     }
 }
