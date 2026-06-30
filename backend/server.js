@@ -820,7 +820,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
         const ordId = req.params.orderId;
         const { status } = req.body;
 
-        const validStatuses = ['Pending', 'Order Placed', 'Payment Confirmed', 'Dispatched', 'Delivered', 'Cancelled'];
+        const validStatuses = ['Pending', 'Order Placed', 'Payment Confirmed', 'Payment Not Confirmed', 'Dispatched', 'Delivered', 'Cancelled'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid booking status value.' });
         }

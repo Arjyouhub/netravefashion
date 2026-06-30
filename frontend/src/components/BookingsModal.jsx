@@ -254,7 +254,7 @@ ${itemsText}
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '10px' }}>
                                         <span style={{ fontSize: '13px', color: '#94a3b8' }}>
                                             Status: <span style={{ 
-                                                color: b.status === 'Cancelled' ? '#ef4444' : b.status === 'Delivered' ? '#10b981' : '#f59e0b', 
+                                                color: (b.status === 'Cancelled' || b.status === 'Payment Not Confirmed') ? '#ef4444' : b.status === 'Delivered' ? '#10b981' : '#f59e0b', 
                                                 fontWeight: 'bold',
                                                 textTransform: 'uppercase',
                                                 fontSize: '12px'

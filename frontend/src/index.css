@@ -3023,6 +3023,7 @@ h1, h2, h3, h4, h5, h6 {
 .status-select-dropdown.pending { color: var(--accent); border-color: var(--accent-glow); }
 .status-select-dropdown.order-placed { color: #60a5fa; border-color: rgba(96, 165, 250, 0.3); }
 .status-select-dropdown.payment-confirmed { color: #10b981; border-color: rgba(16, 185, 129, 0.3); }
+.status-select-dropdown.payment-not-confirmed { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
 .status-select-dropdown.dispatched { color: #c084fc; border-color: rgba(192, 132, 252, 0.3); }
 .status-select-dropdown.cancelled { color: var(--error); border-color: rgba(239, 68, 68, 0.3); }
 .status-select-dropdown.delivered { color: var(--primary); border-color: var(--primary-glow); }

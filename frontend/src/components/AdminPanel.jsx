@@ -964,6 +964,7 @@ export default function AdminPanel({
                                 <option value="Pending">Pending</option>
                                 <option value="Order Placed">Order Placed</option>
                                 <option value="Payment Confirmed">Payment Confirmed</option>
+                                <option value="Payment Not Confirmed">Payment Not Confirmed</option>
                                 <option value="Dispatched">Dispatched</option>
                                 <option value="Delivered">Delivered</option>
                                 <option value="Cancelled">Cancelled</option>
@@ -1029,6 +1030,7 @@ export default function AdminPanel({
                                                     <option value="Pending">Pending</option>
                                                     <option value="Order Placed">Order Placed</option>
                                                     <option value="Payment Confirmed">Payment Confirmed</option>
+                                                    <option value="Payment Not Confirmed">Payment Not Confirmed</option>
                                                     <option value="Dispatched">Dispatched</option>
                                                     <option value="Delivered">Delivered</option>
                                                     <option value="Cancelled">Cancelled</option>
@@ -1473,11 +1475,12 @@ export default function AdminPanel({
                                     style={{ width: '100%', boxSizing: 'border-box' }}
                                 >
                                     <option value="Pending">Pending</option>
-                                    <option value="Order Placed">Order Placed</option>
-                                    <option value="Payment Confirmed">Payment Confirmed</option>
-                                    <option value="Dispatched">Dispatched</option>
-                                    <option value="Delivered">Delivered</option>
-                                    <option value="Cancelled">Cancelled</option>
+                                                    <option value="Order Placed">Order Placed</option>
+                                                    <option value="Payment Confirmed">Payment Confirmed</option>
+                                                    <option value="Payment Not Confirmed">Payment Not Confirmed</option>
+                                                    <option value="Dispatched">Dispatched</option>
+                                                    <option value="Delivered">Delivered</option>
+                                                    <option value="Cancelled">Cancelled</option>
                                 </select>
                             </div>
 
