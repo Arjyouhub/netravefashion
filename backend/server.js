@@ -196,6 +196,28 @@ const LoginLogSchema = new mongoose.Schema({
 });
 const LoginLogModel = mongoose.models.LoginLog || mongoose.model('LoginLog', LoginLogSchema);
 
+// Seed default products to MongoDB if database is empty
+async function seedProductsIfNeeded() {
+    if (useMongo) {
+        try {
+            const count = await ProductModel.countDocuments();
+            if (count === 0) {
+                console.log('[Netrave Backend] MongoDB products collection is empty. Seeding from local products.json...');
+                const defaultProducts = await readJson(productsPath);
+                if (defaultProducts && defaultProducts.length > 0) {
+                    await ProductModel.insertMany(defaultProducts);
+                    console.log(`[Netrave Backend] Successfully seeded ${defaultProducts.length} products to MongoDB.`);
+                } else {
+                    console.log('[Netrave Backend] Local products.json is empty or not found. Skipping seeding.');
+                }
+            }
+        } catch (err) {
+            console.error('[Netrave Backend] Failed to seed products database:', err.message);
+        }
+    }
+}
+await seedProductsIfNeeded();
+
 // Helper function to log user auth events
 async function logUserLogin(phone, name, status, req) {
     try {
@@ -681,7 +703,7 @@ app.post('/api/bookings', async (req, res) => {
         const validatedItems = [];
 
         for (const item of items) {
-            const productRef = products.find(p => p.id === item.id);
+            const productRef = products.find(p => Number(p.id) === Number(item.id));
             if (!productRef) {
                 return res.status(400).json({ error: `Product item with ID ${item.id} does not exist.` });
             }
