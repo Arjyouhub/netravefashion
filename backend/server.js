@@ -1577,12 +1577,15 @@ app.post('/api/admin/login', async (req, res) => {
                 data.adminSessionToken = sessionToken;
                 await writeJson(settingsPath, [data]);
             }
+            await logUserLogin('admin', 'Administrator', 'success', req);
             res.json({ success: true, sessionToken, message: 'Logged in successfully.' });
         } else {
+            await logUserLogin(username || 'admin', 'Administrator', 'failed (incorrect credentials)', req);
             res.status(401).json({ error: 'Invalid admin credentials' });
         }
     } catch (err) {
         console.error(err);
+        await logUserLogin(username || 'admin', 'Administrator', 'failed (server error)', req);
         res.status(500).json({ error: 'Admin login failed.' });
     }
 });
@@ -1636,6 +1639,7 @@ app.post('/api/developer/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         if (username !== 'developer') {
+            await logUserLogin(username || 'developer', 'Developer', 'failed (incorrect username)', req);
             return res.status(401).json({ error: 'Invalid developer credentials' });
         }
 
@@ -1662,12 +1666,15 @@ app.post('/api/developer/login', async (req, res) => {
                 data.developerSessionToken = sessionToken;
                 await writeJson(settingsPath, [data]);
             }
+            await logUserLogin('developer', 'Developer', 'success', req);
             res.json({ success: true, sessionToken, message: 'Logged in successfully.' });
         } else {
+            await logUserLogin('developer', 'Developer', 'failed (incorrect password)', req);
             res.status(401).json({ error: 'Invalid developer credentials' });
         }
     } catch (err) {
         console.error(err);
+        await logUserLogin(username || 'developer', 'Developer', 'failed (server error)', req);
         res.status(500).json({ error: 'Developer login failed.' });
     }
 });

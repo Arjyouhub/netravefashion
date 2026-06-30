@@ -551,7 +551,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
                     onClick={() => setActiveTab('logs')}
                     style={{ background: 'none', border: 'none', borderBottom: activeTab === 'logs' ? '3px solid #06b6d4' : '3px solid transparent', color: activeTab === 'logs' ? '#ffffff' : '#64748b', padding: '10px 20px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flexShrink: 0 }}
                 >
-                    Customer Login History
+                    Login History (Users & Admin)
                 </button>
                 <button 
                     className={`tab-btn ${activeTab === 'system' ? 'active' : ''}`}
@@ -596,7 +596,7 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
                     }}
                 >
                     <option value="users">👤 Customer Database Logs</option>
-                    <option value="logs">📜 Customer Login History</option>
+                    <option value="logs">📜 User & Admin Login History</option>
                     <option value="system">🖥️ Server Health & RAM Status</option>
                     <option value="credentials">🔑 Credentials Bypass Override</option>
                     <option value="maintenance">🛠️ Storefront Maintenance Mode</option>
@@ -775,8 +775,8 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
                             <thead>
                                 <tr style={{ background: '#121929', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                                     <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Login Time</th>
-                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Customer Name</th>
-                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Phone Contact</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Name / Role</th>
+                                    <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Phone / Username</th>
                                     <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>Auth Status</th>
                                     <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>IP Address</th>
                                     <th style={{ padding: '16px', textAlign: 'left', fontWeight: '700', color: '#fff' }}>User Agent / Browser</th>
