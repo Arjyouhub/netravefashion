@@ -3,6 +3,9 @@ import React, { useState, useEffect } from 'react';
 export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess, whatsappNumber, onClose, API_BASE_URL }) {
     // Active states for self-service cancellation and reviews
     const [cancellingOrderId, setCancellingOrderId] = useState(null);
+    const [cancelConfirmId, setCancelConfirmId] = useState(null);
+    const [cancelLoading, setCancelLoading] = useState(false);
+    const [cancelFeedback, setCancelFeedback] = useState({ text: '', isError: false });
     const [reviewingItem, setReviewingItem] = useState(null); // { orderId, productId, title }
     const [rating, setRating] = useState(5);
     const [comment, setComment] = useState('');
@@ -68,27 +71,33 @@ ${itemsText}
     };
 
     // 3. Handle Order Cancellation
-    const handleCancelOrder = async (orderId) => {
-        if (!window.confirm(`Are you sure you want to cancel Order ID: ${orderId}? This will restore the product stock.`)) return;
-        setCancellingOrderId(orderId);
+    const executeCancelOrder = async () => {
+        if (!cancelConfirmId) return;
+        setCancelLoading(true);
+        setCancelFeedback({ text: '', isError: false });
         try {
-            const response = await fetch(`${API_BASE_URL}/bookings/${orderId}/cancel`, {
+            const response = await fetch(`${API_BASE_URL}/bookings/${cancelConfirmId}/cancel`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ phone: user.phone })
             });
             const data = await response.json();
             if (response.ok) {
-                alert('Your order has been cancelled successfully.');
+                setCancelFeedback({ text: 'Your order has been cancelled successfully.', isError: false });
                 if (onCancelSuccess) onCancelSuccess();
+                // Auto close the confirm overlay after 2 seconds
+                setTimeout(() => {
+                    setCancelConfirmId(null);
+                    setCancelFeedback({ text: '', isError: false });
+                }, 2000);
             } else {
-                alert(data.error || 'Failed to cancel order.');
+                setCancelFeedback({ text: data.error || 'Failed to cancel order.', isError: true });
             }
         } catch (err) {
             console.error('Cancellation error:', err);
-            alert('Failed to connect to backend server to cancel order.');
+            setCancelFeedback({ text: 'Failed to connect to backend server to cancel order.', isError: true });
         } finally {
-            setCancellingOrderId(null);
+            setCancelLoading(false);
         }
     };
 
@@ -291,10 +300,9 @@ ${itemsText}
                                     {b.status.toLowerCase() === 'pending' && (
                                         <button 
                                             className="cancel-order-btn" 
-                                            onClick={() => handleCancelOrder(b.orderId)}
-                                            disabled={cancellingOrderId === b.orderId}
+                                            onClick={() => setCancelConfirmId(b.orderId)}
                                         >
-                                            {cancellingOrderId === b.orderId ? 'Cancelling...' : 'Cancel Order'}
+                                            Cancel Order
                                         </button>
                                     )}
                                 </div>
@@ -393,6 +401,119 @@ ${itemsText}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                )}
+
+                {/* CUSTOM CANCEL ORDER CONFIRMATION MODAL OVERLAY */}
+                {cancelConfirmId && (
+                    <div style={{ 
+                        position: 'absolute', 
+                        top: 0, 
+                        left: 0, 
+                        width: '100%', 
+                        height: '100%', 
+                        background: 'rgba(10, 11, 14, 0.96)', 
+                        borderRadius: '16px', 
+                        padding: '30px', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        justifyContent: 'center', 
+                        alignItems: 'center',
+                        boxSizing: 'border-box',
+                        zIndex: 11
+                    }}>
+                        <div style={{
+                            background: '#12141c',
+                            border: '1px solid rgba(239, 68, 68, 0.2)',
+                            borderRadius: '12px',
+                            padding: '24px',
+                            maxWidth: '400px',
+                            width: '100%',
+                            textAlign: 'center',
+                            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(239, 68, 68, 0.1)'
+                        }}>
+                            {/* Danger Icon */}
+                            <div style={{
+                                width: '56px',
+                                height: '56px',
+                                borderRadius: '50%',
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                fontSize: '24px',
+                                color: '#ef4444',
+                                margin: '0 auto 16px'
+                            }}>
+                                ⚠️
+                            </div>
+
+                            <h3 style={{ color: '#fff', fontSize: '18px', fontWeight: '800', margin: '0 0 10px' }}>Cancel Order</h3>
+                            <p style={{ color: '#94a3b8', fontSize: '13.5px', lineHeight: '1.6', margin: '0 0 20px' }}>
+                                Are you sure you want to cancel Order ID: <strong style={{ color: '#f59e0b' }}>{cancelConfirmId}</strong>? This action will restore the product stock.
+                            </p>
+
+                            {cancelFeedback.text && (
+                                <div style={{ 
+                                    background: cancelFeedback.isError ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', 
+                                    color: cancelFeedback.isError ? '#ef4444' : '#10b981', 
+                                    border: cancelFeedback.isError ? '1px solid rgba(239,68,68,0.2)' : '1px solid rgba(16,185,129,0.2)', 
+                                    padding: '10px 14px', 
+                                    borderRadius: '8px', 
+                                    fontSize: '13px', 
+                                    marginBottom: '16px', 
+                                    fontWeight: '600' 
+                                }}>
+                                    {cancelFeedback.text}
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                                {!cancelFeedback.text || cancelFeedback.isError ? (
+                                    <>
+                                        <button 
+                                            type="button" 
+                                            className="support-btn" 
+                                            onClick={() => { setCancelConfirmId(null); setCancelFeedback({ text: '', isError: false }); }}
+                                            disabled={cancelLoading}
+                                            style={{ margin: 0, padding: '10px 18px', borderRadius: '8px', fontSize: '13px' }}
+                                        >
+                                            No, Keep Order
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={executeCancelOrder}
+                                            disabled={cancelLoading}
+                                            style={{ 
+                                                background: '#ef4444', 
+                                                color: '#fff', 
+                                                border: 'none', 
+                                                padding: '10px 20px', 
+                                                borderRadius: '8px', 
+                                                fontSize: '13px', 
+                                                fontWeight: '700', 
+                                                cursor: 'pointer',
+                                                transition: 'opacity 0.2s'
+                                            }}
+                                            onMouseOver={(e) => e.currentTarget.style.opacity = '0.9'}
+                                            onMouseOut={(e) => e.currentTarget.style.opacity = '1'}
+                                        >
+                                            {cancelLoading ? 'Cancelling...' : 'Yes, Cancel'}
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button 
+                                        type="button" 
+                                        className="support-btn" 
+                                        onClick={() => { setCancelConfirmId(null); setCancelFeedback({ text: '', isError: false }); }}
+                                        style={{ margin: 0, padding: '10px 18px', borderRadius: '8px', fontSize: '13px', borderColor: '#10b981', color: '#10b981' }}
+                                    >
+                                        Done
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>
