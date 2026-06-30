@@ -945,7 +945,8 @@ app.post('/api/bookings/:orderId/cancel', async (req, res) => {
             return res.status(403).json({ error: 'Unauthorized to cancel this order.' });
         }
 
-        if (booking.status.toLowerCase() !== 'pending') {
+        const allowedCancelStatuses = ['pending', 'payment not confirmed'];
+        if (!allowedCancelStatuses.includes(booking.status.toLowerCase())) {
             return res.status(400).json({ error: `Cannot cancel order with status: ${booking.status}` });
         }
 

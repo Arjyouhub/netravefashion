@@ -296,8 +296,8 @@ ${itemsText}
                                         💬 Help & Support
                                     </a>
 
-                                    {/* Self-service Cancel option if Status is Pending */}
-                                    {b.status.toLowerCase() === 'pending' && (
+                                    {/* Self-service Cancel option if Status is Pending or Payment Not Confirmed */}
+                                    {(b.status.toLowerCase() === 'pending' || b.status.toLowerCase() === 'payment not confirmed') && (
                                         <button 
                                             className="cancel-order-btn" 
                                             onClick={() => setCancelConfirmId(b.orderId)}
