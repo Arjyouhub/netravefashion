@@ -968,6 +968,7 @@ export default function AdminPanel({
                                 <option value="Dispatched">Dispatched</option>
                                 <option value="Delivered">Delivered</option>
                                 <option value="Cancelled">Cancelled</option>
+                                <option value="Cancelled by Customer">Cancelled by Customer</option>
                             </select>
                         </div>
                     </div>
@@ -1034,6 +1035,7 @@ export default function AdminPanel({
                                                     <option value="Dispatched">Dispatched</option>
                                                     <option value="Delivered">Delivered</option>
                                                     <option value="Cancelled">Cancelled</option>
+                                                    <option value="Cancelled by Customer">Cancelled by Customer</option>
                                                 </select>
                                             </td>
                                         </tr>
@@ -1481,6 +1483,7 @@ export default function AdminPanel({
                                                     <option value="Dispatched">Dispatched</option>
                                                     <option value="Delivered">Delivered</option>
                                                     <option value="Cancelled">Cancelled</option>
+                                                    <option value="Cancelled by Customer">Cancelled by Customer</option>
                                 </select>
                             </div>
 

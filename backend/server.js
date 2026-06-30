@@ -820,12 +820,13 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
         const ordId = req.params.orderId;
         const { status } = req.body;
 
-        const validStatuses = ['Pending', 'Order Placed', 'Payment Confirmed', 'Payment Not Confirmed', 'Dispatched', 'Delivered', 'Cancelled'];
+        const validStatuses = ['Pending', 'Order Placed', 'Payment Confirmed', 'Payment Not Confirmed', 'Dispatched', 'Delivered', 'Cancelled', 'Cancelled by Customer'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid booking status value.' });
         }
 
         let targetBooking = null;
+        const isCancelStatus = (s) => s === 'Cancelled' || s === 'Cancelled by Customer';
 
         if (useMongo) {
             targetBooking = await BookingModel.findOne({ orderId: ordId });
@@ -836,7 +837,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
             await targetBooking.save();
 
             // If status changed TO Cancelled, restore product stocks
-            if (status === 'Cancelled' && oldStatus !== 'Cancelled') {
+            if (isCancelStatus(status) && !isCancelStatus(oldStatus)) {
                 for (const item of targetBooking.items) {
                     await ProductModel.findOneAndUpdate(
                         { id: item.id },
@@ -845,7 +846,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
                 }
             }
             // If status changed FROM Cancelled, decrement product stocks again
-            else if (oldStatus === 'Cancelled' && status !== 'Cancelled') {
+            else if (isCancelStatus(oldStatus) && !isCancelStatus(status)) {
                 for (const item of targetBooking.items) {
                     await ProductModel.findOneAndUpdate(
                         { id: item.id },
@@ -875,7 +876,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
             targetBooking = bookingsList[index];
 
             // Handle stock restoration on file database
-            if (status === 'Cancelled' && oldStatus !== 'Cancelled') {
+            if (isCancelStatus(status) && !isCancelStatus(oldStatus)) {
                 const productsList = await readJson(productsPath);
                 const updated = productsList.map(p => {
                     const boughtItems = targetBooking.items.filter(vi => vi.id === p.id);
@@ -890,7 +891,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
                     return p;
                 });
                 await writeJson(productsPath, updated);
-            } else if (oldStatus === 'Cancelled' && status !== 'Cancelled') {
+            } else if (isCancelStatus(oldStatus) && !isCancelStatus(status)) {
                 const productsList = await readJson(productsPath);
                 const updated = productsList.map(p => {
                     const boughtItems = targetBooking.items.filter(vi => vi.id === p.id);
@@ -963,7 +964,7 @@ app.post('/api/bookings/:orderId/cancel', async (req, res) => {
                     { $inc: { stock: item.quantity }, $set: { inStock: true } }
                 );
             }
-            booking.status = 'Cancelled';
+            booking.status = 'Cancelled by Customer';
             await booking.save();
         } else {
             const updatedProductsList = products.map(p => {
@@ -979,7 +980,7 @@ app.post('/api/bookings/:orderId/cancel', async (req, res) => {
             const fileBookings = await readJson(bookingsPath);
             const updatedBookings = fileBookings.map(b => {
                 if (b.orderId === orderId) {
-                    return { ...b, status: 'Cancelled' };
+                    return { ...b, status: 'Cancelled by Customer' };
                 }
                 return b;
             });
