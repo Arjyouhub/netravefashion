@@ -15,6 +15,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+app.set('trust proxy', true);
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
@@ -189,6 +190,7 @@ const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
 const LoginLogSchema = new mongoose.Schema({
     phone: { type: String, required: true },
     name: { type: String, default: 'Unknown' },
+    role: { type: String, default: 'customer' },
     timestamp: { type: Number, default: Date.now },
     status: { type: String, required: true }, // 'success', 'failed (blocked)', 'failed (locked)', etc.
     ip: { type: String },
@@ -219,14 +221,20 @@ async function seedProductsIfNeeded() {
 await seedProductsIfNeeded();
 
 // Helper function to log user auth events
-async function logUserLogin(phone, name, status, req) {
+async function logUserLogin(phone, name, status, req, role = 'customer') {
     try {
+        let clientIp = req.headers['x-forwarded-for'] || req.ip || req.socket.remoteAddress;
+        if (clientIp && clientIp.includes(',')) {
+            clientIp = clientIp.split(',')[0].trim();
+        }
+
         const logEntry = {
             phone,
             name: name || 'Unknown',
+            role,
             timestamp: Date.now(),
             status,
-            ip: req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress,
+            ip: clientIp,
             userAgent: req.headers['user-agent']
         };
 
@@ -1577,15 +1585,15 @@ app.post('/api/admin/login', async (req, res) => {
                 data.adminSessionToken = sessionToken;
                 await writeJson(settingsPath, [data]);
             }
-            await logUserLogin('admin', 'Administrator', 'success', req);
+            await logUserLogin('admin', 'Administrator', 'success', req, 'admin');
             res.json({ success: true, sessionToken, message: 'Logged in successfully.' });
         } else {
-            await logUserLogin(username || 'admin', 'Administrator', 'failed (incorrect credentials)', req);
+            await logUserLogin(username || 'admin', 'Administrator', 'failed (incorrect credentials)', req, 'admin');
             res.status(401).json({ error: 'Invalid admin credentials' });
         }
     } catch (err) {
         console.error(err);
-        await logUserLogin(username || 'admin', 'Administrator', 'failed (server error)', req);
+        await logUserLogin(username || 'admin', 'Administrator', 'failed (server error)', req, 'admin');
         res.status(500).json({ error: 'Admin login failed.' });
     }
 });
@@ -1639,7 +1647,7 @@ app.post('/api/developer/login', async (req, res) => {
     try {
         const { username, password } = req.body;
         if (username !== 'developer') {
-            await logUserLogin(username || 'developer', 'Developer', 'failed (incorrect username)', req);
+            await logUserLogin(username || 'developer', 'Developer', 'failed (incorrect username)', req, 'developer');
             return res.status(401).json({ error: 'Invalid developer credentials' });
         }
 
@@ -1666,15 +1674,15 @@ app.post('/api/developer/login', async (req, res) => {
                 data.developerSessionToken = sessionToken;
                 await writeJson(settingsPath, [data]);
             }
-            await logUserLogin('developer', 'Developer', 'success', req);
+            await logUserLogin('developer', 'Developer', 'success', req, 'developer');
             res.json({ success: true, sessionToken, message: 'Logged in successfully.' });
         } else {
-            await logUserLogin('developer', 'Developer', 'failed (incorrect password)', req);
+            await logUserLogin('developer', 'Developer', 'failed (incorrect password)', req, 'developer');
             res.status(401).json({ error: 'Invalid developer credentials' });
         }
     } catch (err) {
         console.error(err);
-        await logUserLogin(username || 'developer', 'Developer', 'failed (server error)', req);
+        await logUserLogin(username || 'developer', 'Developer', 'failed (server error)', req, 'developer');
         res.status(500).json({ error: 'Developer login failed.' });
     }
 });

@@ -791,7 +791,24 @@ export default function DeveloperModal({ isOpen, onClose, API_BASE_URL, showToas
                                     logs.map((log, index) => (
                                         <tr key={index} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
                                             <td style={{ padding: '16px', fontWeight: '600', color: '#fff' }}>{formatDateTime(log.timestamp)}</td>
-                                            <td style={{ padding: '16px' }}>{log.name || 'Unknown'}</td>
+                                            <td style={{ padding: '16px' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span>{log.name || 'Unknown'}</span>
+                                                    <span style={{ 
+                                                        fontSize: '9px', 
+                                                        padding: '2px 6px', 
+                                                        borderRadius: '4px', 
+                                                        textTransform: 'uppercase', 
+                                                        fontWeight: 'bold',
+                                                        background: log.role === 'admin' ? 'rgba(245,158,11,0.15)' : log.role === 'developer' ? 'rgba(6,182,212,0.15)' : 'rgba(16,185,129,0.15)',
+                                                        color: log.role === 'admin' ? '#f59e0b' : log.role === 'developer' ? '#06b6d4' : '#10b981',
+                                                        border: log.role === 'admin' ? '1px solid rgba(245,158,11,0.3)' : log.role === 'developer' ? '1px solid rgba(6,182,212,0.3)' : '1px solid rgba(16,185,129,0.3)',
+                                                        display: 'inline-block'
+                                                    }}>
+                                                        {log.role || 'customer'}
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td style={{ padding: '16px' }}>{log.phone}</td>
                                             <td style={{ padding: '16px' }}>
                                                 <span className={`status-pill ${log.status === 'success' ? 'active' : 'inactive'}`} style={{ textTransform: 'capitalize' }}>
