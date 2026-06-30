@@ -40,9 +40,15 @@ export default function AuthModal({ isOpen, onClose, onAuthSuccess, API_BASE_URL
             setError('MPIN must be exactly 6 digits.');
             return;
         }
-        if (isRegister && !name.trim()) {
-            setError('Please enter your full name.');
-            return;
+        if (isRegister) {
+            if (!name.trim()) {
+                setError('Please enter your full name.');
+                return;
+            }
+            if (/\d/.test(name)) {
+                setError('Name cannot contain numbers.');
+                return;
+            }
         }
 
         setLoading(true);

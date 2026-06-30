@@ -1122,6 +1122,9 @@ app.post('/api/auth/register', async (req, res) => {
         if (!/^[0-9]{6}$/.test(mpin)) {
             return res.status(400).json({ error: 'MPIN must be exactly 6 digits.' });
         }
+        if (/\d/.test(name)) {
+            return res.status(400).json({ error: 'Name cannot contain numbers.' });
+        }
 
         if (useMongo) {
             const existingUser = await UserModel.findOne({ phone });
