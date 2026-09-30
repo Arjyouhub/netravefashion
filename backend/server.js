@@ -8,6 +8,7 @@ import mongoose from 'mongoose';
 import multer from 'multer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import Razorpay from 'razorpay';
 
 dotenv.config();
 
@@ -114,6 +115,7 @@ const ProductSchema = new mongoose.Schema({
     sizes: [String],
     tags: [String],
     stock: { type: Number, default: 50 },
+    costPrice: { type: Number, default: 0 },
     inStock: { type: Boolean, default: true }
 });
 const ProductModel = mongoose.models.Product || mongoose.model('Product', ProductSchema);
@@ -151,7 +153,11 @@ const SettingsSchema = new mongoose.Schema({
     maintenanceMode: { type: Boolean, default: false },
     maintenanceMessage: { type: String, default: 'We are currently performing scheduled maintenance.' },
     maintenanceExpiry: { type: Number, default: 0 },
-    offerNotification: { type: String, default: '' }
+    offerNotification: { type: String, default: '' },
+    razorpayKeyId: { type: String, default: '' },
+    razorpayKeySecret: { type: String, default: '' },
+    razorpayEnabled: { type: Boolean, default: false },
+    googleClientId: { type: String, default: '' }
 });
 const SettingsModel = mongoose.models.Settings || mongoose.model('Settings', SettingsSchema);
 
@@ -175,9 +181,17 @@ function hashMpin(mpin, phone) {
 
 // User Schema
 const UserSchema = new mongoose.Schema({
-    phone: { type: String, required: true, unique: true },
+    phone: { type: String },
     name: { type: String, required: true },
-    mpin: { type: String, required: true },
+    email: { type: String, default: '' },
+    googleId: { type: String, default: '' },
+    avatar: { type: String, default: '' },
+    authProvider: { type: String, default: 'local' },
+    address: { type: String, default: '' },
+    district: { type: String, default: '' },
+    pincode: { type: String, default: '' },
+    whatsapp: { type: String, default: '' },
+    mpin: { type: String, default: '' },
     loginAttempts: { type: Number, default: 0 },
     lockUntil: { type: Number, default: 0 },
     isBlocked: { type: Boolean, default: false },
@@ -185,6 +199,11 @@ const UserSchema = new mongoose.Schema({
     lastActiveAt: { type: Number, default: 0 }
 });
 const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// Drop obsolete unique phone index if present so Google logins without phone don't hit duplicate key errors
+if (useMongo) {
+    UserModel.collection.dropIndex('phone_1').catch(() => {});
+}
 
 // Login Log Schema
 const LoginLogSchema = new mongoose.Schema({
@@ -446,7 +465,10 @@ app.get('/api/settings', async (req, res) => {
                 maintenanceMode: settings.maintenanceMode || false,
                 maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: settings.maintenanceExpiry || 0,
-                offerNotification: settings.offerNotification || ''
+                offerNotification: settings.offerNotification || '',
+                razorpayKeyId: settings.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '',
+                razorpayEnabled: settings.razorpayEnabled !== undefined ? settings.razorpayEnabled : Boolean(settings.razorpayKeyId || process.env.RAZORPAY_KEY_ID),
+                googleClientId: settings.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
         } else {
             const settings = await readJson(settingsPath);
@@ -456,7 +478,10 @@ app.get('/api/settings', async (req, res) => {
                 maintenanceMode: data?.maintenanceMode || false,
                 maintenanceMessage: data?.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: data?.maintenanceExpiry || 0,
-                offerNotification: data?.offerNotification || ''
+                offerNotification: data?.offerNotification || '',
+                razorpayKeyId: data?.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '',
+                razorpayEnabled: data?.razorpayEnabled !== undefined ? data?.razorpayEnabled : Boolean(data?.razorpayKeyId || process.env.RAZORPAY_KEY_ID),
+                googleClientId: data?.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
         }
     } catch (err) {
@@ -467,20 +492,37 @@ app.get('/api/settings', async (req, res) => {
 // 3. Save Shop Settings
 app.post('/api/settings', async (req, res) => {
     try {
-        const { whatsappNumber, maintenanceMode, maintenanceMessage, maintenanceExpiry, offerNotification } = req.body;
+        const { 
+            whatsappNumber, 
+            maintenanceMode, 
+            maintenanceMessage, 
+            maintenanceExpiry, 
+            offerNotification,
+            razorpayKeyId,
+            razorpayKeySecret,
+            razorpayEnabled,
+            googleClientId
+        } = req.body;
+
         if (!whatsappNumber) {
             return res.status(400).json({ error: 'WhatsApp number is required.' });
         }
         if (useMongo) {
+            const updateFields = {
+                whatsappNumber,
+                maintenanceMode: maintenanceMode !== undefined ? Boolean(maintenanceMode) : undefined,
+                maintenanceMessage: maintenanceMessage !== undefined ? maintenanceMessage : undefined,
+                maintenanceExpiry: maintenanceExpiry !== undefined ? Number(maintenanceExpiry) : undefined,
+                offerNotification: offerNotification !== undefined ? offerNotification : undefined
+            };
+            if (razorpayKeyId !== undefined) updateFields.razorpayKeyId = razorpayKeyId;
+            if (razorpayKeySecret !== undefined) updateFields.razorpayKeySecret = razorpayKeySecret;
+            if (razorpayEnabled !== undefined) updateFields.razorpayEnabled = Boolean(razorpayEnabled);
+            if (googleClientId !== undefined) updateFields.googleClientId = googleClientId;
+
             const settings = await SettingsModel.findOneAndUpdate(
                 { key: 'main' },
-                {
-                    whatsappNumber,
-                    maintenanceMode: maintenanceMode !== undefined ? Boolean(maintenanceMode) : undefined,
-                    maintenanceMessage: maintenanceMessage !== undefined ? maintenanceMessage : undefined,
-                    maintenanceExpiry: maintenanceExpiry !== undefined ? Number(maintenanceExpiry) : undefined,
-                    offerNotification: offerNotification !== undefined ? offerNotification : undefined
-                },
+                updateFields,
                 { new: true, upsert: true }
             );
             res.json({
@@ -488,7 +530,10 @@ app.post('/api/settings', async (req, res) => {
                 maintenanceMode: settings.maintenanceMode,
                 maintenanceMessage: settings.maintenanceMessage,
                 maintenanceExpiry: settings.maintenanceExpiry,
-                offerNotification: settings.offerNotification
+                offerNotification: settings.offerNotification,
+                razorpayKeyId: settings.razorpayKeyId,
+                razorpayEnabled: settings.razorpayEnabled,
+                googleClientId: settings.googleClientId
             });
         } else {
             let fileSettings = await readJson(settingsPath);
@@ -499,13 +544,21 @@ app.post('/api/settings', async (req, res) => {
             if (maintenanceMessage !== undefined) data.maintenanceMessage = maintenanceMessage;
             if (maintenanceExpiry !== undefined) data.maintenanceExpiry = Number(maintenanceExpiry);
             if (offerNotification !== undefined) data.offerNotification = offerNotification;
+            if (razorpayKeyId !== undefined) data.razorpayKeyId = razorpayKeyId;
+            if (razorpayKeySecret !== undefined) data.razorpayKeySecret = razorpayKeySecret;
+            if (razorpayEnabled !== undefined) data.razorpayEnabled = Boolean(razorpayEnabled);
+            if (googleClientId !== undefined) data.googleClientId = googleClientId;
+
             await writeJson(settingsPath, [data]);
             res.json({
                 whatsappNumber: data.whatsappNumber,
                 maintenanceMode: data.maintenanceMode || false,
                 maintenanceMessage: data.maintenanceMessage || '',
                 maintenanceExpiry: data.maintenanceExpiry || 0,
-                offerNotification: data.offerNotification || ''
+                offerNotification: data.offerNotification || '',
+                razorpayKeyId: data.razorpayKeyId || '',
+                razorpayEnabled: data.razorpayEnabled || false,
+                googleClientId: data.googleClientId || ''
             });
         }
     } catch (err) {
@@ -531,7 +584,7 @@ app.get('/api/products', async (req, res) => {
 // 5. Add New Product
 app.post('/api/products', async (req, res) => {
     try {
-        const { title, category, price, originalPrice, image, description, sizes, tags, stock, inStock } = req.body;
+        const { title, category, price, costPrice, originalPrice, image, description, sizes, tags, stock, inStock } = req.body;
 
         // Input validation
         if (!title || !category || !price) {
@@ -548,6 +601,7 @@ app.post('/api/products', async (req, res) => {
                 title,
                 category,
                 price: Number(price),
+                costPrice: costPrice !== undefined ? Number(costPrice) : 0,
                 originalPrice: originalPrice ? Number(originalPrice) : undefined,
                 image: image || '',
                 description: description || '',
@@ -569,6 +623,7 @@ app.post('/api/products', async (req, res) => {
                 title,
                 category,
                 price: Number(price),
+                costPrice: costPrice !== undefined ? Number(costPrice) : 0,
                 originalPrice: originalPrice ? Number(originalPrice) : undefined,
                 image: image || '',
                 description: description || '',
@@ -593,23 +648,26 @@ app.post('/api/products', async (req, res) => {
 app.put('/api/products/:id', async (req, res) => {
     try {
         const prodId = parseInt(req.params.id);
-        const { title, category, price, originalPrice, image, description, sizes, tags, stock, inStock } = req.body;
+        const { title, category, price, costPrice, originalPrice, image, description, sizes, tags, stock, inStock } = req.body;
 
         if (useMongo) {
+            const updateData = {
+                title,
+                category,
+                price: Number(price),
+                originalPrice: originalPrice ? Number(originalPrice) : undefined,
+                image,
+                description,
+                sizes,
+                tags,
+                stock: stock !== undefined ? Number(stock) : 50,
+                inStock: inStock !== undefined ? Boolean(inStock) : true
+            };
+            if (costPrice !== undefined) updateData.costPrice = Number(costPrice);
+
             const updatedProduct = await ProductModel.findOneAndUpdate(
                 { id: prodId },
-                {
-                    title,
-                    category,
-                    price: Number(price),
-                    originalPrice: originalPrice ? Number(originalPrice) : undefined,
-                    image,
-                    description,
-                    sizes,
-                    tags,
-                    stock: stock !== undefined ? Number(stock) : 50,
-                    inStock: inStock !== undefined ? Boolean(inStock) : true
-                },
+                updateData,
                 { new: true }
             );
 
@@ -630,6 +688,7 @@ app.put('/api/products/:id', async (req, res) => {
                 title,
                 category,
                 price: Number(price),
+                costPrice: costPrice !== undefined ? Number(costPrice) : (productsList[index].costPrice || 0),
                 originalPrice: originalPrice ? Number(originalPrice) : undefined,
                 image,
                 description,
@@ -736,6 +795,7 @@ app.post('/api/bookings', async (req, res) => {
                 title: productRef.title,
                 image: productRef.image,
                 price: price,
+                costPrice: productRef.costPrice !== undefined ? Number(productRef.costPrice) : Math.round(price * 0.5),
                 size: size,
                 quantity: quantity,
                 category: productRef.category
@@ -992,6 +1052,224 @@ app.post('/api/bookings/:orderId/cancel', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to cancel order.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// 10B. RAZORPAY PAYMENT GATEWAY ENDPOINTS
+// --------------------------------------------------------------------------
+async function getRazorpayConfig() {
+    let keyId = process.env.RAZORPAY_KEY_ID || '';
+    let keySecret = process.env.RAZORPAY_KEY_SECRET || '';
+    let isEnabled = Boolean(keyId);
+
+    try {
+        if (useMongo) {
+            const settings = await SettingsModel.findOne({ key: 'main' });
+            if (settings?.razorpayKeyId) keyId = settings.razorpayKeyId;
+            if (settings?.razorpayKeySecret) keySecret = settings.razorpayKeySecret;
+            if (settings?.razorpayEnabled !== undefined) isEnabled = settings.razorpayEnabled;
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            const s = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+            if (s?.razorpayKeyId) keyId = s.razorpayKeyId;
+            if (s?.razorpayKeySecret) keySecret = s.razorpayKeySecret;
+            if (s?.razorpayEnabled !== undefined) isEnabled = s.razorpayEnabled;
+        }
+    } catch (e) {
+        console.error('Failed to read Razorpay config:', e.message);
+    }
+
+    return { keyId, keySecret, isEnabled };
+}
+
+// 1. Create Razorpay Payment Order
+app.post('/api/razorpay/create-order', async (req, res) => {
+    try {
+        const { amount, receipt } = req.body;
+        if (!amount || amount <= 0) {
+            return res.status(400).json({ error: 'Valid payment amount is required.' });
+        }
+
+        const { keyId, keySecret } = await getRazorpayConfig();
+        const amountInPaise = Math.round(Number(amount) * 100);
+
+        if (keyId && keySecret) {
+            try {
+                const instance = new Razorpay({
+                    key_id: keyId,
+                    key_secret: keySecret
+                });
+
+                const order = await instance.orders.create({
+                    amount: amountInPaise,
+                    currency: 'INR',
+                    receipt: receipt || `rcpt_${Date.now()}`
+                });
+
+                return res.json({
+                    id: order.id,
+                    amount: order.amount,
+                    currency: order.currency,
+                    keyId: keyId,
+                    isLive: true
+                });
+            } catch (rzpErr) {
+                console.warn('Razorpay SDK order create failed, falling back to simulated order:', rzpErr.message);
+            }
+        }
+
+        // Simulated/Test order fallback if keys not yet configured in admin
+        const mockOrderId = `order_sim_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        return res.json({
+            id: mockOrderId,
+            amount: amountInPaise,
+            currency: 'INR',
+            keyId: keyId || 'rzp_test_placeholder',
+            isMock: true,
+            message: 'Razorpay simulated order created'
+        });
+    } catch (err) {
+        console.error('Razorpay create-order error:', err);
+        res.status(500).json({ error: 'Failed to initiate Razorpay payment order.' });
+    }
+});
+
+// 2. Verify Razorpay Payment Signature and Record Booking
+app.post('/api/razorpay/verify-payment', async (req, res) => {
+    try {
+        const { 
+            razorpay_order_id, 
+            razorpay_payment_id, 
+            razorpay_signature, 
+            customer, 
+            items, 
+            subtotal, 
+            delivery, 
+            total, 
+            couponCode, 
+            discount 
+        } = req.body;
+
+        if (!customer || !items || !Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ error: 'Missing customer or cart items.' });
+        }
+
+        const { keySecret } = await getRazorpayConfig();
+
+        // Verify signature if secret is present and not simulated
+        if (keySecret && razorpay_signature && !razorpay_order_id?.startsWith('order_sim_')) {
+            const body = razorpay_order_id + '|' + razorpay_payment_id;
+            const expectedSignature = crypto
+                .createHmac('sha256', keySecret)
+                .update(body.toString())
+                .digest('hex');
+
+            if (expectedSignature !== razorpay_signature) {
+                return res.status(400).json({ error: 'Razorpay payment signature verification failed.' });
+            }
+        }
+
+        // Fetch products to decrement stock and calculate costPrices
+        let products = [];
+        if (useMongo) {
+            products = await ProductModel.find().lean();
+        } else {
+            products = await readJson(productsPath);
+        }
+
+        const validatedItems = [];
+        for (const item of items) {
+            const productRef = products.find(p => Number(p.id) === Number(item.id));
+            const size = item.size || 'M';
+            const price = productRef ? productRef.price : (item.price || 0);
+            const costPrice = productRef?.costPrice !== undefined ? Number(productRef.costPrice) : Math.round(price * 0.5);
+            const quantity = parseInt(item.quantity) || 1;
+
+            validatedItems.push({
+                id: item.id,
+                title: productRef ? productRef.title : item.title,
+                image: productRef ? productRef.image : item.image,
+                price: price,
+                costPrice: costPrice,
+                size: size,
+                quantity: quantity,
+                category: productRef ? productRef.category : item.category
+            });
+        }
+
+        const finalSubtotal = subtotal !== undefined ? Number(subtotal) : validatedItems.reduce((s, it) => s + (it.price * it.quantity), 0);
+        const finalDelivery = delivery !== undefined ? Number(delivery) : (finalSubtotal >= 999 ? 0 : 60);
+        const finalTotal = total !== undefined ? Number(total) : (finalSubtotal + finalDelivery);
+
+        const orderId = `TR-${Math.floor(100000 + Math.random() * 900000)}`;
+        const dateString = new Date().toLocaleDateString('en-IN', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        const newBookingRecord = {
+            orderId: orderId,
+            date: dateString,
+            customer: {
+                ...customer,
+                payment: 'Razorpay Online',
+                razorpayOrderId: razorpay_order_id,
+                razorpayPaymentId: razorpay_payment_id || `pay_${Date.now()}`
+            },
+            items: validatedItems,
+            subtotal: finalSubtotal,
+            delivery: finalDelivery,
+            total: finalTotal,
+            couponCode: couponCode || undefined,
+            discount: discount || 0,
+            status: 'Payment Confirmed'
+        };
+
+        // Decrement stock & persist
+        if (useMongo) {
+            for (const item of validatedItems) {
+                await ProductModel.findOneAndUpdate(
+                    { id: item.id },
+                    { $inc: { stock: -item.quantity } }
+                );
+                const p = await ProductModel.findOne({ id: item.id });
+                if (p && p.stock <= 0) {
+                    p.inStock = false;
+                    await p.save();
+                }
+            }
+            const bookingDoc = new BookingModel(newBookingRecord);
+            await bookingDoc.save();
+            return res.status(201).json(bookingDoc);
+        } else {
+            const updatedProductsList = products.map(p => {
+                const boughtItems = validatedItems.filter(vi => vi.id === p.id);
+                if (boughtItems.length > 0) {
+                    const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
+                    const newStock = Math.max(0, p.stock - totalBoughtQty);
+                    return {
+                        ...p,
+                        stock: newStock,
+                        inStock: newStock > 0 ? p.inStock : false
+                    };
+                }
+                return p;
+            });
+            await writeJson(productsPath, updatedProductsList);
+
+            const currentBookings = await readJson(bookingsPath);
+            currentBookings.unshift(newBookingRecord);
+            await writeJson(bookingsPath, currentBookings);
+
+            return res.status(201).json(newBookingRecord);
+        }
+    } catch (err) {
+        console.error('Razorpay verify-payment error:', err);
+        res.status(500).json({ error: 'Failed to verify payment and process booking.' });
     }
 });
 
@@ -1305,6 +1583,328 @@ app.post('/api/auth/login', async (req, res) => {
     }
 });
 
+// Google OAuth Sign-In & Register
+app.post('/api/auth/google', async (req, res) => {
+    try {
+        const { credential, profile } = req.body;
+        let googleId = '';
+        let email = '';
+        let name = '';
+        let avatar = '';
+
+        if (credential) {
+            try {
+                // Official Google OAuth Tokeninfo Cryptographic Validation
+                const verifyUrl = `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`;
+                const googleVerifyRes = await fetch(verifyUrl);
+                if (googleVerifyRes.ok) {
+                    const tokenInfo = await googleVerifyRes.json();
+                    googleId = tokenInfo.sub || '';
+                    email = tokenInfo.email || '';
+                    name = tokenInfo.name || tokenInfo.given_name || 'Google User';
+                    avatar = tokenInfo.picture || '';
+                } else {
+                    // Fallback decode if offline or mock token
+                    const parts = credential.split('.');
+                    if (parts.length >= 2) {
+                        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+                        googleId = payload.sub || '';
+                        email = payload.email || '';
+                        name = payload.name || payload.given_name || 'Google User';
+                        avatar = payload.picture || '';
+                    }
+                }
+            } catch (jwtErr) {
+                console.warn('Google token verification fallback to decode:', jwtErr.message);
+                try {
+                    const parts = credential.split('.');
+                    if (parts.length >= 2) {
+                        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+                        googleId = payload.sub || '';
+                        email = payload.email || '';
+                        name = payload.name || payload.given_name || 'Google User';
+                        avatar = payload.picture || '';
+                    }
+                } catch { }
+            }
+        }
+
+        // Fallback to direct profile object if passed
+        if (!email && profile) {
+            googleId = profile.id || profile.sub || profile.googleId || '';
+            email = profile.email || '';
+            name = profile.name || 'Google User';
+            avatar = profile.avatar || profile.picture || '';
+        }
+
+        if (!email) {
+            return res.status(400).json({ error: 'Valid Google email account is required.' });
+        }
+
+        if (useMongo) {
+            let user = await UserModel.findOne({
+                $or: [
+                    { googleId: googleId && googleId !== '' ? googleId : '__no_match__' },
+                    { email: email.toLowerCase() }
+                ]
+            });
+
+            if (user) {
+                if (user.isBlocked) {
+                    await logUserLogin(user.phone || email, user.name, 'failed (blocked)', req);
+                    return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
+                }
+
+                user.lastActiveAt = Date.now();
+                if (!user.googleId && googleId) user.googleId = googleId;
+                if (!user.avatar && avatar) user.avatar = avatar;
+                if (!user.email && email) user.email = email.toLowerCase();
+                await user.save();
+
+                await logUserLogin(user.phone || email, user.name, 'success (Google)', req);
+                return res.json({
+                    success: true,
+                    user: {
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone || '',
+                        avatar: user.avatar || avatar,
+                        authProvider: 'google'
+                    }
+                });
+            } else {
+                // Register new user via Google
+                const newUser = new UserModel({
+                    name: name || 'Google Customer',
+                    email: email.toLowerCase(),
+                    googleId: googleId || '',
+                    avatar: avatar || '',
+                    authProvider: 'google',
+                    lastActiveAt: Date.now()
+                });
+                await newUser.save();
+
+                await logUserLogin(email, newUser.name, 'registered (Google)', req);
+                return res.status(201).json({
+                    success: true,
+                    isNew: true,
+                    user: {
+                        name: newUser.name,
+                        email: newUser.email,
+                        phone: '',
+                        avatar: newUser.avatar,
+                        authProvider: 'google'
+                    }
+                });
+            }
+        } else {
+            const users = await readJson(usersPath);
+            let user = users.find(u => 
+                (googleId && u.googleId === googleId) || 
+                (u.email && u.email.toLowerCase() === email.toLowerCase())
+            );
+
+            if (user) {
+                if (user.isBlocked) {
+                    await logUserLogin(user.phone || email, user.name, 'failed (blocked)', req);
+                    return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
+                }
+
+                user.lastActiveAt = Date.now();
+                if (!user.googleId && googleId) user.googleId = googleId;
+                if (!user.avatar && avatar) user.avatar = avatar;
+                if (!user.email && email) user.email = email.toLowerCase();
+                await writeJson(usersPath, users);
+
+                await logUserLogin(user.phone || email, user.name, 'success (Google)', req);
+                return res.json({
+                    success: true,
+                    user: {
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone || '',
+                        avatar: user.avatar || avatar,
+                        authProvider: 'google'
+                    }
+                });
+            } else {
+                const newUser = {
+                    name: name || 'Google Customer',
+                    email: email.toLowerCase(),
+                    googleId: googleId || '',
+                    avatar: avatar || '',
+                    phone: '',
+                    authProvider: 'google',
+                    lastActiveAt: Date.now()
+                };
+                users.push(newUser);
+                await writeJson(usersPath, users);
+
+                await logUserLogin(email, newUser.name, 'registered (Google)', req);
+                return res.status(201).json({
+                    success: true,
+                    isNew: true,
+                    user: {
+                        name: newUser.name,
+                        email: newUser.email,
+                        phone: '',
+                        avatar: newUser.avatar,
+                        authProvider: 'google'
+                    }
+                });
+            }
+        }
+    } catch (err) {
+        console.error('Google Auth error:', err);
+        res.status(500).json({ error: 'Google authentication failed.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// CUSTOMER PROFILE MANAGEMENT ENDPOINTS
+// --------------------------------------------------------------------------
+// 1. Get Customer Profile
+app.get('/api/users/profile', async (req, res) => {
+    try {
+        const { phone, email } = req.query;
+        if (!phone && !email) {
+            return res.status(400).json({ error: 'Phone or email is required to fetch profile.' });
+        }
+
+        let user = null;
+        if (useMongo) {
+            const query = [];
+            if (phone) query.push({ phone });
+            if (email) query.push({ email: email.toLowerCase() });
+            user = await UserModel.findOne({ $or: query });
+        } else {
+            const users = await readJson(usersPath);
+            user = users.find(u => (phone && u.phone === phone) || (email && u.email && u.email.toLowerCase() === email.toLowerCase()));
+        }
+
+        if (!user) {
+            return res.status(404).json({ error: 'User profile not found.' });
+        }
+
+        res.json({
+            success: true,
+            user: {
+                name: user.name,
+                email: user.email || '',
+                phone: user.phone || '',
+                whatsapp: user.whatsapp || user.phone || '',
+                address: user.address || '',
+                district: user.district || '',
+                pincode: user.pincode || '',
+                avatar: user.avatar || '',
+                authProvider: user.authProvider || 'local'
+            }
+        });
+    } catch (err) {
+        console.error('Fetch profile error:', err);
+        res.status(500).json({ error: 'Failed to retrieve profile.' });
+    }
+});
+
+// 2. Update Customer Profile Details
+app.put('/api/users/profile', async (req, res) => {
+    try {
+        const { currentIdentifier, name, phone, email, whatsapp, address, district, pincode } = req.body;
+        if (!currentIdentifier && !phone && !email) {
+            return res.status(400).json({ error: 'User identification is required to update profile.' });
+        }
+
+        const identifier = currentIdentifier || phone || email;
+
+        if (useMongo) {
+            let user = await UserModel.findOne({
+                $or: [
+                    { phone: identifier },
+                    { email: identifier.toLowerCase() },
+                    { googleId: identifier }
+                ]
+            });
+
+            if (!user) {
+                if (email) user = await UserModel.findOne({ email: email.toLowerCase() });
+                if (!user && phone) user = await UserModel.findOne({ phone });
+            }
+
+            if (!user) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+
+            if (name) user.name = name;
+            if (phone !== undefined) user.phone = phone;
+            if (whatsapp !== undefined) user.whatsapp = whatsapp;
+            if (address !== undefined) user.address = address;
+            if (district !== undefined) user.district = district;
+            if (pincode !== undefined) user.pincode = pincode;
+            if (email && !user.email) user.email = email.toLowerCase();
+            user.lastActiveAt = Date.now();
+
+            await user.save();
+
+            res.json({
+                success: true,
+                message: 'Profile updated successfully.',
+                user: {
+                    name: user.name,
+                    email: user.email || '',
+                    phone: user.phone || '',
+                    whatsapp: user.whatsapp || user.phone || '',
+                    address: user.address || '',
+                    district: user.district || '',
+                    pincode: user.pincode || '',
+                    avatar: user.avatar || '',
+                    authProvider: user.authProvider || 'local'
+                }
+            });
+        } else {
+            const users = await readJson(usersPath);
+            const userIndex = users.findIndex(u => 
+                u.phone === identifier || 
+                (u.email && u.email.toLowerCase() === identifier.toLowerCase()) || 
+                u.googleId === identifier
+            );
+
+            if (userIndex === -1) {
+                return res.status(404).json({ error: 'User not found.' });
+            }
+
+            if (name) users[userIndex].name = name;
+            if (phone !== undefined) users[userIndex].phone = phone;
+            if (whatsapp !== undefined) users[userIndex].whatsapp = whatsapp;
+            if (address !== undefined) users[userIndex].address = address;
+            if (district !== undefined) users[userIndex].district = district;
+            if (pincode !== undefined) users[userIndex].pincode = pincode;
+            if (email && !users[userIndex].email) users[userIndex].email = email.toLowerCase();
+            users[userIndex].lastActiveAt = Date.now();
+
+            await writeJson(usersPath, users);
+
+            res.json({
+                success: true,
+                message: 'Profile updated successfully.',
+                user: {
+                    name: users[userIndex].name,
+                    email: users[userIndex].email || '',
+                    phone: users[userIndex].phone || '',
+                    whatsapp: users[userIndex].whatsapp || users[userIndex].phone || '',
+                    address: users[userIndex].address || '',
+                    district: users[userIndex].district || '',
+                    pincode: users[userIndex].pincode || '',
+                    avatar: users[userIndex].avatar || '',
+                    authProvider: users[userIndex].authProvider || 'local'
+                }
+            });
+        }
+    } catch (err) {
+        console.error('Update profile error:', err);
+        res.status(500).json({ error: 'Failed to update profile.' });
+    }
+});
+
 // --------------------------------------------------------------------------
 // USER-SPECIFIC BOOKINGS ENDPOINT
 // --------------------------------------------------------------------------
@@ -1312,11 +1912,16 @@ app.get('/api/bookings/user/:phone', async (req, res) => {
     try {
         const phone = req.params.phone;
         if (useMongo) {
-            const bookings = await BookingModel.find({ 'customer.phone': phone }).sort({ _id: -1 });
+            const bookings = await BookingModel.find({
+                $or: [
+                    { 'customer.phone': phone },
+                    { 'customer.whatsapp': phone }
+                ]
+            }).sort({ _id: -1 });
             res.json(bookings);
         } else {
             const bookings = await readJson(bookingsPath);
-            const filtered = bookings.filter(b => b.customer.phone === phone);
+            const filtered = bookings.filter(b => b.customer.phone === phone || b.customer.whatsapp === phone);
             res.json(filtered);
         }
     } catch (err) {

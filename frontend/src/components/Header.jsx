@@ -4,6 +4,7 @@ export default function Header({
     cartCount,
     onCartOpen,
     onBookingsOpen,
+    onProfileOpen,
     activeCategory,
     onCategoryChange,
     searchQuery,
@@ -112,26 +113,28 @@ export default function Header({
             {/* Header Section */}
             <header className="main-header">
                 <div className="header-container">
-                    {/* Mobile Menu Toggle */}
-                    <button 
-                        className="mobile-menu-btn" 
-                        onClick={() => setMobileDrawerOpen(true)}
-                        aria-label="Toggle Navigation Menu"
-                    >
-                        <svg viewBox="0 0 24 24" className="icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-                    </button>
+                    <div className="header-left-group">
+                        {/* Mobile Menu Toggle */}
+                        <button 
+                            className="mobile-menu-btn" 
+                            onClick={() => setMobileDrawerOpen(true)}
+                            aria-label="Toggle Navigation Menu"
+                        >
+                            <svg viewBox="0 0 24 24" className="icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                        </button>
 
-                    {/* Logo */}
-                    <a href="#" className="logo" onClick={(e) => { e.preventDefault(); triggerHome(); }}>
-                        <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" />
-                        <div className="logo-text">
-                            <div className="logo-accent">
-                                <span className="logo-net">NET</span>
-                                <span className="logo-rave">RAVE</span>
+                        {/* Logo */}
+                        <a href="#" className="logo" onClick={(e) => { e.preventDefault(); triggerHome(); }}>
+                            <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" />
+                            <div className="logo-text">
+                                <div className="logo-accent">
+                                    <span className="logo-net">NET</span>
+                                    <span className="logo-rave">RAVE</span>
+                                </div>
+                                <span className="logo-sub">CLOTHING & STYLE</span>
                             </div>
-                            <span className="logo-sub">CLOTHING & STYLE</span>
-                        </div>
-                    </a>
+                        </a>
+                    </div>
 
                     {/* Desktop Navigation */}
                     <nav className="desktop-nav">
@@ -174,47 +177,48 @@ export default function Header({
                             <svg viewBox="0 0 24 24" className="icon"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                         </button>
 
-                        <button 
-                            className="action-btn mobile-bookings-trigger" 
-                            onClick={user ? onBookingsOpen : onLoginClick}
-                            aria-label="View Booking History"
-                            title={user ? `Logged in as ${user.name} - View Bookings` : "Track Order / Sign In"}
-                        >
-                            {user ? (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <svg viewBox="0 0 24 24" className="icon" style={{ fill: 'var(--primary)' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                                    <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: 'var(--primary)' }}>My Orders</span>
-                                </div>
-                            ) : (
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                    <svg viewBox="0 0 24 24" className="icon" style={{ fill: '#ffffff' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                                    <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Login</span>
-                                </div>
-                            )}
-                        </button>
- 
-                        {user && (
+                        {user ? (
                             <button 
-                                className="action-btn header-logout-btn" 
-                                onClick={onLogout}
-                                title="Sign Out"
-                                style={{ padding: '0', background: 'none', border: 'none', height: '36px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                                className="header-profile-chip"
+                                onClick={onProfileOpen}
+                                title={`View & Edit Profile (${user.name})`}
+                                aria-label="View Customer Profile"
                             >
-                                <svg viewBox="0 0 24 24" className="icon" style={{ fill: 'var(--error)' }}><path d="M14.08 15.59L16.67 13H7v-2h9.67l-2.59-2.59L15.5 7l5 5-5 5-1.42-1.41zM12 3H4v18h8v-2H6V5h6V3z"/></svg>
-                                <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Logout</span>
+                                {user.avatar ? (
+                                    <img src={user.avatar} alt={user.name} className="header-profile-avatar-mini" />
+                                ) : (
+                                    <div className="header-profile-avatar-fallback">
+                                        {(user.name || 'U').charAt(0).toUpperCase()}
+                                    </div>
+                                )}
+                                <span className="header-profile-name">{user.name?.split(' ')[0] || 'Profile'}</span>
                             </button>
-                        )}
+                        ) : (
+                            <>
+                                <button 
+                                    className="action-btn header-login-chip" 
+                                    onClick={onLoginClick}
+                                    aria-label="Sign In / Register"
+                                    title="Sign In with Google or Phone"
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <svg viewBox="0 0 24 24" className="icon" style={{ fill: '#ffffff' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                        <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Login</span>
+                                    </div>
+                                </button>
 
-                        <button 
-                            className="action-btn" 
-                            onClick={onCartOpen}
-                            aria-label="View Cart"
-                        >
-                            <div className="cart-icon-wrapper">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                                <span className="cart-badge">{cartCount}</span>
-                            </div>
-                        </button>
+                                <button 
+                                    className="action-btn" 
+                                    onClick={onCartOpen}
+                                    aria-label="View Cart"
+                                >
+                                    <div className="cart-icon-wrapper">
+                                        <svg viewBox="0 0 24 24" className="icon"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                        <span className="cart-badge">{cartCount}</span>
+                                    </div>
+                                </button>
+                            </>
+                        )}
                     </div>
                 </div>
             </header>
@@ -329,6 +333,12 @@ export default function Header({
                         </li>
                     ) : (
                         <>
+                            <li>
+                                <button className="mob-link" onClick={() => { if (onProfileOpen) onProfileOpen(); setMobileDrawerOpen(false); }}>
+                                    <svg viewBox="0 0 24 24" className="drawer-icon" style={{ fill: 'var(--primary)' }}><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                                    <span>My Profile & Details</span>
+                                </button>
+                            </li>
                             <li>
                                 <button className="mob-link" onClick={() => { triggerTrackOrder(); }}>
                                     <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>

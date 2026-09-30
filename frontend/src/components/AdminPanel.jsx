@@ -13,7 +13,7 @@ export default function AdminPanel({
     onClose,
     API_BASE_URL
 }) {
-    const [activeTab, setActiveTab] = useState('products');
+    const [activeTab, setActiveTab] = useState('analytics');
 
     // Coupon states
     const [coupons, setCoupons] = useState([]);
@@ -53,6 +53,8 @@ export default function AdminPanel({
     const [prodTitle, setProdTitle] = useState('');
     const [prodCategory, setProdCategory] = useState('t-shirt');
     const [prodPrice, setProdPrice] = useState('');
+    const [prodCostPrice, setProdCostPrice] = useState('');
+    const [prodMarginAmount, setProdMarginAmount] = useState('');
     const [prodOriginalPrice, setProdOriginalPrice] = useState('');
     const [prodImage, setProdImage] = useState('');
     const [prodDesc, setProdDesc] = useState('');
@@ -61,6 +63,10 @@ export default function AdminPanel({
     const [prodStock, setProdStock] = useState(50);
     const [prodInStock, setProdInStock] = useState(true);
     const [uploading, setUploading] = useState(false);
+    const [quickEditingMarginId, setQuickEditingMarginId] = useState(null);
+    const [quickSalePriceVal, setQuickSalePriceVal] = useState('');
+    const [quickBuyPriceVal, setQuickBuyPriceVal] = useState('');
+    const [quickMarginVal, setQuickMarginVal] = useState('');
 
     // 2. Bookings Tab States
     const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +74,10 @@ export default function AdminPanel({
     const [currentPage, setCurrentPage] = useState(1);
     const bookingsPerPage = 8;
 
-    // 3. Settings Tab States
+    // 3. Margin & Analytics States
+    const [analyticsTimeframe, setAnalyticsTimeframe] = useState('all'); // 'all', 'today', '7d', '30d'
+
+    // 4. Settings Tab States
     const [bookingsList, setBookingsList] = useState([]);
     const [selectedAdminBooking, setSelectedAdminBooking] = useState(null);
     const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
@@ -77,6 +86,10 @@ export default function AdminPanel({
     const [maintMsg, setMaintMsg] = useState(settings?.maintenanceMessage || 'We are currently performing scheduled maintenance.');
     const [maintExpiry, setMaintExpiry] = useState(settings?.maintenanceExpiry ? new Date(settings.maintenanceExpiry - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '');
     const [offerNotif, setOfferNotif] = useState(settings?.offerNotification || '');
+    const [razorpayKeyId, setRazorpayKeyId] = useState(settings?.razorpayKeyId || '');
+    const [razorpayKeySecret, setRazorpayKeySecret] = useState(settings?.razorpayKeySecret || '');
+    const [razorpayEnabled, setRazorpayEnabled] = useState(settings?.razorpayEnabled || false);
+    const [googleClientId, setGoogleClientId] = useState(settings?.googleClientId || '361479572817-1s040ttad228nt6pm85rm2krlrt9tt17.apps.googleusercontent.com');
 
     useEffect(() => {
         if (settings) {
@@ -86,6 +99,10 @@ export default function AdminPanel({
             setMaintMsg(settings.maintenanceMessage || 'We are currently performing scheduled maintenance.');
             setMaintExpiry(settings.maintenanceExpiry ? new Date(settings.maintenanceExpiry - (new Date().getTimezoneOffset() * 60000)).toISOString().slice(0, 16) : '');
             setOfferNotif(settings.offerNotification || '');
+            setRazorpayKeyId(settings.razorpayKeyId || '');
+            setRazorpayKeySecret(settings.razorpayKeySecret || '');
+            setRazorpayEnabled(settings.razorpayEnabled !== undefined ? settings.razorpayEnabled : false);
+            setGoogleClientId(settings.googleClientId || '361479572817-1s040ttad228nt6pm85rm2krlrt9tt17.apps.googleusercontent.com');
         }
     }, [settings]);
 
@@ -468,6 +485,8 @@ export default function AdminPanel({
         setProdTitle('');
         setProdCategory('t-shirt');
         setProdPrice('');
+        setProdCostPrice('');
+        setProdMarginAmount('');
         setProdOriginalPrice('');
         setProdImage('');
         setProdDesc('');
@@ -489,7 +508,17 @@ export default function AdminPanel({
         setEditingProduct(product);
         setProdTitle(product.title || '');
         setProdCategory(product.category || 't-shirt');
-        setProdPrice(product.price || '');
+        const price = product.price !== undefined && product.price !== null ? product.price : '';
+        const cost = product.costPrice !== undefined && product.costPrice !== null ? product.costPrice : '';
+        setProdPrice(price);
+        setProdCostPrice(cost);
+        if (price !== '' && cost !== '') {
+            setProdMarginAmount(Math.max(0, Number(price) - Number(cost)));
+        } else if (price !== '') {
+            setProdMarginAmount(price);
+        } else {
+            setProdMarginAmount('');
+        }
         setProdOriginalPrice(product.originalPrice || '');
         setProdImage(product.image || '');
         setProdDesc(product.description || '');
@@ -498,6 +527,89 @@ export default function AdminPanel({
         setProdStock(product.stock !== undefined ? product.stock : 50);
         setProdInStock(product.inStock !== undefined ? product.inStock : true);
         setIsProductFormOpen(true);
+    };
+
+    // Two-way interactive margin & price calculators
+    // Sale Price (e.g. 499) - Buy Price (e.g. 250) = Profit Margin (₹249)
+    const handleSellingPriceChange = (val) => {
+        setProdPrice(val);
+        const numPrice = parseFloat(val) || 0;
+        const numCost = parseFloat(prodCostPrice) || 0;
+        setProdMarginAmount(Math.max(0, numPrice - numCost));
+    };
+
+    const handleCostPriceChange = (val) => {
+        setProdCostPrice(val);
+        const numCost = parseFloat(val) || 0;
+        if (prodPrice !== '') {
+            const numPrice = parseFloat(prodPrice) || 0;
+            setProdMarginAmount(Math.max(0, numPrice - numCost));
+        } else if (prodMarginAmount !== '') {
+            const numMargin = parseFloat(prodMarginAmount) || 0;
+            setProdPrice(numCost + numMargin);
+        }
+    };
+
+    const handleMarginAmountChange = (val) => {
+        setProdMarginAmount(val);
+        const numMargin = parseFloat(val) || 0;
+        const numCost = parseFloat(prodCostPrice) || 0;
+        setProdPrice(numCost + numMargin);
+    };
+
+    // Direct On-Page Quick Margin & Pricing Handlers
+    const handleStartQuickMargin = (prod) => {
+        setQuickEditingMarginId(prod.id);
+        const cost = prod.costPrice !== undefined && prod.costPrice !== null ? Number(prod.costPrice) : 0;
+        const price = Number(prod.price) || 0;
+        const currentMargin = price - cost;
+        setQuickSalePriceVal(price > 0 ? price.toString() : '');
+        setQuickBuyPriceVal(cost >= 0 ? cost.toString() : '0');
+        setQuickMarginVal(currentMargin.toString());
+    };
+
+    const handleQuickSalePriceChange = (val) => {
+        setQuickSalePriceVal(val);
+        const saleNum = parseFloat(val) || 0;
+        const buyNum = parseFloat(quickBuyPriceVal) || 0;
+        setQuickMarginVal((saleNum - buyNum).toString());
+    };
+
+    const handleQuickBuyPriceChange = (val) => {
+        setQuickBuyPriceVal(val);
+        const buyNum = parseFloat(val) || 0;
+        const saleNum = parseFloat(quickSalePriceVal) || 0;
+        setQuickMarginVal((saleNum - buyNum).toString());
+    };
+
+    const handleCancelQuickMargin = () => {
+        setQuickEditingMarginId(null);
+        setQuickSalePriceVal('');
+        setQuickBuyPriceVal('');
+        setQuickMarginVal('');
+    };
+
+    const handleSaveQuickMargin = async (prod) => {
+        const salePrice = parseFloat(quickSalePriceVal);
+        const buyPrice = parseFloat(quickBuyPriceVal) >= 0 ? parseFloat(quickBuyPriceVal) : 0;
+        const margin = salePrice - buyPrice;
+
+        if (isNaN(salePrice) || salePrice <= 0) {
+            showError('Sale Price must be greater than 0.');
+            return;
+        }
+
+        try {
+            await onEditProduct(prod.id, {
+                ...prod,
+                price: salePrice,
+                costPrice: buyPrice
+            });
+            showSuccess(`Saved "${prod.title}": Sale Price ₹${salePrice}, Buy Price ₹${buyPrice} (Margin: ₹${margin})`);
+            setQuickEditingMarginId(null);
+        } catch (err) {
+            showError('Failed to update pricing & margin.');
+        }
     };
 
     // Submit Product Form (Add or Edit)
@@ -513,6 +625,7 @@ export default function AdminPanel({
             title: prodTitle,
             category: prodCategory,
             price: parseFloat(prodPrice),
+            costPrice: prodCostPrice ? parseFloat(prodCostPrice) : 0,
             originalPrice: prodOriginalPrice ? parseFloat(prodOriginalPrice) : undefined,
             image: prodImage,
             description: prodDesc,
@@ -598,8 +711,184 @@ export default function AdminPanel({
             maintenanceMode: maintMode,
             maintenanceMessage: maintMsg,
             maintenanceExpiry: maintExpiry ? new Date(maintExpiry).getTime() : 0,
-            offerNotification: offerNotif
+            offerNotification: offerNotif,
+            razorpayKeyId,
+            razorpayKeySecret,
+            razorpayEnabled,
+            googleClientId
         });
+    };
+
+    // =========================================================================
+    // E-COMMERCE MARGIN & REVENUE ANALYTICS CALCULATIONS
+    // =========================================================================
+    const now = new Date();
+    const isWithinTimeframe = (dateString, timeframe) => {
+        if (!dateString || timeframe === 'all') return true;
+        try {
+            const parsedDate = new Date(dateString);
+            if (isNaN(parsedDate.getTime())) return true;
+            
+            const diffMs = now.getTime() - parsedDate.getTime();
+            const diffHours = diffMs / (1000 * 60 * 60);
+            const diffDays = diffHours / 24;
+
+            if (timeframe === 'today') return diffHours <= 24;
+            if (timeframe === '7d') return diffDays <= 7;
+            if (timeframe === '30d') return diffDays <= 30;
+            return true;
+        } catch {
+            return true;
+        }
+    };
+
+    // Filter valid orders (exclude Cancelled)
+    const validBookings = bookingsList.filter(b => {
+        const isNotCancelled = b.status !== 'Cancelled' && b.status !== 'Cancelled by Customer';
+        return isNotCancelled && isWithinTimeframe(b.date, analyticsTimeframe);
+    });
+
+    // 1. Core Financial Totals
+    let totalGrossRevenue = 0;
+    let totalCOGS = 0;
+    let totalUnitsSold = 0;
+
+    // Track product sales and margins
+    const productStatsMap = {};
+    products.forEach(p => {
+        productStatsMap[p.id] = {
+            id: p.id,
+            title: p.title,
+            category: p.category,
+            price: Number(p.price) || 0,
+            costPrice: Number(p.costPrice) || 0,
+            stock: p.stock !== undefined ? p.stock : 50,
+            inStock: p.inStock,
+            image: p.image,
+            unitsSold: 0,
+            totalRevenue: 0,
+            totalCost: 0,
+            totalProfit: 0
+        };
+    });
+
+    // Track category sales and margins
+    const categoryStatsMap = {
+        't-shirt': { name: 'T-Shirts', revenue: 0, cost: 0, profit: 0, units: 0 },
+        'summer-t-shirt': { name: 'Summer T-Shirts', revenue: 0, cost: 0, profit: 0, units: 0 },
+        'shirt': { name: 'Shirts', revenue: 0, cost: 0, profit: 0, units: 0 },
+        'pants': { name: 'Pants', revenue: 0, cost: 0, profit: 0, units: 0 }
+    };
+
+    // Track payment methods
+    const paymentStatsMap = {
+        'Razorpay Online': { count: 0, revenue: 0 },
+        'UPI': { count: 0, revenue: 0 },
+        'COD': { count: 0, revenue: 0 }
+    };
+
+    // Group sales by day for chart
+    const dailyTrendMap = {};
+
+    validBookings.forEach(booking => {
+        const orderRev = Number(booking.subtotal || booking.total) || 0;
+        totalGrossRevenue += orderRev;
+
+        // Payment stats
+        let pMethod = booking.customer?.payment || 'COD';
+        if (pMethod.toLowerCase().includes('razorpay')) pMethod = 'Razorpay Online';
+        else if (pMethod.toLowerCase().includes('upi')) pMethod = 'UPI';
+        else pMethod = 'COD';
+        if (!paymentStatsMap[pMethod]) paymentStatsMap[pMethod] = { count: 0, revenue: 0 };
+        paymentStatsMap[pMethod].count += 1;
+        paymentStatsMap[pMethod].revenue += orderRev;
+
+        // Daily trend key
+        const dateKey = booking.date ? booking.date.split(',')[0].trim() : 'Recent';
+        if (!dailyTrendMap[dateKey]) {
+            dailyTrendMap[dateKey] = { date: dateKey, revenue: 0, cost: 0, profit: 0 };
+        }
+        dailyTrendMap[dateKey].revenue += orderRev;
+
+        let orderCost = 0;
+        (booking.items || []).forEach(item => {
+            const qty = parseInt(item.quantity) || 1;
+            totalUnitsSold += qty;
+            const refProd = products.find(p => p.id === item.id);
+            const unitCost = item.costPrice !== undefined 
+                ? Number(item.costPrice) 
+                : (refProd?.costPrice !== undefined ? Number(refProd.costPrice) : Math.round((item.price || 0) * 0.5));
+            const itemRev = (Number(item.price) || 0) * qty;
+            const itemCost = unitCost * qty;
+            const itemProfit = itemRev - itemCost;
+
+            orderCost += itemCost;
+            totalCOGS += itemCost;
+
+            // Product stats
+            if (productStatsMap[item.id]) {
+                productStatsMap[item.id].unitsSold += qty;
+                productStatsMap[item.id].totalRevenue += itemRev;
+                productStatsMap[item.id].totalCost += itemCost;
+                productStatsMap[item.id].totalProfit += itemProfit;
+            }
+
+            // Category stats
+            const cat = item.category || refProd?.category || 't-shirt';
+            if (!categoryStatsMap[cat]) {
+                categoryStatsMap[cat] = { name: cat, revenue: 0, cost: 0, profit: 0, units: 0 };
+            }
+            categoryStatsMap[cat].units += qty;
+            categoryStatsMap[cat].revenue += itemRev;
+            categoryStatsMap[cat].cost += itemCost;
+            categoryStatsMap[cat].profit += itemProfit;
+        });
+
+        dailyTrendMap[dateKey].cost += orderCost;
+        dailyTrendMap[dateKey].profit += (orderRev - orderCost);
+    });
+
+    const totalNetProfit = totalGrossRevenue - totalCOGS;
+    const grossMarginPercent = totalGrossRevenue > 0 
+        ? ((totalNetProfit / totalGrossRevenue) * 100).toFixed(1) 
+        : '0.0';
+    const averageOrderValue = validBookings.length > 0 
+        ? Math.round(totalGrossRevenue / validBookings.length) 
+        : 0;
+    const confirmedDeliveredCount = validBookings.filter(b => 
+        b.status === 'Payment Confirmed' || b.status === 'Delivered'
+    ).length;
+    const fulfillmentRate = validBookings.length > 0 
+        ? Math.round((confirmedDeliveredCount / validBookings.length) * 100) 
+        : 0;
+
+    // Leaderboard sorted by profit descending
+    const productLeaderboard = Object.values(productStatsMap).sort((a, b) => b.totalProfit - a.totalProfit);
+
+    // Export CSV handler
+    const handleExportCSV = () => {
+        let csvContent = 'data:text/csv;charset=utf-8,';
+        csvContent += 'Order ID,Date,Customer Name,Phone,Payment Method,Status,Subtotal,Delivery,Total Revenue,Estimated COGS,Net Profit,Margin %\n';
+        
+        validBookings.forEach(b => {
+            const rev = b.total || 0;
+            let cost = 0;
+            (b.items || []).forEach(it => {
+                const uCost = it.costPrice !== undefined ? Number(it.costPrice) : Math.round((it.price || 0) * 0.5);
+                cost += uCost * (it.quantity || 1);
+            });
+            const profit = rev - cost;
+            const marginPct = rev > 0 ? ((profit / rev) * 100).toFixed(1) : 0;
+            csvContent += `"${b.orderId}","${b.date}","${b.customer?.name || ''}","${b.customer?.phone || ''}","${b.customer?.payment || ''}","${b.status}",${b.subtotal || rev},${b.delivery || 0},${rev},${cost},${profit},${marginPct}%\n`;
+        });
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `Netrave_Margin_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const handleChangePasswordSubmit = async (e) => {
@@ -638,84 +927,430 @@ export default function AdminPanel({
 
     return (
         <div className="admin-dashboard-container container">
+            {/* Responsive Admin Header */}
             <div className="admin-header-row">
-                <h2>Admin Control Center</h2>
-                <div className="admin-header-actions" style={{ display: 'flex', gap: '10px' }}>
-                    <button className="cta-btn secondary-cta" onClick={handleLogout}>
-                        Log Out
+                <div className="admin-header-title-box">
+                    <h2>
+                        <span>Admin Control Center</span>
+                        <span className="admin-tag-badge">Store Manager</span>
+                    </h2>
+                    <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>
+                        NETRAVE Fashion Store • Real-Time Margins & Gateway
+                    </span>
+                </div>
+                <div className="admin-header-actions">
+                    <button 
+                        type="button" 
+                        className="admin-action-chip-btn danger-chip" 
+                        onClick={handleLogout}
+                        title="Log out from admin portal"
+                    >
+                        🚪 Log Out
                     </button>
-                    <button className="cta-btn secondary-cta" onClick={onClose}>
-                        Return to Store
+                    <button 
+                        type="button" 
+                        className="admin-action-chip-btn" 
+                        onClick={onClose}
+                        style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }}
+                    >
+                        🏪 View Store
                     </button>
                 </div>
             </div>
 
-            {/* Admin Tabs (Desktop) */}
-            <div className="admin-tabs-row">
-                <button 
-                    className={`admin-tab-btn ${activeTab === 'products' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('products')}
-                >
-                    Manage Products
-                </button>
-                <button 
-                    className={`admin-tab-btn ${activeTab === 'bookings' ? 'active' : ''}`}
-                    onClick={() => { setActiveTab('bookings'); setCurrentPage(1); }}
-                >
-                    Orders & Bookings ({bookingsList.length})
-                </button>
-                <button 
-                    className={`admin-tab-btn ${activeTab === 'coupons' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('coupons')}
-                >
-                    Manage Coupons ({coupons.length})
-                </button>
-                <button 
-                    className={`admin-tab-btn ${activeTab === 'users' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('users')}
-                >
-                    Manage Users ({users.length})
-                </button>
-                <button 
-                    className={`admin-tab-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('settings')}
-                >
-                    Shop Settings
-                </button>
+            {/* Responsive Horizontal Scrolling Pill Tabs */}
+            <div className="admin-nav-tabs-wrapper">
+                <div className="admin-nav-tabs-scroll">
+                    <button 
+                        type="button"
+                        className={`admin-tab-chip ${activeTab === 'analytics' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('analytics')}
+                    >
+                        <span>📊 Margin & Revenue Analytics</span>
+                    </button>
+                    <button 
+                        type="button"
+                        className={`admin-tab-chip ${activeTab === 'products' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('products')}
+                    >
+                        <span>🏷️ Products</span>
+                        <span className="admin-tab-count-badge">{products.length}</span>
+                    </button>
+                    <button 
+                        type="button"
+                        className={`admin-tab-chip ${activeTab === 'bookings' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('bookings'); setCurrentPage(1); }}
+                    >
+                        <span>📦 Orders & Bookings</span>
+                        <span className="admin-tab-count-badge">{bookingsList.length}</span>
+                    </button>
+                    <button 
+                        type="button"
+                        className={`admin-tab-chip ${activeTab === 'coupons' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('coupons')}
+                    >
+                        <span>🎟️ Coupons</span>
+                        <span className="admin-tab-count-badge">{coupons.length}</span>
+                    </button>
+                    <button 
+                        type="button"
+                        className={`admin-tab-chip ${activeTab === 'users' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('users')}
+                    >
+                        <span>👥 Users</span>
+                        <span className="admin-tab-count-badge">{users.length}</span>
+                    </button>
+                    <button 
+                        type="button"
+                        className={`admin-tab-chip ${activeTab === 'settings' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('settings')}
+                    >
+                        <span>⚙️ Shop Settings</span>
+                    </button>
+                </div>
             </div>
 
-            {/* Admin Tabs (Mobile Dropdown) */}
+            {/* Admin Tabs: Mobile Dropdown Navigator (shown strictly on mobile) */}
             <div className="admin-tabs-mobile-dropdown-container">
-                <label htmlFor="adminActiveTabSelect" style={{ fontSize: '11px', color: '#94a3b8', display: 'block', marginBottom: '6px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Dashboard Navigation</label>
-                <select
-                    id="adminActiveTabSelect"
-                    value={activeTab}
-                    onChange={(e) => {
-                        const val = e.target.value;
-                        setActiveTab(val);
-                        if (val === 'bookings') setCurrentPage(1);
-                    }}
-                    style={{
-                        width: '100%',
-                        background: '#12141c',
-                        color: '#fff',
-                        border: '1px solid rgba(255, 255, 255, 0.08)',
-                        borderRadius: '10px',
-                        padding: '12px 16px',
-                        fontSize: '14.5px',
-                        fontWeight: '600',
-                        outline: 'none',
-                        cursor: 'pointer',
-                        boxSizing: 'border-box'
-                    }}
-                >
-                    <option value="products">Manage Products ({products.length})</option>
-                    <option value="bookings">Orders & Bookings ({bookingsList.length})</option>
-                    <option value="coupons">Manage Coupons ({coupons.length})</option>
-                    <option value="users">Manage Users ({users.length})</option>
-                    <option value="settings">Shop Settings</option>
-                </select>
+                <div className="admin-mobile-dropdown-header">
+                    <span className="admin-mobile-dropdown-title">Navigation Menu</span>
+                    <span className="admin-mobile-dropdown-current-pill">
+                        {activeTab === 'analytics' && '📊 Analytics'}
+                        {activeTab === 'products' && `🏷️ Products (${products.length})`}
+                        {activeTab === 'bookings' && `📦 Orders (${bookingsList.length})`}
+                        {activeTab === 'coupons' && `🎟️ Coupons (${coupons.length})`}
+                        {activeTab === 'users' && `👥 Users (${users.length})`}
+                        {activeTab === 'settings' && '⚙️ Settings'}
+                    </span>
+                </div>
+                <div className="admin-mobile-select-wrapper">
+                    <select
+                        id="adminActiveTabSelect"
+                        className="admin-mobile-tab-select"
+                        value={activeTab}
+                        onChange={(e) => {
+                            const val = e.target.value;
+                            setActiveTab(val);
+                            if (val === 'bookings') setCurrentPage(1);
+                        }}
+                    >
+                        <option value="analytics">📊 Margin & Revenue Analytics</option>
+                        <option value="products">🏷️ Manage Products ({products.length})</option>
+                        <option value="bookings">📦 Orders & Bookings ({bookingsList.length})</option>
+                        <option value="coupons">🎟️ Manage Coupons ({coupons.length})</option>
+                        <option value="users">👥 Manage Users ({users.length})</option>
+                        <option value="settings">⚙️ Shop Settings</option>
+                    </select>
+                    <div className="admin-mobile-select-chevron">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="6 9 12 15 18 9"></polyline>
+                        </svg>
+                    </div>
+                </div>
             </div>
+
+            {/* TAB CONTENT: ANALYTICS & MARGINS */}
+            {activeTab === 'analytics' && (
+                <div className="admin-tab-content">
+                    {/* Top Bar with Timeframe Filter & Export */}
+                    <div className="analytics-hero-bar">
+                        <div className="analytics-hero-text">
+                            <h3>Store Sales & Profit Margin Analytics</h3>
+                            <p>Real-time financial performance, product profitability, and order margins.</p>
+                        </div>
+                        <div className="analytics-controls-group">
+                            <div className="timeframe-pill-group">
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === 'all' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('all')}
+                                >
+                                    All Time
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === 'today' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('today')}
+                                >
+                                    Today
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === '7d' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('7d')}
+                                >
+                                    Last 7 Days
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === '30d' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('30d')}
+                                >
+                                    Last 30 Days
+                                </button>
+                            </div>
+                            <button type="button" className="export-report-btn" onClick={handleExportCSV} title="Download CSV spreadsheet of sales & margins">
+                                📥 Export CSV Report
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* KPI Metric Cards */}
+                    <div className="analytics-kpi-grid">
+                        <div className="kpi-card gold-highlight">
+                            <div className="kpi-card-header">
+                                <span className="kpi-card-title">Total Revenue</span>
+                                <span className="kpi-card-icon" style={{ background: 'rgba(245, 158, 11, 0.15)', color: '#f59e0b' }}>💰</span>
+                            </div>
+                            <div className="kpi-card-value">₹{totalGrossRevenue.toLocaleString('en-IN')}</div>
+                            <div className="kpi-card-sub">
+                                <span>Across {validBookings.length} completed orders</span>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card emerald-highlight">
+                            <div className="kpi-card-header">
+                                <span className="kpi-card-title">Net Profit / Margin</span>
+                                <span className="kpi-card-icon" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>📈</span>
+                            </div>
+                            <div className="kpi-card-value" style={{ color: '#10b981' }}>₹{totalNetProfit.toLocaleString('en-IN')}</div>
+                            <div className="kpi-card-sub profit-positive">
+                                <span>Gross Margin: {grossMarginPercent}%</span>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-card-header">
+                                <span className="kpi-card-title">Cost of Goods (COGS)</span>
+                                <span className="kpi-card-icon" style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444' }}>📦</span>
+                            </div>
+                            <div className="kpi-card-value">₹{totalCOGS.toLocaleString('en-IN')}</div>
+                            <div className="kpi-card-sub">
+                                <span>Estimated purchase/manufacturing cost</span>
+                            </div>
+                        </div>
+
+                        <div className="kpi-card">
+                            <div className="kpi-card-header">
+                                <span className="kpi-card-title">Average Order (AOV)</span>
+                                <span className="kpi-card-icon" style={{ background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8' }}>🏷️</span>
+                            </div>
+                            <div className="kpi-card-value">₹{averageOrderValue.toLocaleString('en-IN')}</div>
+                            <div className="kpi-card-sub">
+                                <span>{totalUnitsSold} total units sold</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Dual Panels: Trend Chart & Category Breakdown */}
+                    <div className="analytics-charts-grid">
+                        {/* Left: Revenue vs Margin Trend Chart */}
+                        <div className="analytics-chart-panel">
+                            <div className="panel-header-row">
+                                <h4>Revenue vs Net Profit Trends</h4>
+                                <div className="chart-legend-box">
+                                    <div className="legend-item">
+                                        <div className="legend-color-dot" style={{ background: '#f59e0b' }}></div>
+                                        <span>Revenue (Sales)</span>
+                                    </div>
+                                    <div className="legend-item">
+                                        <div className="legend-color-dot" style={{ background: '#10b981' }}></div>
+                                        <span>Net Profit (Margin)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* SVG Interactive Multi-bar Trend Chart */}
+                            <div className="svg-chart-container">
+                                {Object.keys(dailyTrendMap).length === 0 ? (
+                                    <div style={{ textAlign: 'center', padding: '60px 20px', color: '#94a3b8' }}>
+                                        No sales data available for the selected timeframe.
+                                    </div>
+                                ) : (
+                                    <svg className="svg-trend-chart" viewBox="0 0 500 180" preserveAspectRatio="none">
+                                        {/* Background Gridlines */}
+                                        <line x1="0" y1="30" x2="500" y2="30" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+                                        <line x1="0" y1="80" x2="500" y2="80" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+                                        <line x1="0" y1="130" x2="500" y2="130" stroke="rgba(255,255,255,0.06)" strokeDasharray="3 3" />
+                                        <line x1="0" y1="160" x2="500" y2="160" stroke="rgba(255,255,255,0.15)" />
+
+                                        {/* Dynamic Bars for each date */}
+                                        {Object.values(dailyTrendMap).slice(-6).map((day, idx, arr) => {
+                                            const count = arr.length;
+                                            const slotWidth = 500 / count;
+                                            const barGroupX = idx * slotWidth + (slotWidth - 48) / 2;
+                                            const maxVal = Math.max(...arr.map(a => a.revenue), 100);
+                                            const revHeight = Math.max(8, (day.revenue / maxVal) * 120);
+                                            const profitHeight = Math.max(4, (day.profit / maxVal) * 120);
+                                            const revY = 160 - revHeight;
+                                            const profitY = 160 - profitHeight;
+
+                                            return (
+                                                <g key={day.date}>
+                                                    {/* Revenue Bar (Gold) */}
+                                                    <rect 
+                                                        x={barGroupX} 
+                                                        y={revY} 
+                                                        width="20" 
+                                                        height={revHeight} 
+                                                        rx="4" 
+                                                        fill="#f59e0b" 
+                                                        opacity="0.9"
+                                                    >
+                                                        <title>{`${day.date}: Revenue ₹${day.revenue}`}</title>
+                                                    </rect>
+                                                    {/* Profit Bar (Emerald) */}
+                                                    <rect 
+                                                        x={barGroupX + 24} 
+                                                        y={profitY} 
+                                                        width="20" 
+                                                        height={profitHeight} 
+                                                        rx="4" 
+                                                        fill="#10b981" 
+                                                        opacity="0.9"
+                                                    >
+                                                        <title>{`${day.date}: Profit ₹${day.profit} (${day.revenue > 0 ? ((day.profit / day.revenue) * 100).toFixed(0) : 0}% Margin)`}</title>
+                                                    </rect>
+                                                    {/* Date Label */}
+                                                    <text 
+                                                        x={barGroupX + 22} 
+                                                        y="176" 
+                                                        textAnchor="middle" 
+                                                        fill="#94a3b8" 
+                                                        fontSize="10"
+                                                        fontWeight="600"
+                                                    >
+                                                        {day.date.length > 8 ? day.date.slice(0, 6) : day.date}
+                                                    </text>
+                                                </g>
+                                            );
+                                        })}
+                                    </svg>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right: Category Profit & Margin Share */}
+                        <div className="analytics-chart-panel">
+                            <div className="panel-header-row">
+                                <h4>Category Margin Health</h4>
+                            </div>
+
+                            <div className="category-margin-list">
+                                {Object.entries(categoryStatsMap).map(([key, cat]) => {
+                                    const marginPercent = cat.revenue > 0 
+                                        ? ((cat.profit / cat.revenue) * 100).toFixed(1) 
+                                        : 0;
+                                    const isHigh = Number(marginPercent) >= 50;
+
+                                    return (
+                                        <div className="category-margin-row" key={key}>
+                                            <div className="cat-header-flex">
+                                                <span>{cat.name}</span>
+                                                <span className={`cat-margin-badge ${isHigh ? 'high' : 'medium'}`}>
+                                                    {marginPercent}% Margin
+                                                </span>
+                                            </div>
+                                            <div className="cat-progress-track">
+                                                <div 
+                                                    className="cat-progress-bar" 
+                                                    style={{ 
+                                                        width: `${Math.min(100, Math.max(10, marginPercent))}%`,
+                                                        background: isHigh ? 'linear-gradient(90deg, #10b981, #059669)' : 'linear-gradient(90deg, #f59e0b, #d97706)'
+                                                    }}
+                                                ></div>
+                                            </div>
+                                            <div className="cat-footer-meta">
+                                                <span>Revenue: ₹{cat.revenue.toLocaleString('en-IN')}</span>
+                                                <span style={{ color: '#10b981', fontWeight: '600' }}>Profit: +₹{cat.profit.toLocaleString('en-IN')}</span>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* Payment Breakdown */}
+                            <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
+                                <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    Payment Method Split
+                                </span>
+                                <div className="payment-split-grid">
+                                    {Object.entries(paymentStatsMap).map(([method, data]) => (
+                                        <div className="payment-split-card" key={method}>
+                                            <div className="payment-split-title">{method}</div>
+                                            <div className="payment-split-amount">₹{data.revenue.toLocaleString('en-IN')}</div>
+                                            <div className="payment-split-orders">{data.count} order{data.count !== 1 ? 's' : ''}</div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Product-Level Profit Margin Leaderboard */}
+                    <div className="analytics-chart-panel" style={{ marginTop: '20px' }}>
+                        <div className="panel-header-row">
+                            <h4>Product Profitability & Margins Leaderboard</h4>
+                            <span style={{ color: '#94a3b8', fontSize: '13px' }}>Ranked by total profit generated</span>
+                        </div>
+
+                        <div className="responsive-table-wrapper" style={{ margin: 0 }}>
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Selling Price</th>
+                                        <th>Cost Price</th>
+                                        <th>Unit Margin</th>
+                                        <th>Units Sold</th>
+                                        <th>Gross Revenue</th>
+                                        <th>Net Profit</th>
+                                        <th>Margin Health</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {productLeaderboard.map(p => {
+                                        const unitProfit = p.price - p.costPrice;
+                                        const marginPct = p.price > 0 ? ((unitProfit / p.price) * 100).toFixed(1) : 0;
+                                        const isHigh = Number(marginPct) >= 50;
+                                        const isMed = Number(marginPct) >= 30 && Number(marginPct) < 50;
+
+                                        return (
+                                            <tr key={p.id}>
+                                                <td className="bold-td" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                    <img 
+                                                        src={p.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'} 
+                                                        alt={p.title} 
+                                                        style={{ width: '38px', height: '38px', borderRadius: '6px', objectFit: 'cover' }} 
+                                                    />
+                                                    <span>{p.title}</span>
+                                                </td>
+                                                <td style={{ textTransform: 'capitalize' }}>{p.category}</td>
+                                                <td>₹{p.price}</td>
+                                                <td>₹{p.costPrice || 0}</td>
+                                                <td style={{ color: unitProfit >= 0 ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+                                                    ₹{unitProfit} ({marginPct}%)
+                                                </td>
+                                                <td className="bold-td">{p.unitsSold} pcs</td>
+                                                <td>₹{p.totalRevenue.toLocaleString('en-IN')}</td>
+                                                <td style={{ color: '#10b981', fontWeight: '800' }}>
+                                                    ₹{p.totalProfit.toLocaleString('en-IN')}
+                                                </td>
+                                                <td>
+                                                    <span className={`margin-badge-tag ${isHigh ? 'high-margin' : isMed ? 'med-margin' : 'low-margin'}`}>
+                                                        {isHigh ? '🟢 High Margin' : isMed ? '🟡 Good Margin' : '🔴 Low Margin'}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* TAB CONTENT: PRODUCTS */}
             {activeTab === 'products' && (
@@ -757,27 +1392,61 @@ export default function AdminPanel({
                                         </div>
                                     </div>
 
-                                    <div className="form-group-row">
+                                    <div className="form-group-row four-col-pricing">
                                         <div className="form-field">
-                                            <label>Selling Price (₹) *</label>
+                                            <label style={{ color: 'var(--primary)', fontWeight: '700' }}>Sale Price (₹) * <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal' }}>[വിൽക്കുന്ന വില]</span></label>
                                             <input 
                                                 type="number" 
                                                 required 
                                                 value={prodPrice} 
-                                                onChange={e => setProdPrice(e.target.value)} 
-                                                placeholder="e.g. 799"
+                                                onChange={e => handleSellingPriceChange(e.target.value)} 
+                                                placeholder="e.g. 499"
+                                                style={{ borderColor: 'rgba(245, 158, 11, 0.4)', background: 'rgba(245, 158, 11, 0.05)' }}
                                             />
+                                            <small style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer selling price</small>
                                         </div>
                                         <div className="form-field">
-                                            <label>Original Price (₹) (Optional)</label>
+                                            <label style={{ fontWeight: '700' }}>Buy Price / Cost (₹) <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal' }}>[വാങ്ങിയ റേറ്റ്]</span></label>
+                                            <input 
+                                                type="number" 
+                                                value={prodCostPrice} 
+                                                onChange={e => handleCostPriceChange(e.target.value)} 
+                                                placeholder="e.g. 250"
+                                            />
+                                            <small style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Wholesale purchase cost</small>
+                                        </div>
+                                        <div className="form-field highlight-margin-field">
+                                            <label style={{ color: '#10b981', fontWeight: '700' }}>Profit Margin (₹) <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 'normal' }}>[ലാഭം]</span></label>
+                                            <input 
+                                                type="number" 
+                                                value={prodMarginAmount} 
+                                                onChange={e => handleMarginAmountChange(e.target.value)} 
+                                                placeholder="e.g. 249"
+                                                style={{ borderColor: '#10b981', background: 'rgba(16, 185, 129, 0.08)' }}
+                                            />
+                                            <small style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>Auto: Sale - Buy</small>
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Original / MRP (₹)</label>
                                             <input 
                                                 type="number" 
                                                 value={prodOriginalPrice} 
                                                 onChange={e => setProdOriginalPrice(e.target.value)} 
-                                                placeholder="e.g. 1499"
+                                                placeholder="e.g. 999"
                                             />
+                                            <small style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Strikethrough MRP</small>
                                         </div>
                                     </div>
+                                    {prodPrice && (
+                                        <div className="pricing-calc-badge-row">
+                                            <span className="calc-summary-pill">
+                                                Sale: <strong style={{ color: 'var(--primary)' }}>₹{prodPrice}</strong> - Buy: ₹{prodCostPrice || 0} = Profit: <strong style={{ color: '#10b981' }}>₹{prodMarginAmount || 0}</strong>
+                                            </span>
+                                            <span className={`margin-badge-tag ${(Number(prodPrice) - Number(prodCostPrice || 0)) >= 0 ? 'high-margin' : 'low-margin'}`}>
+                                                Margin %: {prodPrice > 0 ? Math.round(((Number(prodPrice) - Number(prodCostPrice || 0)) / Number(prodPrice)) * 100) : 0}%
+                                            </span>
+                                        </div>
+                                    )}
 
                                     <div className="form-group-row">
                                         <div className="form-field">
@@ -876,7 +1545,7 @@ export default function AdminPanel({
                         </div>
                     )}
 
-                    {/* Products list Table */}
+                    {/* Products list Table (Desktop / Tablet) */}
                     <div className="responsive-table-wrapper">
                         <table className="admin-table">
                             <thead>
@@ -884,62 +1553,280 @@ export default function AdminPanel({
                                     <th>Image</th>
                                     <th>Title</th>
                                     <th>Category</th>
-                                    <th>Price</th>
+                                    <th>Sale Price</th>
+                                    <th>Buy Price</th>
+                                    <th>Profit Margin & Edit</th>
                                     <th>Stock</th>
                                     <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {products.map(prod => (
-                                    <tr key={prod.id}>
-                                        <td>
-                                            <img src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={prod.title} className="table-thumbnail" />
-                                        </td>
-                                        <td className="bold-td">{prod.title}</td>
-                                        <td>{prod.category}</td>
-                                        <td>₹{prod.price}</td>
-                                        <td>{prod.stock !== undefined ? prod.stock : 50}</td>
-                                        <td>
-                                            <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`}>
-                                                {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out of Stock'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="table-actions">
-                                                {deletingProductId === prod.id ? (
-                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                        <button 
-                                                            className="edit-action-btn" 
-                                                            onClick={() => onDeleteProduct(prod.id)}
-                                                            style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', padding: '4px 10px', fontSize: '12px' }}
-                                                        >
-                                                            Confirm
-                                                        </button>
-                                                        <button 
-                                                            className="delete-action-btn" 
-                                                            onClick={() => setDeletingProductId(null)}
-                                                            style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)', background: 'transparent', padding: '4px 10px', fontSize: '12px' }}
-                                                        >
-                                                            Cancel
-                                                        </button>
+                                {products.map(prod => {
+                                    const cost = Number(prod.costPrice) || 0;
+                                    const price = Number(prod.price) || 0;
+                                    const margin = price - cost;
+                                    const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
+                                    const isQuickEditing = quickEditingMarginId === prod.id;
+                                    return (
+                                        <tr key={prod.id}>
+                                            <td>
+                                                <img src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={prod.title} className="table-thumbnail" />
+                                            </td>
+                                            <td className="bold-td">{prod.title}</td>
+                                            <td>{prod.category}</td>
+                                            <td className="bold-td" style={{ color: 'var(--primary)' }}>₹{prod.price}</td>
+                                            <td style={{ color: '#94a3b8' }}>₹{cost}</td>
+                                            <td>
+                                                {isQuickEditing ? (
+                                                    <div className="quick-margin-editor-box">
+                                                        <div className="quick-margin-row">
+                                                            <span className="quick-margin-lbl" title="Sale Price to Customer">Sale Price:</span>
+                                                            <div className="quick-margin-input-wrap">
+                                                                <span className="currency-prefix">₹</span>
+                                                                <input 
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="any"
+                                                                    value={quickSalePriceVal}
+                                                                    onChange={(e) => handleQuickSalePriceChange(e.target.value)}
+                                                                    className="quick-margin-inp"
+                                                                    placeholder="e.g. 499"
+                                                                    autoFocus
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="quick-margin-row">
+                                                            <span className="quick-margin-lbl" title="Wholesale Purchase Cost">Buy Price:</span>
+                                                            <div className="quick-margin-input-wrap">
+                                                                <span className="currency-prefix">₹</span>
+                                                                <input 
+                                                                    type="number"
+                                                                    min="0"
+                                                                    step="any"
+                                                                    value={quickBuyPriceVal}
+                                                                    onChange={(e) => handleQuickBuyPriceChange(e.target.value)}
+                                                                    className="quick-margin-inp"
+                                                                    placeholder="e.g. 250"
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                        <div className="quick-margin-preview-tag">
+                                                            {(() => {
+                                                                const s = parseFloat(quickSalePriceVal) || 0;
+                                                                const b = parseFloat(quickBuyPriceVal) || 0;
+                                                                const m = s - b;
+                                                                const pct = s > 0 ? Math.round((m / s) * 100) : 0;
+                                                                return (
+                                                                    <>
+                                                                        Margin: <strong style={{ color: m >= 0 ? '#10b981' : '#ef4444' }}>₹{m.toFixed(0)} ({pct}%)</strong>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                        <div className="quick-margin-action-btns">
+                                                            <button 
+                                                                type="button" 
+                                                                className="quick-margin-save-btn" 
+                                                                onClick={() => handleSaveQuickMargin(prod)}
+                                                            >
+                                                                ✓ Save Price
+                                                            </button>
+                                                            <button 
+                                                                type="button" 
+                                                                className="quick-margin-cancel-btn" 
+                                                                onClick={handleCancelQuickMargin}
+                                                            >
+                                                                ✕
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 ) : (
-                                                    <>
-                                                        <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
-                                                            Edit
+                                                    <div className="margin-display-cell">
+                                                        <span className={`margin-badge-tag ${marginPct >= 40 ? 'high-margin' : marginPct >= 20 ? 'med-margin' : 'low-margin'}`}>
+                                                            {margin >= 0 ? `+₹${margin} (${marginPct}%)` : `-₹${Math.abs(margin)}`}
+                                                        </span>
+                                                        <button 
+                                                            type="button" 
+                                                            className="quick-margin-toggle-btn"
+                                                            title="Directly edit Sale Price and Buy Price"
+                                                            onClick={() => handleStartQuickMargin(prod)}
+                                                        >
+                                                            ✏️ Edit Price & Margin
                                                         </button>
-                                                        <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)}>
-                                                            Delete
-                                                        </button>
-                                                    </>
+                                                    </div>
                                                 )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
+                                            </td>
+                                            <td>{prod.stock !== undefined ? prod.stock : 50}</td>
+                                            <td>
+                                                <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`}>
+                                                    {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out of Stock'}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <div className="table-actions">
+                                                    {deletingProductId === prod.id ? (
+                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                            <button 
+                                                                className="edit-action-btn" 
+                                                                onClick={() => onDeleteProduct(prod.id)}
+                                                                style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', padding: '4px 10px', fontSize: '12px' }}
+                                                            >
+                                                                Confirm
+                                                            </button>
+                                                            <button 
+                                                                className="delete-action-btn" 
+                                                                onClick={() => setDeletingProductId(null)}
+                                                                style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)', background: 'transparent', padding: '4px 10px', fontSize: '12px' }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    ) : (
+                                                        <>
+                                                            <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
+                                                                Edit
+                                                            </button>
+                                                            <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)}>
+                                                                Delete
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Mobile Product Cards View (< 768px) */}
+                    <div className="admin-mobile-cards-list">
+                        {products.map(prod => {
+                            const cost = Number(prod.costPrice) || 0;
+                            const price = Number(prod.price) || 0;
+                            const margin = price - cost;
+                            const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
+                            const isQuickEditing = quickEditingMarginId === prod.id;
+                            return (
+                                <div key={prod.id} className="admin-mobile-card">
+                                    <div className="admin-mobile-card-header">
+                                        <img src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={prod.title} className="admin-mobile-card-thumb" />
+                                        <div className="admin-mobile-card-title-box">
+                                            <div className="admin-mobile-card-title">{prod.title}</div>
+                                            <div className="admin-mobile-card-cat">{prod.category}</div>
+                                        </div>
+                                        <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`} style={{ alignSelf: 'flex-start' }}>
+                                            {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out'}
+                                        </span>
+                                    </div>
+                                    <div className="admin-mobile-grid-metrics">
+                                        <div className="admin-mobile-metric-item">
+                                            <span className="admin-mobile-metric-label">Sale Price</span>
+                                            <span className="admin-mobile-metric-val" style={{ color: 'var(--primary)', fontWeight: '700' }}>₹{prod.price}</span>
+                                        </div>
+                                        <div className="admin-mobile-metric-item">
+                                            <span className="admin-mobile-metric-label">Buy Price</span>
+                                            <span className="admin-mobile-metric-val" style={{ color: '#94a3b8' }}>₹{cost}</span>
+                                        </div>
+                                        <div className="admin-mobile-metric-item" style={{ gridColumn: isQuickEditing ? '1 / -1' : 'auto' }}>
+                                            <span className="admin-mobile-metric-label">Profit Margin</span>
+                                            <span className="admin-mobile-metric-val">
+                                                {isQuickEditing ? (
+                                                    <div className="quick-margin-editor-box mobile">
+                                                        <div className="quick-margin-row">
+                                                            <span className="quick-margin-lbl">Sale Price (₹):</span>
+                                                            <input 
+                                                                type="number" 
+                                                                value={quickSalePriceVal} 
+                                                                onChange={(e) => handleQuickSalePriceChange(e.target.value)} 
+                                                                className="quick-margin-inp"
+                                                                placeholder="e.g. 499"
+                                                                autoFocus
+                                                            />
+                                                        </div>
+                                                        <div className="quick-margin-row">
+                                                            <span className="quick-margin-lbl">Buy Price (₹):</span>
+                                                            <input 
+                                                                type="number" 
+                                                                value={quickBuyPriceVal} 
+                                                                onChange={(e) => handleQuickBuyPriceChange(e.target.value)} 
+                                                                className="quick-margin-inp"
+                                                                placeholder="e.g. 250"
+                                                            />
+                                                        </div>
+                                                        <div className="quick-margin-preview-tag">
+                                                            {(() => {
+                                                                const s = parseFloat(quickSalePriceVal) || 0;
+                                                                const b = parseFloat(quickBuyPriceVal) || 0;
+                                                                const m = s - b;
+                                                                const pct = s > 0 ? Math.round((m / s) * 100) : 0;
+                                                                return (
+                                                                    <>
+                                                                        Margin: <strong style={{ color: m >= 0 ? '#10b981' : '#ef4444' }}>₹{m.toFixed(0)} ({pct}%)</strong>
+                                                                    </>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                        <div className="quick-margin-action-btns">
+                                                            <button type="button" className="quick-margin-save-btn" onClick={() => handleSaveQuickMargin(prod)}>✓ Save Price</button>
+                                                            <button type="button" className="quick-margin-cancel-btn" onClick={handleCancelQuickMargin}>✕ Cancel</button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                        <span className={`margin-badge-tag ${marginPct >= 40 ? 'high-margin' : marginPct >= 20 ? 'med-margin' : 'low-margin'}`}>
+                                                            {margin >= 0 ? `+₹${margin} (${marginPct}%)` : `-₹${Math.abs(margin)}`}
+                                                        </span>
+                                                        <button 
+                                                            type="button" 
+                                                            className="quick-margin-toggle-btn"
+                                                            onClick={() => handleStartQuickMargin(prod)}
+                                                        >
+                                                            ✏️ Edit
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </span>
+                                        </div>
+                                        <div className="admin-mobile-metric-item">
+                                            <span className="admin-mobile-metric-label">Stock Units</span>
+                                            <span className="admin-mobile-metric-val">{prod.stock !== undefined ? prod.stock : 50}</span>
+                                        </div>
+                                    </div>
+                                    <div className="admin-mobile-card-actions">
+                                        {deletingProductId === prod.id ? (
+                                            <>
+                                                <button 
+                                                    className="edit-action-btn" 
+                                                    onClick={() => onDeleteProduct(prod.id)}
+                                                    style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', flex: 1, padding: '8px' }}
+                                                >
+                                                    Confirm Delete
+                                                </button>
+                                                <button 
+                                                    className="delete-action-btn" 
+                                                    onClick={() => setDeletingProductId(null)}
+                                                    style={{ flex: 1, padding: '8px' }}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)} style={{ flex: 1, padding: '8px' }}>
+                                                    ✏️ Edit
+                                                </button>
+                                                <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)} style={{ flex: 1, padding: '8px' }}>
+                                                    🗑️ Delete
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             )}
@@ -982,6 +1869,7 @@ export default function AdminPanel({
                                     <th>Customer Name</th>
                                     <th>Phone / WhatsApp</th>
                                     <th>Items (Qty)</th>
+                                    <th>Payment</th>
                                     <th>Total Price</th>
                                     <th>Status</th>
                                 </tr>
@@ -989,7 +1877,7 @@ export default function AdminPanel({
                             <tbody>
                                 {currentBookings.length === 0 ? (
                                     <tr>
-                                        <td colSpan="7" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                        <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
                                             No matching bookings found.
                                         </td>
                                     </tr>
@@ -1021,6 +1909,21 @@ export default function AdminPanel({
                                                     ))}
                                                 </div>
                                             </td>
+                                            <td>
+                                                {book.paymentMethod === 'razorpay' ? (
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                                                        ⚡ Razorpay
+                                                    </span>
+                                                ) : book.paymentMethod === 'upi' ? (
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                                                        📱 UPI Direct
+                                                    </span>
+                                                ) : (
+                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(148, 163, 184, 0.3)', color: '#cbd5e1', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                                                        💵 COD
+                                                    </span>
+                                                )}
+                                            </td>
                                             <td className="bold-td">₹{book.total}</td>
                                             <td>
                                                 <select 
@@ -1043,6 +1946,103 @@ export default function AdminPanel({
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    {/* Mobile Bookings Cards View (< 768px) */}
+                    <div className="admin-mobile-cards-list">
+                        {currentBookings.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                No matching bookings found.
+                            </div>
+                        ) : (
+                            currentBookings.map(book => (
+                                <div key={book.orderId} className="admin-mobile-card">
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                                        <div>
+                                            <span 
+                                                className="order-id-badge" 
+                                                style={{ cursor: 'pointer', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}
+                                                onClick={() => setSelectedAdminBooking(book)}
+                                            >
+                                                {book.orderId}
+                                            </span>
+                                            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>{book.date}</div>
+                                        </div>
+                                        <div>
+                                            {book.paymentMethod === 'razorpay' ? (
+                                                <span style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                                                    ⚡ Razorpay
+                                                </span>
+                                            ) : book.paymentMethod === 'upi' ? (
+                                                <span style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                                                    📱 UPI
+                                                </span>
+                                            ) : (
+                                                <span style={{ background: 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(148, 163, 184, 0.3)', color: '#cbd5e1', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                                                    💵 COD
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: '10px' }}>
+                                        <div style={{ fontWeight: '700', fontSize: '14px', color: '#fff' }}>{book.customer.name}</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{book.customer.district || 'Kerala'}, PIN: {book.customer.pincode}</div>
+                                    </div>
+
+                                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', fontSize: '12.5px' }}>
+                                        <div style={{ color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '6px' }}>Items Ordered</div>
+                                        {book.items.map((item, idx) => (
+                                            <div key={idx} style={{ color: '#e2e8f0', marginBottom: '3px' }}>
+                                                • {item.title} ({item.size}) x{item.quantity}
+                                            </div>
+                                        ))}
+                                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '8px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
+                                            <span>Total Amount:</span>
+                                            <span style={{ color: 'var(--primary)', fontSize: '14px' }}>₹{book.total}</span>
+                                        </div>
+                                    </div>
+
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <label style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600', display: 'block', marginBottom: '4px' }}>Status:</label>
+                                        <select 
+                                            value={book.status || 'Pending'} 
+                                            className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
+                                            onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
+                                            style={{ width: '100%' }}
+                                        >
+                                            <option value="Pending">Pending</option>
+                                            <option value="Order Placed">Order Placed</option>
+                                            <option value="Payment Confirmed">Payment Confirmed</option>
+                                            <option value="Payment Not Confirmed">Payment Not Confirmed</option>
+                                            <option value="Dispatched">Dispatched</option>
+                                            <option value="Delivered">Delivered</option>
+                                            <option value="Cancelled">Cancelled</option>
+                                            <option value="Cancelled by Customer">Cancelled by Customer</option>
+                                        </select>
+                                    </div>
+
+                                    <div className="admin-mobile-card-actions">
+                                        <a 
+                                            href={`tel:${book.customer.phone}`}
+                                            className="cta-btn secondary-cta"
+                                            style={{ flex: 1, padding: '8px 10px', fontSize: '12px', minHeight: 'unset', textDecoration: 'none', justifyContent: 'center' }}
+                                        >
+                                            📞 Call
+                                        </a>
+                                        <a 
+                                            href={`https://wa.me/91${book.customer.whatsapp || book.customer.phone}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="cta-btn primary-cta"
+                                            style={{ flex: 1, padding: '8px 10px', fontSize: '12px', minHeight: 'unset', textDecoration: 'none', justifyContent: 'center', background: '#25d366', borderColor: '#25d366', color: '#fff' }}
+                                        >
+                                            💬 WhatsApp
+                                        </a>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
 
                     {/* Pagination Controls */}
@@ -1374,6 +2374,84 @@ export default function AdminPanel({
                                     placeholder="e.g. 🔥 MID-SUMMER OFFER: Use code SUMMER20 to get 20% flat discount!"
                                     style={{ background: 'var(--bg-dark)', border: '1px solid var(--border-color)', color: '#fff', borderRadius: '6px', padding: '12px', width: '100%', fontFamily: 'inherit' }}
                                 />
+                            </div>
+
+                            <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+                                    <span>⚡ Razorpay Payment Gateway Integration</span>
+                                </h3>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '16px' }}>
+                                    Enable direct online card, UPI (GPay, PhonePe, Paytm), and NetBanking checkout for customers.
+                                </p>
+
+                                <div className="form-field toggle-field" style={{ marginBottom: '16px' }}>
+                                    <div className="checkbox-wrapper">
+                                        <input 
+                                            type="checkbox" 
+                                            id="razorpayEnabledToggle"
+                                            checked={razorpayEnabled} 
+                                            onChange={e => setRazorpayEnabled(e.target.checked)}
+                                        />
+                                        <label htmlFor="razorpayEnabledToggle" style={{ fontWeight: '700', color: razorpayEnabled ? '#10b981' : '#94a3b8' }}>
+                                            {razorpayEnabled ? '✅ Razorpay Online Gateway Active' : '⚪ Razorpay Online Gateway Disabled'}
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="form-field" style={{ maxWidth: '500px' }}>
+                                    <label>Razorpay Key ID</label>
+                                    <input 
+                                        type="text" 
+                                        value={razorpayKeyId} 
+                                        onChange={e => setRazorpayKeyId(e.target.value)} 
+                                        placeholder="rzp_test_... or rzp_live_..."
+                                    />
+                                    <small style={{ color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                                        Find this in your Razorpay Dashboard &rarr; Settings &rarr; API Keys.
+                                    </small>
+                                </div>
+
+                                <div className="form-field" style={{ maxWidth: '500px' }}>
+                                    <label>Razorpay Key Secret</label>
+                                    <input 
+                                        type="password" 
+                                        value={razorpayKeySecret} 
+                                        onChange={e => setRazorpayKeySecret(e.target.value)} 
+                                        placeholder="Enter Razorpay Secret Key"
+                                    />
+                                    <small style={{ color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                                        Kept securely on server. Used to cryptographically verify payment signatures.
+                                    </small>
+                                </div>
+
+                                <div style={{ background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', padding: '12px 14px', borderRadius: '8px', maxWidth: '500px', marginTop: '10px' }}>
+                                    <div style={{ color: '#60a5fa', fontWeight: '700', fontSize: '12px', marginBottom: '4px' }}>💡 Quick Setup Info</div>
+                                    <div style={{ color: '#94a3b8', fontSize: '11.5px', lineHeight: '1.4' }}>
+                                        When you toggle Razorpay ON, customers will see the Razorpay option at checkout. If test keys are used, test mode allows instant mock verification.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ marginTop: '25px', paddingTop: '20px', borderTop: '1px solid var(--border-color)' }}>
+                                <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#fff' }}>
+                                    <span>🌐 Google Sign-In Integration (OAuth 2.0)</span>
+                                </h3>
+                                <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '16px' }}>
+                                    Allow customers to 1-click Sign In / Sign Up with their Google account on the login page.
+                                </p>
+
+                                <div className="form-field" style={{ maxWidth: '500px' }}>
+                                    <label>Google OAuth Web Client ID (Optional)</label>
+                                    <input 
+                                        type="text" 
+                                        value={googleClientId} 
+                                        onChange={e => setGoogleClientId(e.target.value)} 
+                                        placeholder="e.g. 1234567890-abcdef.apps.googleusercontent.com"
+                                    />
+                                    <small style={{ color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                                        From Google Cloud Console &rarr; APIs &amp; Services &rarr; Credentials &rarr; OAuth 2.0 Client IDs.
+                                    </small>
+                                </div>
                             </div>
 
                             <button type="submit" className="cta-btn primary-cta" style={{ marginTop: '30px' }}>

@@ -1,1 +1,171 @@
-[]
+[
+  {
+    "orderId": "TR-842910",
+    "date": "30 Sep 2026, 08:30 pm",
+    "customer": {
+      "name": "Rahul Nair",
+      "phone": "9847123456",
+      "whatsapp": "9847123456",
+      "address": "Green Valley Villa, Near Town Hall, Kakkanad",
+      "district": "Ernakulam",
+      "pincode": "682030",
+      "payment": "Razorpay Online",
+      "razorpayPaymentId": "pay_OqzL8192Kdnx1",
+      "razorpayOrderId": "order_OqzL10928a"
+    },
+    "items": [
+      {
+        "id": 1,
+        "title": "Oversized Acid-Wash Graphic Tee",
+        "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+        "price": 699,
+        "costPrice": 280,
+        "size": "L",
+        "quantity": 1,
+        "category": "t-shirt"
+      },
+      {
+        "id": 4,
+        "title": "Premium Linen Casual Shirt",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+        "price": 1199,
+        "costPrice": 520,
+        "size": "XL",
+        "quantity": 1,
+        "category": "shirt"
+      }
+    ],
+    "subtotal": 1898,
+    "delivery": 0,
+    "total": 1898,
+    "status": "Payment Confirmed"
+  },
+  {
+    "orderId": "TR-721590",
+    "date": "29 Sep 2026, 04:15 pm",
+    "customer": {
+      "name": "Ananya Menon",
+      "phone": "9745812903",
+      "whatsapp": "9745812903",
+      "address": "Flat 4B, Skyline Riverdale, Edappally",
+      "district": "Ernakulam",
+      "pincode": "682024",
+      "payment": "Razorpay Online",
+      "razorpayPaymentId": "pay_OpxK7411Pqms2"
+    },
+    "items": [
+      {
+        "id": 16,
+        "title": "Sunset Beach Breeze Tee",
+        "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+        "price": 549,
+        "costPrice": 230,
+        "size": "M",
+        "quantity": 2,
+        "category": "summer-t-shirt"
+      }
+    ],
+    "subtotal": 1098,
+    "delivery": 0,
+    "total": 1098,
+    "status": "Delivered"
+  },
+  {
+    "orderId": "TR-639102",
+    "date": "28 Sep 2026, 11:20 am",
+    "customer": {
+      "name": "Muhammed Faizal",
+      "phone": "9447192834",
+      "whatsapp": "9447192834",
+      "address": "Baitul Noor, Beach Road",
+      "district": "Kozhikode",
+      "pincode": "673001",
+      "payment": "COD"
+    },
+    "items": [
+      {
+        "id": 7,
+        "title": "Multi-Pocket Athletic Cargo Pants",
+        "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
+        "price": 1299,
+        "costPrice": 580,
+        "size": "L",
+        "quantity": 1,
+        "category": "pants"
+      }
+    ],
+    "subtotal": 1299,
+    "delivery": 0,
+    "total": 1299,
+    "status": "Delivered"
+  },
+  {
+    "orderId": "TR-512948",
+    "date": "26 Sep 2026, 06:40 pm",
+    "customer": {
+      "name": "Vishnu K",
+      "phone": "9895102938",
+      "whatsapp": "9895102938",
+      "address": "House 12, Temple View, East Fort",
+      "district": "Thrissur",
+      "pincode": "680005",
+      "payment": "UPI"
+    },
+    "items": [
+      {
+        "id": 2,
+        "title": "Classic Vintage Crewneck Tee",
+        "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
+        "price": 499,
+        "costPrice": 210,
+        "size": "M",
+        "quantity": 1,
+        "category": "t-shirt"
+      }
+    ],
+    "subtotal": 499,
+    "delivery": 60,
+    "total": 559,
+    "status": "Delivered"
+  },
+  {
+    "orderId": "TR-408192",
+    "date": "25 Sep 2026, 02:10 pm",
+    "customer": {
+      "name": "Athira S",
+      "phone": "9562819034",
+      "whatsapp": "9562819034",
+      "address": "Green Crest, Kowdiar",
+      "district": "Thiruvananthapuram",
+      "pincode": "695003",
+      "payment": "Razorpay Online",
+      "razorpayPaymentId": "pay_OlkJ9921Mxz3"
+    },
+    "items": [
+      {
+        "id": 4,
+        "title": "Premium Linen Casual Shirt",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+        "price": 1199,
+        "costPrice": 520,
+        "size": "M",
+        "quantity": 1,
+        "category": "shirt"
+      },
+      {
+        "id": 7,
+        "title": "Multi-Pocket Athletic Cargo Pants",
+        "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
+        "price": 1299,
+        "costPrice": 580,
+        "size": "XL",
+        "quantity": 1,
+        "category": "pants"
+      }
+    ],
+    "subtotal": 2498,
+    "delivery": 0,
+    "total": 2498,
+    "status": "Delivered"
+  }
+]

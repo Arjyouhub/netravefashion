@@ -10,6 +10,7 @@ import BookingsModal from './components/BookingsModal';
 import AdminPanel from './components/AdminPanel';
 import AuthModal from './components/AuthModal';
 import DeveloperModal from './components/DeveloperModal';
+import ProfileModal from './components/ProfileModal';
 import { getCookie, setCookie, eraseCookie } from './utils/cookies';
 
 // Backup fallback database to ensure frontend works gracefully even if backend is offline
@@ -91,8 +92,9 @@ const FALLBACK_PRODUCTS = [
     }
 ];
 
-const API_BASE_URL = 'https://netravefashion.onrender.com/api';
-// const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5000/api'
+    : 'https://netravefashion.onrender.com/api';
 
 function MaintenanceCountdown({ expiryTimestamp }) {
     const [timeLeft, setTimeLeft] = useState('');
@@ -153,6 +155,7 @@ export default function App() {
     const [isBookingsOpen, setIsBookingsOpen] = useState(false);
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
     const [isAuthOpen, setIsAuthOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [pendingCheckout, setPendingCheckout] = useState(false);
     const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
     const [user, setUser] = useState(() => getCookie('netrave_user'));
@@ -247,6 +250,11 @@ export default function App() {
         if (pendingCheckout) {
             setIsCheckoutOpen(true);
             setPendingCheckout(false);
+        } else if (!userData.phone || !userData.address) {
+            setIsProfileOpen(true);
+            showToast('Welcome! Please complete your phone & delivery address.', 'info');
+        } else {
+            showToast(`Welcome back, ${userData.name}!`, 'success');
         }
     };
 
@@ -641,6 +649,7 @@ export default function App() {
                 cartCount={cartCount}
                 onCartOpen={() => setIsCartOpen(true)}
                 onBookingsOpen={() => setIsBookingsOpen(true)}
+                onProfileOpen={() => setIsProfileOpen(true)}
                 activeCategory={activeCategory}
                 onCategoryChange={(catId) => {
                     setActiveCategory(catId);
@@ -793,6 +802,19 @@ export default function App() {
                 onSubmitBooking={handlePlaceBooking}
                 user={user}
                 API_BASE_URL={API_BASE_URL}
+                settings={settings}
+                onRazorpaySuccess={(orderData) => {
+                    setCart([]);
+                    localStorage.setItem('netrave_cart', JSON.stringify([]));
+                    setPlacedOrder(orderData);
+                    setIsCheckoutOpen(false);
+                    setIsSuccessOpen(true);
+                    fetchBookings();
+                    fetch(`${API_BASE_URL}/products`)
+                        .then(res => res.ok ? res.json() : null)
+                        .then(data => { if (data) setProducts(data); })
+                        .catch(console.error);
+                }}
             />
 
             <AuthModal
@@ -803,6 +825,7 @@ export default function App() {
                 }}
                 onAuthSuccess={handleAuthSuccess}
                 API_BASE_URL={API_BASE_URL}
+                settings={settings}
             />
 
             <SuccessModal
@@ -820,6 +843,31 @@ export default function App() {
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsBookingsOpen(false)}
                 API_BASE_URL={API_BASE_URL}
+            />
+
+            <ProfileModal
+                isOpen={isProfileOpen}
+                onClose={() => setIsProfileOpen(false)}
+                user={user}
+                bookings={bookings}
+                cartItems={cart}
+                cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
+                onOpenCart={() => {
+                    setIsProfileOpen(false);
+                    setIsCartOpen(true);
+                }}
+                whatsappNumber={settings?.whatsappNumber}
+                onUpdateUser={(updated) => {
+                    setUser(updated);
+                    setCookie('netrave_user', updated);
+                }}
+                onViewOrders={() => {
+                    setIsProfileOpen(false);
+                    setIsBookingsOpen(true);
+                }}
+                onLogout={handleLogout}
+                API_BASE_URL={API_BASE_URL}
+                showToast={showToast}
             />
 
             {/* Mobile Bottom Navigation Bar completely removed */}
