@@ -36,6 +36,7 @@ export default function ProfileModal({
     const [activeTab, setActiveTab] = useState('orders'); // default to 'orders' or 'profile'
     const [orderFilter, setOrderFilter] = useState('all'); // 'all' | 'delivered' | 'active'
     const [tabDropdownOpen, setTabDropdownOpen] = useState(false);
+    const [orderFilterDropdownOpen, setOrderFilterDropdownOpen] = useState(false);
 
     // Profile form states
     const [name, setName] = useState('');
@@ -548,29 +549,72 @@ export default function ProfileModal({
                 {/* TAB 2: Orders & Delivered Status */}
                 {activeTab === 'orders' && (
                     <div className="profile-orders-tab-content">
-                        {/* Order Filter Pills */}
-                        <div className="profile-orders-filter-row">
+                        {/* Order Filter Dropdown (Replaces cut-off pills) */}
+                        <div className="order-filter-dropdown-container">
                             <button 
                                 type="button" 
-                                className={`profile-filter-pill ${orderFilter === 'all' ? 'active' : ''}`}
-                                onClick={() => setOrderFilter('all')}
+                                className={`order-filter-dropdown-trigger ${orderFilterDropdownOpen ? 'open' : ''}`}
+                                onClick={() => setOrderFilterDropdownOpen(!orderFilterDropdownOpen)}
+                                aria-expanded={orderFilterDropdownOpen}
                             >
-                                All ({userBookings.length})
+                                <div className="order-filter-trigger-content">
+                                    <span className="order-filter-label-prefix">Status Filter:</span>
+                                    <span className="order-filter-current-val">
+                                        {orderFilter === 'all' && `📦 All Orders (${userBookings.length})`}
+                                        {orderFilter === 'delivered' && `✅ Delivered Orders (${deliveredOrders.length})`}
+                                        {orderFilter === 'active' && `🚚 In Transit / Processing (${activeOrders.length})`}
+                                    </span>
+                                </div>
+                                <svg viewBox="0 0 24 24" className={`order-filter-chevron ${orderFilterDropdownOpen ? 'rotated' : ''}`}>
+                                    <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                                </svg>
                             </button>
-                            <button 
-                                type="button" 
-                                className={`profile-filter-pill ${orderFilter === 'delivered' ? 'active' : ''}`}
-                                onClick={() => setOrderFilter('delivered')}
-                            >
-                                ✅ Delivered ({deliveredOrders.length})
-                            </button>
-                            <button 
-                                type="button" 
-                                className={`profile-filter-pill ${orderFilter === 'active' ? 'active' : ''}`}
-                                onClick={() => setOrderFilter('active')}
-                            >
-                                🚚 Processing / In Transit ({activeOrders.length})
-                            </button>
+
+                            {orderFilterDropdownOpen && (
+                                <div className="order-filter-dropdown-menu">
+                                    <div 
+                                        className={`order-filter-opt ${orderFilter === 'all' ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            setOrderFilter('all');
+                                            setOrderFilterDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="filter-opt-left">
+                                            <span className="filter-opt-icon">📦</span>
+                                            <span className="filter-opt-text">All Orders</span>
+                                        </div>
+                                        <span className="filter-opt-badge">{userBookings.length}</span>
+                                    </div>
+
+                                    <div 
+                                        className={`order-filter-opt ${orderFilter === 'delivered' ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            setOrderFilter('delivered');
+                                            setOrderFilterDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="filter-opt-left">
+                                            <span className="filter-opt-icon">✅</span>
+                                            <span className="filter-opt-text">Delivered Orders</span>
+                                        </div>
+                                        <span className="filter-opt-badge delivered">{deliveredOrders.length}</span>
+                                    </div>
+
+                                    <div 
+                                        className={`order-filter-opt ${orderFilter === 'active' ? 'selected' : ''}`}
+                                        onClick={() => {
+                                            setOrderFilter('active');
+                                            setOrderFilterDropdownOpen(false);
+                                        }}
+                                    >
+                                        <div className="filter-opt-left">
+                                            <span className="filter-opt-icon">🚚</span>
+                                            <span className="filter-opt-text">Processing / In Transit</span>
+                                        </div>
+                                        <span className="filter-opt-badge transit">{activeOrders.length}</span>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Orders List */}
