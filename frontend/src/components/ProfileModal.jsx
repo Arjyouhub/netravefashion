@@ -172,33 +172,52 @@ export default function ProfileModal({
     };
 
     return (
-        <div className="modal-overlay" onClick={onClose}>
-            <div className="modal-content profile-modal-content" onClick={e => e.stopPropagation()}>
-                {/* Header Profile Summary */}
-                <div className="profile-modal-header">
-                    <div className="profile-user-summary">
-                        {user.avatar ? (
-                            <img src={user.avatar} alt={user.name} className="profile-avatar-img" />
-                        ) : (
-                            <div className="profile-avatar-circle">
-                                {userInitials}
+        <div className="profile-fullscreen-view" role="dialog" aria-modal="true">
+            {/* Fullscreen Sticky App Bar */}
+            <header className="profile-fullscreen-bar">
+                <div className="profile-bar-inner">
+                    <button className="profile-back-btn" onClick={onClose} aria-label="Go Back to Store">
+                        <svg viewBox="0 0 24 24" style={{ width: '20px', height: '20px', fill: 'currentColor' }}>
+                            <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
+                        </svg>
+                        <span>Back to Store</span>
+                    </button>
+                    <div className="profile-bar-title">
+                        <span>My Account</span>
+                    </div>
+                    <button className="profile-bar-close-btn" onClick={onClose} aria-label="Close Profile">
+                        &times;
+                    </button>
+                </div>
+            </header>
+
+            {/* Scrollable Page Body */}
+            <div className="profile-fullscreen-body">
+                <div className="profile-fullscreen-container">
+                    {/* Header Profile Summary Card */}
+                    <div className="profile-modal-header">
+                        <div className="profile-user-summary">
+                            {user.avatar ? (
+                                <img src={user.avatar} alt={user.name} className="profile-avatar-img" />
+                            ) : (
+                                <div className="profile-avatar-circle">
+                                    {userInitials}
+                                </div>
+                            )}
+                            <div className="profile-user-info">
+                                <div className="profile-user-name-row">
+                                    <h3 className="profile-user-name">{user.name}</h3>
+                                    <span className={`profile-badge ${user.authProvider === 'google' ? 'google-badge' : 'phone-badge'}`}>
+                                        {user.authProvider === 'google' ? '🌐 Google Verified' : '📱 Phone Verified'}
+                                    </span>
+                                </div>
+                                <p className="profile-user-meta">
+                                    {user.phone && <span className="profile-meta-item">📞 +91 {user.phone}</span>}
+                                    {user.email && <span className="profile-meta-item">✉️ {user.email}</span>}
+                                </p>
                             </div>
-                        )}
-                        <div className="profile-user-info">
-                            <div className="profile-user-name-row">
-                                <h3 className="profile-user-name">{user.name}</h3>
-                                <span className={`profile-badge ${user.authProvider === 'google' ? 'google-badge' : 'phone-badge'}`}>
-                                    {user.authProvider === 'google' ? '🌐 Google Verified' : '📱 Phone Verified'}
-                                </span>
-                            </div>
-                            <p className="profile-user-meta">
-                                {user.phone && <span className="profile-meta-item">📞 +91 {user.phone}</span>}
-                                {user.email && <span className="profile-meta-item">✉️ {user.email}</span>}
-                            </p>
                         </div>
                     </div>
-                    <button className="close-btn" onClick={onClose} aria-label="Close Profile">&times;</button>
-                </div>
 
                 {/* Flipkart-Style 4 Quick Action Cards */}
                 <div className="flipkart-profile-grid">
@@ -628,5 +647,6 @@ export default function ProfileModal({
                 </div>
             </div>
         </div>
+    </div>
     );
 }
