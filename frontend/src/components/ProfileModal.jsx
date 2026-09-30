@@ -35,6 +35,7 @@ export default function ProfileModal({
 }) {
     const [activeTab, setActiveTab] = useState('orders'); // default to 'orders' or 'profile'
     const [orderFilter, setOrderFilter] = useState('all'); // 'all' | 'delivered' | 'active'
+    const [tabDropdownOpen, setTabDropdownOpen] = useState(false);
 
     // Profile form states
     const [name, setName] = useState('');
@@ -223,7 +224,7 @@ export default function ProfileModal({
                 <div className="flipkart-profile-grid">
                     <div 
                         className={`flipkart-card ${activeTab === 'orders' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('orders')}
+                        onClick={() => { setActiveTab('orders'); setTabDropdownOpen(false); }}
                     >
                         <div className="flipkart-card-icon">📦</div>
                         <div className="flipkart-card-info">
@@ -235,6 +236,7 @@ export default function ProfileModal({
                     <div 
                         className={`flipkart-card ${activeTab === 'cart' ? 'active' : ''}`}
                         onClick={() => {
+                            setTabDropdownOpen(false);
                             if (onOpenCart) onOpenCart();
                             else setActiveTab('cart');
                         }}
@@ -248,7 +250,7 @@ export default function ProfileModal({
 
                     <div 
                         className={`flipkart-card ${activeTab === 'profile' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('profile')}
+                        onClick={() => { setActiveTab('profile'); setTabDropdownOpen(false); }}
                     >
                         <div className="flipkart-card-icon">📍</div>
                         <div className="flipkart-card-info">
@@ -262,6 +264,7 @@ export default function ProfileModal({
                         target="_blank" 
                         rel="noopener noreferrer" 
                         className="flipkart-card flipkart-help-card"
+                        onClick={() => setTabDropdownOpen(false)}
                     >
                         <div className="flipkart-card-icon">💬</div>
                         <div className="flipkart-card-info">
@@ -271,32 +274,111 @@ export default function ProfileModal({
                     </a>
                 </div>
 
-                {/* Profile Navigation Tabs */}
-                <div className="profile-tabs-header">
-                    <button 
-                        type="button" 
-                        className={`profile-tab-btn ${activeTab === 'orders' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('orders')}
-                    >
-                        <span>📦 Orders & Delivered ({userBookings.length})</span>
-                        {deliveredOrders.length > 0 && (
-                            <span className="profile-tab-count-badge">{deliveredOrders.length} Delivered</span>
+                {/* Profile Navigation Dropdown (Replaces cut-off tabs) */}
+                <div className="profile-tab-dropdown-container">
+                    <label className="profile-tab-dropdown-label">
+                        <span>SELECT VIEW / CATEGORY</span>
+                        <span className="dropdown-label-subtitle">Tap below to switch section</span>
+                    </label>
+
+                    <div className="profile-tab-dropdown-wrapper">
+                        <button 
+                            type="button" 
+                            className={`profile-tab-dropdown-trigger ${tabDropdownOpen ? 'open' : ''}`}
+                            onClick={() => setTabDropdownOpen(!tabDropdownOpen)}
+                            aria-expanded={tabDropdownOpen}
+                        >
+                            <div className="dropdown-trigger-content">
+                                {activeTab === 'orders' && (
+                                    <>
+                                        <span className="trigger-icon">📦</span>
+                                        <div className="trigger-text-group">
+                                            <span className="trigger-title">Orders & Delivered Status</span>
+                                            <span className="trigger-count">({userBookings.length} Bookings • {deliveredOrders.length} Delivered)</span>
+                                        </div>
+                                    </>
+                                )}
+                                {activeTab === 'profile' && (
+                                    <>
+                                        <span className="trigger-icon">📍</span>
+                                        <div className="trigger-text-group">
+                                            <span className="trigger-title">Delivery Address & Mobile Details</span>
+                                            <span className="trigger-count">({district || 'Edit Details'})</span>
+                                        </div>
+                                    </>
+                                )}
+                                {activeTab === 'cart' && (
+                                    <>
+                                        <span className="trigger-icon">🛒</span>
+                                        <div className="trigger-text-group">
+                                            <span className="trigger-title">My Shopping Cart</span>
+                                            <span className="trigger-count">({cartCount} Items)</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                            <div className="dropdown-arrow-circle">
+                                <svg viewBox="0 0 24 24" className={`dropdown-chevron-svg ${tabDropdownOpen ? 'rotated' : ''}`}>
+                                    <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                                </svg>
+                            </div>
+                        </button>
+
+                        {tabDropdownOpen && (
+                            <div className="profile-tab-dropdown-menu">
+                                <div 
+                                    className={`profile-dropdown-opt ${activeTab === 'orders' ? 'selected' : ''}`}
+                                    onClick={() => {
+                                        setActiveTab('orders');
+                                        setTabDropdownOpen(false);
+                                    }}
+                                >
+                                    <div className="opt-left">
+                                        <span className="opt-icon">📦</span>
+                                        <div className="opt-details">
+                                            <span className="opt-title">Orders & Delivered Status</span>
+                                            <span className="opt-desc">Track live deliveries, item breakdown & reviews</span>
+                                        </div>
+                                    </div>
+                                    <span className="opt-badge">{userBookings.length} Orders</span>
+                                </div>
+
+                                <div 
+                                    className={`profile-dropdown-opt ${activeTab === 'profile' ? 'selected' : ''}`}
+                                    onClick={() => {
+                                        setActiveTab('profile');
+                                        setTabDropdownOpen(false);
+                                    }}
+                                >
+                                    <div className="opt-left">
+                                        <span className="opt-icon">📍</span>
+                                        <div className="opt-details">
+                                            <span className="opt-title">Delivery Address & Phone</span>
+                                            <span className="opt-desc">Edit name, 10-digit mobile, address & pincode</span>
+                                        </div>
+                                    </div>
+                                    <span className="opt-badge">{district || 'Edit'}</span>
+                                </div>
+
+                                <div 
+                                    className={`profile-dropdown-opt ${activeTab === 'cart' ? 'selected' : ''}`}
+                                    onClick={() => {
+                                        setActiveTab('cart');
+                                        setTabDropdownOpen(false);
+                                    }}
+                                >
+                                    <div className="opt-left">
+                                        <span className="opt-icon">🛒</span>
+                                        <div className="opt-details">
+                                            <span className="opt-title">My Shopping Cart</span>
+                                            <span className="opt-desc">View items, subtotal & proceed to checkout</span>
+                                        </div>
+                                    </div>
+                                    <span className="opt-badge">{cartCount} Items</span>
+                                </div>
+                            </div>
                         )}
-                    </button>
-                    <button 
-                        type="button" 
-                        className={`profile-tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('profile')}
-                    >
-                        <span>📍 Details & Address</span>
-                    </button>
-                    <button 
-                        type="button" 
-                        className={`profile-tab-btn ${activeTab === 'cart' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('cart')}
-                    >
-                        <span>🛒 My Cart ({cartCount})</span>
-                    </button>
+                    </div>
                 </div>
 
                 {/* TAB 1: Profile & Delivery Address */}
