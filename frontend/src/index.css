@@ -6171,6 +6171,203 @@ h1, h2, h3, h4, h5, h6 {
     color: #ffffff;
 }
 
+/* ========================================================
+   RESPONSIVE DESIGN FOR FULLSCREEN PROFILE PAGE
+   ======================================================== */
+@media (max-width: 768px) {
+    .profile-fullscreen-bar {
+        padding: 0;
+    }
+    
+    .profile-bar-inner {
+        padding: 10px 14px;
+    }
+    
+    .profile-back-btn {
+        padding: 6px 10px;
+        font-size: 13px;
+        gap: 6px;
+    }
+
+    .profile-bar-title {
+        font-size: 15px;
+    }
+
+    .profile-bar-close-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 20px;
+    }
+
+    .profile-fullscreen-body {
+        padding: 14px 12px 60px;
+    }
+
+    .profile-modal-header {
+        padding: 14px;
+        border-radius: 12px;
+        margin-bottom: 12px;
+    }
+
+    .profile-avatar-img,
+    .profile-avatar-circle {
+        width: 48px;
+        height: 48px;
+        font-size: 18px;
+    }
+
+    .profile-user-name {
+        font-size: 17px;
+    }
+
+    .profile-user-meta {
+        font-size: 11.5px;
+        gap: 8px;
+    }
+
+    .flipkart-profile-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .flipkart-card {
+        padding: 10px 10px;
+        gap: 10px;
+        border-radius: 10px;
+    }
+
+    .flipkart-card-icon {
+        width: 34px;
+        height: 34px;
+        font-size: 18px;
+        border-radius: 8px;
+    }
+
+    .flipkart-card-title {
+        font-size: 12.5px;
+    }
+
+    .flipkart-card-subtitle {
+        font-size: 10px;
+    }
+
+    .profile-tabs-header {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        margin-bottom: 14px;
+        padding-bottom: 4px;
+    }
+
+    .profile-tabs-header::-webkit-scrollbar {
+        display: none;
+    }
+
+    .profile-tab-btn {
+        font-size: 12px;
+        padding: 7px 11px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .profile-form-row {
+        grid-template-columns: 1fr;
+        gap: 10px;
+    }
+
+    .profile-input {
+        padding: 9px 11px;
+        font-size: 13.5px;
+    }
+
+    .profile-order-card {
+        padding: 12px;
+        border-radius: 10px;
+    }
+
+    .profile-order-item-row {
+        font-size: 12px;
+        gap: 6px;
+    }
+
+    .item-title-col {
+        max-width: 140px;
+    }
+
+    .profile-order-footer {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .order-actions-group {
+        display: flex;
+        width: 100%;
+        gap: 8px;
+    }
+
+    .profile-order-whatsapp-btn,
+    .profile-order-review-btn {
+        flex: 1;
+        text-align: center;
+        justify-content: center;
+        padding: 8px 10px;
+        font-size: 12px;
+    }
+
+    .profile-cart-actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .profile-checkout-now-btn {
+        width: 100%;
+        text-align: center;
+        padding: 11px 16px;
+    }
+}
+
+@media (max-width: 380px) {
+    .profile-back-btn span {
+        display: none; /* Show only back arrow on ultra-small screens like iPhone SE */
+    }
+
+    .flipkart-card {
+        padding: 8px 8px;
+        gap: 8px;
+    }
+
+    .flipkart-card-icon {
+        width: 30px;
+        height: 30px;
+        font-size: 16px;
+    }
+
+    .flipkart-card-title {
+        font-size: 11.5px;
+    }
+
+    .flipkart-card-subtitle {
+        font-size: 9.5px;
+    }
+
+    .profile-avatar-img,
+    .profile-avatar-circle {
+        width: 42px;
+        height: 42px;
+        font-size: 16px;
+    }
+
+    .profile-user-name {
+        font-size: 15px;
+    }
+}
+
+
 
 
 
