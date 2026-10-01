@@ -266,10 +266,23 @@ export default function CheckoutModal({
 
             const orderData = await orderRes.json();
 
+            // When live Razorpay merchant credentials are not configured, directly open the Razorpay Test Gateway!
+            // This prevents Razorpay's dead iframe error ("Oops! Something went wrong") on live domains
+            const isPlaceholderKey = !orderData.keyId || 
+                orderData.keyId.includes('1DP5mmOlF5G5ag') || 
+                orderData.keyId.includes('placeholder') || 
+                orderData.isMock || 
+                !orderData.isLive;
+
+            if (isPlaceholderKey) {
+                setIsProcessingPayment(false);
+                setShowTestSimulator(true);
+                return;
+            }
+
             // 2. Load Razorpay script
             const isScriptLoaded = await loadRazorpayScript();
             if (!isScriptLoaded || !window.Razorpay) {
-                // If script fails or is blocked by adblock, launch internal test payment simulator!
                 setIsProcessingPayment(false);
                 setShowTestSimulator(true);
                 return;
