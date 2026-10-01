@@ -6,7 +6,9 @@ export default function SuccessModal({ isOpen, order, onClose, whatsappNumber })
             return `${i + 1}. ${item.title} (Size: ${item.size}) x ${item.quantity} - ₹${item.price * item.quantity}`;
         }).join('\n');
  
-        const paymentText = orderRecord.customer.payment === 'COD' ? 'Cash on Delivery (COD)' : 'UPI Confirmation Needed';
+        const paymentText = orderRecord.customer.payment?.includes('Razorpay') 
+            ? 'Paid Online (Razorpay Test Mode)' 
+            : (orderRecord.customer.payment === 'COD' ? 'Cash on Delivery (COD)' : (orderRecord.customer.payment || 'Online Payment'));
         const deliveryFee = orderRecord.delivery === 0 ? 'FREE' : `₹${orderRecord.delivery}`;
  
         const textTemplate = `⚡ *NETRAVE STORE - BOOKING RECEIPT* ⚡
