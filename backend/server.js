@@ -802,6 +802,13 @@ app.post('/api/bookings', async (req, res) => {
             });
         }
 
+        // COD is not available - all orders must go through Razorpay Online Payment
+        if (!customer || !customer.payment || customer.payment === 'COD' || customer.payment === 'Cash on Delivery') {
+            return res.status(400).json({ 
+                error: 'Cash on Delivery (COD) is not available. Please complete checkout with Razorpay Online Payment.' 
+            });
+        }
+
         const delivery = subtotal >= 999 ? 0 : 60;
         const total = subtotal + delivery;
 
@@ -818,11 +825,13 @@ app.post('/api/bookings', async (req, res) => {
             orderId: orderId,
             date: dateString,
             customer: customer,
+            paymentMethod: customer.paymentMethod || 'online',
+            payment: customer.payment || 'Razorpay Online',
             items: validatedItems,
             subtotal: subtotal,
             delivery: delivery,
             total: total,
-            status: 'Pending'
+            status: 'Confirmed'
         };
 
         // Persist booking & decrement stock
@@ -880,7 +889,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
         const ordId = req.params.orderId;
         const { status } = req.body;
 
-        const validStatuses = ['Pending', 'Order Placed', 'Payment Confirmed', 'Payment Not Confirmed', 'Dispatched', 'Delivered', 'Cancelled', 'Cancelled by Customer'];
+        const validStatuses = ['Confirmed', 'Payment Confirmed', 'Pending', 'Order Placed', 'Payment Not Confirmed', 'Dispatched', 'Delivered', 'Cancelled', 'Cancelled by Customer'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid booking status value.' });
         }
@@ -1217,16 +1226,23 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
             customer: {
                 ...customer,
                 payment: 'Razorpay Online',
+                paymentMethod: 'razorpay',
+                paymentStatus: 'Paid',
                 razorpayOrderId: razorpay_order_id,
                 razorpayPaymentId: razorpay_payment_id || `pay_${Date.now()}`
             },
+            paymentMethod: 'razorpay',
+            payment: 'Razorpay Online',
+            paymentStatus: 'Paid',
+            razorpayOrderId: razorpay_order_id,
+            razorpayPaymentId: razorpay_payment_id || `pay_${Date.now()}`,
             items: validatedItems,
             subtotal: finalSubtotal,
             delivery: finalDelivery,
             total: finalTotal,
             couponCode: couponCode || undefined,
             discount: discount || 0,
-            status: 'Payment Confirmed'
+            status: 'Confirmed'
         };
 
         // Decrement stock & persist

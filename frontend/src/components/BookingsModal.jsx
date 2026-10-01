@@ -38,7 +38,11 @@ export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess,
             return `${i + 1}. ${item.title} (Size: ${item.size}) x ${item.quantity} - ₹${item.price * item.quantity}`;
         }).join('\n');
 
-        const paymentText = orderRecord.customer.payment === 'COD' ? 'Cash on Delivery (COD)' : 'UPI Confirmation Needed';
+        const isRazorpay = (orderRecord.customer?.payment || orderRecord.paymentMethod || '').toLowerCase().includes('razorpay') 
+            || Boolean(orderRecord.customer?.razorpayPaymentId);
+        const paymentText = isRazorpay 
+            ? `Paid Online (Razorpay - ${orderRecord.customer?.razorpayPaymentId || 'Verified'})` 
+            : (orderRecord.customer?.payment === 'COD' ? 'Cash on Delivery (COD)' : 'Razorpay Online');
         const deliveryFee = orderRecord.delivery === 0 ? 'FREE' : `₹${orderRecord.delivery}`;
 
         const textTemplate = `⚡ *NETRAVE STORE - BOOKING RECEIPT* ⚡
@@ -64,7 +68,7 @@ ${itemsText}
 *GRAND TOTAL:* ₹${orderRecord.total}
 *PAYMENT METHOD:* ${paymentText}
 -----------------------------------------
-💡 _Please confirm my booking order. Thank you!_`;
+${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_' : '💡 _Please confirm my booking order. Thank you!_'}`;
 
         const targetNumber = whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, '') : '919946550713';
         return `https://wa.me/${targetNumber}?text=${encodeURIComponent(textTemplate)}`;

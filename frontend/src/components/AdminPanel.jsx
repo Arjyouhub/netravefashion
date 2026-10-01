@@ -687,6 +687,55 @@ export default function AdminPanel({
         setProdTags(arr);
     };
 
+    // Helper to render modern payment badges
+    const getOrderPaymentBadge = (book) => {
+        const rawPayment = (book.customer?.payment || book.paymentMethod || book.payment || '').toLowerCase();
+        const payId = book.customer?.razorpayPaymentId || book.razorpayPaymentId;
+        const isRazorpay = rawPayment.includes('razorpay') || book.paymentMethod === 'razorpay' || Boolean(payId);
+        const isUpi = rawPayment.includes('upi');
+
+        if (isRazorpay) {
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                    <span style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '4px', 
+                        background: 'rgba(16, 185, 129, 0.15)', 
+                        border: '1px solid rgba(16, 185, 129, 0.35)', 
+                        color: '#34d399', 
+                        padding: '3px 8px', 
+                        borderRadius: '6px', 
+                        fontSize: '11px', 
+                        fontWeight: '700',
+                        width: 'fit-content'
+                    }}>
+                        ⚡ Razorpay (Paid)
+                    </span>
+                    {payId && (
+                        <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }} title={`Payment ID: ${payId}`}>
+                            {payId.length > 14 ? `${payId.slice(0, 14)}...` : payId}
+                        </span>
+                    )}
+                </div>
+            );
+        }
+
+        if (isUpi) {
+            return (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                    📱 UPI Direct
+                </span>
+            );
+        }
+
+        return (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                ⚠️ COD (Disabled)
+            </span>
+        );
+    };
+
     // Booking Filtering and Searching
     const filteredBookings = bookingsList.filter(b => {
         const matchesQuery = 
@@ -694,7 +743,9 @@ export default function AdminPanel({
             b.customer?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             b.customer?.phone?.includes(searchQuery);
         
-        const matchesStatus = statusFilter === 'all' || b.status === statusFilter;
+        const matchesStatus = statusFilter === 'all' 
+            || b.status === statusFilter 
+            || (statusFilter === 'Confirmed' && (b.status === 'Confirmed' || b.status === 'Payment Confirmed'));
         return matchesQuery && matchesStatus;
     });
 
@@ -782,9 +833,9 @@ export default function AdminPanel({
 
     // Track payment methods
     const paymentStatsMap = {
-        'Razorpay Online': { count: 0, revenue: 0 },
-        'UPI': { count: 0, revenue: 0 },
-        'COD': { count: 0, revenue: 0 }
+        '⚡ Razorpay (Online)': { count: 0, revenue: 0 },
+        '📱 UPI Direct': { count: 0, revenue: 0 },
+        '⚠️ Legacy COD': { count: 0, revenue: 0 }
     };
 
     // Group sales by day for chart
@@ -795,10 +846,13 @@ export default function AdminPanel({
         totalGrossRevenue += orderRev;
 
         // Payment stats
-        let pMethod = booking.customer?.payment || 'COD';
-        if (pMethod.toLowerCase().includes('razorpay')) pMethod = 'Razorpay Online';
-        else if (pMethod.toLowerCase().includes('upi')) pMethod = 'UPI';
-        else pMethod = 'COD';
+        const pRaw = (booking.customer?.payment || booking.paymentMethod || booking.payment || '').toLowerCase();
+        let pMethod = '⚠️ Legacy COD';
+        if (pRaw.includes('razorpay') || booking.customer?.razorpayPaymentId || booking.paymentMethod === 'razorpay') {
+            pMethod = '⚡ Razorpay (Online)';
+        } else if (pRaw.includes('upi')) {
+            pMethod = '📱 UPI Direct';
+        }
         if (!paymentStatsMap[pMethod]) paymentStatsMap[pMethod] = { count: 0, revenue: 0 };
         paymentStatsMap[pMethod].count += 1;
         paymentStatsMap[pMethod].revenue += orderRev;
@@ -1848,9 +1902,10 @@ export default function AdminPanel({
                             <label>Filter Status: </label>
                             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}>
                                 <option value="all">All Orders</option>
+                                <option value="Confirmed">✅ Confirmed (Auto-verified)</option>
+                                <option value="Payment Confirmed">Payment Confirmed</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Order Placed">Order Placed</option>
-                                <option value="Payment Confirmed">Payment Confirmed</option>
                                 <option value="Payment Not Confirmed">Payment Not Confirmed</option>
                                 <option value="Dispatched">Dispatched</option>
                                 <option value="Delivered">Delivered</option>
@@ -1910,30 +1965,19 @@ export default function AdminPanel({
                                                 </div>
                                             </td>
                                             <td>
-                                                {book.paymentMethod === 'razorpay' ? (
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                                                        ⚡ Razorpay
-                                                    </span>
-                                                ) : book.paymentMethod === 'upi' ? (
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                                                        📱 UPI Direct
-                                                    </span>
-                                                ) : (
-                                                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(148, 163, 184, 0.3)', color: '#cbd5e1', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                                                        💵 COD
-                                                    </span>
-                                                )}
+                                                {getOrderPaymentBadge(book)}
                                             </td>
                                             <td className="bold-td">₹{book.total}</td>
                                             <td>
                                                 <select 
-                                                    value={book.status || 'Pending'} 
-                                                    className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
+                                                    value={book.status || 'Confirmed'} 
+                                                    className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
                                                     onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
                                                 >
+                                                    <option value="Confirmed">✅ Confirmed</option>
+                                                    <option value="Payment Confirmed">Payment Confirmed</option>
                                                     <option value="Pending">Pending</option>
                                                     <option value="Order Placed">Order Placed</option>
-                                                    <option value="Payment Confirmed">Payment Confirmed</option>
                                                     <option value="Payment Not Confirmed">Payment Not Confirmed</option>
                                                     <option value="Dispatched">Dispatched</option>
                                                     <option value="Delivered">Delivered</option>
@@ -1969,19 +2013,7 @@ export default function AdminPanel({
                                             <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>{book.date}</div>
                                         </div>
                                         <div>
-                                            {book.paymentMethod === 'razorpay' ? (
-                                                <span style={{ background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                                                    ⚡ Razorpay
-                                                </span>
-                                            ) : book.paymentMethod === 'upi' ? (
-                                                <span style={{ background: 'rgba(16, 185, 129, 0.15)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#34d399', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                                                    📱 UPI
-                                                </span>
-                                            ) : (
-                                                <span style={{ background: 'rgba(148, 163, 184, 0.15)', border: '1px solid rgba(148, 163, 184, 0.3)', color: '#cbd5e1', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
-                                                    💵 COD
-                                                </span>
-                                            )}
+                                            {getOrderPaymentBadge(book)}
                                         </div>
                                     </div>
 
@@ -2006,14 +2038,15 @@ export default function AdminPanel({
                                     <div style={{ marginBottom: '12px' }}>
                                         <label style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600', display: 'block', marginBottom: '4px' }}>Status:</label>
                                         <select 
-                                            value={book.status || 'Pending'} 
-                                            className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
+                                            value={book.status || 'Confirmed'} 
+                                            className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
                                             onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
                                             style={{ width: '100%' }}
                                         >
+                                            <option value="Confirmed">✅ Confirmed</option>
+                                            <option value="Payment Confirmed">Payment Confirmed</option>
                                             <option value="Pending">Pending</option>
                                             <option value="Order Placed">Order Placed</option>
-                                            <option value="Payment Confirmed">Payment Confirmed</option>
                                             <option value="Payment Not Confirmed">Payment Not Confirmed</option>
                                             <option value="Dispatched">Dispatched</option>
                                             <option value="Delivered">Delivered</option>
@@ -2549,19 +2582,20 @@ export default function AdminPanel({
                             <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px' }}>
                                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '8px' }}>Update Booking Status</label>
                                 <select 
-                                    value={selectedAdminBooking.status || 'Pending'} 
-                                    className={`status-select-dropdown ${selectedAdminBooking.status ? selectedAdminBooking.status.toLowerCase().replace(/\s+/g, '-') : 'pending'}`}
+                                    value={selectedAdminBooking.status || 'Confirmed'} 
+                                    className={`status-select-dropdown ${selectedAdminBooking.status ? selectedAdminBooking.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
                                     onChange={e => handleUpdateStatusLocal(selectedAdminBooking.orderId, e.target.value)}
                                     style={{ width: '100%', boxSizing: 'border-box' }}
                                 >
+                                    <option value="Confirmed">✅ Confirmed (Auto-verified)</option>
+                                    <option value="Payment Confirmed">Payment Confirmed</option>
                                     <option value="Pending">Pending</option>
-                                                    <option value="Order Placed">Order Placed</option>
-                                                    <option value="Payment Confirmed">Payment Confirmed</option>
-                                                    <option value="Payment Not Confirmed">Payment Not Confirmed</option>
-                                                    <option value="Dispatched">Dispatched</option>
-                                                    <option value="Delivered">Delivered</option>
-                                                    <option value="Cancelled">Cancelled</option>
-                                                    <option value="Cancelled by Customer">Cancelled by Customer</option>
+                                    <option value="Order Placed">Order Placed</option>
+                                    <option value="Payment Not Confirmed">Payment Not Confirmed</option>
+                                    <option value="Dispatched">Dispatched</option>
+                                    <option value="Delivered">Delivered</option>
+                                    <option value="Cancelled">Cancelled</option>
+                                    <option value="Cancelled by Customer">Cancelled by Customer</option>
                                 </select>
                             </div>
 
@@ -2635,11 +2669,21 @@ export default function AdminPanel({
                                         <span>Booking Date/Time:</span>
                                         <span style={{ color: '#fff' }}>{selectedAdminBooking.date}</span>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                                        <span>Payment Method:</span>
-                                        <span style={{ color: '#fff', fontWeight: '600' }}>
-                                            {selectedAdminBooking.customer?.payment === 'COD' ? 'Cash on Delivery (COD)' : 'UPI Confirmation'}
-                                        </span>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                        <span>Payment Details:</span>
+                                        <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
+                                            {getOrderPaymentBadge(selectedAdminBooking)}
+                                            {selectedAdminBooking.customer?.razorpayPaymentId && (
+                                                <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                                    Pay ID: {selectedAdminBooking.customer.razorpayPaymentId}
+                                                </div>
+                                            )}
+                                            {selectedAdminBooking.customer?.razorpayOrderId && (
+                                                <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>
+                                                    Order: {selectedAdminBooking.customer.razorpayOrderId}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                     {selectedAdminBooking.customer?.couponCode && (
                                         <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)' }}>

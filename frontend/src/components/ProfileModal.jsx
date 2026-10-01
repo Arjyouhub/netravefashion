@@ -668,7 +668,11 @@ export default function ProfileModal({
                                             <div className="profile-order-footer">
                                                 <div className="order-total-info">
                                                     Total: <strong>₹{order.total}</strong>
-                                                    <span className="payment-type-tag">({order.customer?.payment || 'COD'})</span>
+                                                    <span className="payment-type-tag">
+                                                        {(order.customer?.payment || order.paymentMethod || '').toLowerCase().includes('razorpay') || order.customer?.razorpayPaymentId 
+                                                            ? '⚡ Paid Online (Razorpay)' 
+                                                            : (order.customer?.payment || 'Online Payment')}
+                                                    </span>
                                                 </div>
 
                                                 <div className="order-actions-group">
