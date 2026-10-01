@@ -466,8 +466,8 @@ app.get('/api/settings', async (req, res) => {
                 maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: settings.maintenanceExpiry || 0,
                 offerNotification: settings.offerNotification || '',
-                razorpayKeyId: settings.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '',
-                razorpayEnabled: settings.razorpayEnabled !== undefined ? settings.razorpayEnabled : Boolean(settings.razorpayKeyId || process.env.RAZORPAY_KEY_ID),
+                razorpayKeyId: settings.razorpayKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ',
+                razorpayEnabled: settings.razorpayEnabled !== undefined ? settings.razorpayEnabled : true,
                 googleClientId: settings.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
         } else {
@@ -479,8 +479,8 @@ app.get('/api/settings', async (req, res) => {
                 maintenanceMessage: data?.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: data?.maintenanceExpiry || 0,
                 offerNotification: data?.offerNotification || '',
-                razorpayKeyId: data?.razorpayKeyId || process.env.RAZORPAY_KEY_ID || '',
-                razorpayEnabled: data?.razorpayEnabled !== undefined ? data?.razorpayEnabled : Boolean(data?.razorpayKeyId || process.env.RAZORPAY_KEY_ID),
+                razorpayKeyId: data?.razorpayKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ',
+                razorpayEnabled: data?.razorpayEnabled !== undefined ? data?.razorpayEnabled : true,
                 googleClientId: data?.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
         }
@@ -1059,9 +1059,9 @@ app.post('/api/bookings/:orderId/cancel', async (req, res) => {
 // 10B. RAZORPAY PAYMENT GATEWAY ENDPOINTS
 // --------------------------------------------------------------------------
 async function getRazorpayConfig() {
-    let keyId = process.env.RAZORPAY_KEY_ID || '';
-    let keySecret = process.env.RAZORPAY_KEY_SECRET || '';
-    let isEnabled = Boolean(keyId);
+    let keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ';
+    let keySecret = process.env.RAZORPAY_KEY_SECRET || 'pCQ9OLsHF6rbJP5XdMU9J9mG';
+    let isEnabled = true;
 
     try {
         if (useMongo) {
@@ -1125,7 +1125,7 @@ app.post('/api/razorpay/create-order', async (req, res) => {
             id: mockOrderId,
             amount: amountInPaise,
             currency: 'INR',
-            keyId: keyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_1DP5mmOlF5G5ag',
+            keyId: keyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ',
             isMock: !Boolean(keyId && keySecret),
             message: 'Razorpay test order initialized'
         });

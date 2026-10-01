@@ -290,7 +290,7 @@ export default function CheckoutModal({
 
             // 3. Open official Razorpay Checkout modal
             const options = {
-                key: orderData.keyId || 'rzp_test_1DP5mmOlF5G5ag',
+                key: orderData.keyId || settings?.razorpayKeyId || 'rzp_test_TiZL1iB3f5bTHJ',
                 amount: orderData.amount,
                 currency: orderData.currency || 'INR',
                 name: 'NETRAVE Fashion Store',
