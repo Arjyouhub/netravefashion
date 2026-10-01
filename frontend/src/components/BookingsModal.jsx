@@ -56,6 +56,7 @@ export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess,
 💬 WhatsApp: ${orderRecord.customer.whatsapp}
 📍 Address: ${orderRecord.customer.address}
 🏘️ District: ${orderRecord.customer.district}
+🏛️ State: ${orderRecord.customer.state || 'Kerala'}
 📌 Pincode: ${orderRecord.customer.pincode}
 
 -----------------------------------------

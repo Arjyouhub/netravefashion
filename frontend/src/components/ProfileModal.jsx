@@ -1,22 +1,5 @@
 import React, { useState, useEffect } from 'react';
-
-const KERALA_DISTRICTS = [
-    'Alappuzha',
-    'Ernakulam',
-    'Idukki',
-    'Kannur',
-    'Kasaragod',
-    'Kollam',
-    'Kottayam',
-    'Kozhikode',
-    'Malappuram',
-    'Palakkad',
-    'Pathanamthitta',
-    'Thiruvananthapuram',
-    'Thrissur',
-    'Wayanad',
-    'Other District / State'
-];
+import { ALL_INDIA_STATES, getDistrictsForState } from '../utils/indiaStatesDistricts';
 
 export default function ProfileModal({
     isOpen,
@@ -44,6 +27,7 @@ export default function ProfileModal({
     const [email, setEmail] = useState('');
     const [whatsapp, setWhatsapp] = useState('');
     const [address, setAddress] = useState('');
+    const [state, setState] = useState('Kerala');
     const [district, setDistrict] = useState('Ernakulam');
     const [pincode, setPincode] = useState('');
     const [sameAsPhone, setSameAsPhone] = useState(false);
@@ -57,6 +41,7 @@ export default function ProfileModal({
             setEmail(user.email || '');
             setWhatsapp(user.whatsapp || user.phone || '');
             setAddress(user.address || '');
+            setState(user.state && ALL_INDIA_STATES.includes(user.state) ? user.state : 'Kerala');
             setDistrict(user.district || 'Ernakulam');
             setPincode(user.pincode || '');
             setSameAsPhone(user.whatsapp === user.phone && Boolean(user.phone));
@@ -133,6 +118,7 @@ export default function ProfileModal({
                     email: email.trim(),
                     whatsapp: whatsapp.trim() || phone.trim(),
                     address: address.trim(),
+                    state: state.trim(),
                     district,
                     pincode: pincode.trim()
                 })
@@ -486,7 +472,23 @@ export default function ProfileModal({
                                 />
                             </div>
 
-                            <div className="profile-form-row">
+                            <div className="profile-form-row" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
+                                <div className="profile-form-group">
+                                    <label>State / UT (All India)</label>
+                                    <select
+                                        value={state}
+                                        onChange={e => {
+                                            const newState = e.target.value;
+                                            setState(newState);
+                                            setDistrict('');
+                                        }}
+                                        className="profile-input profile-select"
+                                    >
+                                        {ALL_INDIA_STATES.map(st => (
+                                            <option key={st} value={st}>{st}</option>
+                                        ))}
+                                    </select>
+                                </div>
                                 <div className="profile-form-group">
                                     <label>District</label>
                                     <select
@@ -494,9 +496,11 @@ export default function ProfileModal({
                                         onChange={e => setDistrict(e.target.value)}
                                         className="profile-input profile-select"
                                     >
-                                        {KERALA_DISTRICTS.map(dist => (
+                                        <option value="" disabled>Select District</option>
+                                        {(getDistrictsForState(state) || []).map(dist => (
                                             <option key={dist} value={dist}>{dist}</option>
                                         ))}
+                                        <option value="Other District">Other District</option>
                                     </select>
                                 </div>
                                 <div className="profile-form-group">

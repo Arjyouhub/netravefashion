@@ -2019,7 +2019,9 @@ export default function AdminPanel({
 
                                     <div style={{ marginBottom: '10px' }}>
                                         <div style={{ fontWeight: '700', fontSize: '14px', color: '#fff' }}>{book.customer.name}</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{book.customer.district || 'Kerala'}, PIN: {book.customer.pincode}</div>
+                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                                            {book.customer.district || 'Kerala'}{book.customer.state ? `, ${book.customer.state}` : ''}, PIN: {book.customer.pincode}
+                                        </div>
                                     </div>
 
                                     <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', fontSize: '12.5px' }}>
@@ -2618,6 +2620,7 @@ export default function AdminPanel({
                                             {selectedAdminBooking.customer?.whatsapp} (Chat)
                                         </a>
                                     </div>
+                                    <div><strong>State:</strong> {selectedAdminBooking.customer?.state || 'Kerala'}</div>
                                     <div><strong>District:</strong> {selectedAdminBooking.customer?.district}</div>
                                     <div><strong>Pincode:</strong> {selectedAdminBooking.customer?.pincode}</div>
                                     <div style={{ marginTop: '4px', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>

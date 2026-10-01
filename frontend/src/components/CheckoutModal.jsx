@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ALL_INDIA_STATES, getDistrictsForState } from '../utils/indiaStatesDistricts';
 
 const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -28,6 +29,7 @@ export default function CheckoutModal({
     const [phone, setPhone] = useState('');
     const [whatsapp, setWhatsapp] = useState('');
     const [address, setAddress] = useState('');
+    const [state, setState] = useState('Kerala');
     const [district, setDistrict] = useState('');
     const [pincode, setPincode] = useState('');
     const [termsCheck, setTermsCheck] = useState(false);
@@ -51,6 +53,7 @@ export default function CheckoutModal({
         setPhone(user?.phone || '');
         setWhatsapp(user?.whatsapp || user?.phone || '');
         setAddress(user?.address || '');
+        setState(user?.state && ALL_INDIA_STATES.includes(user.state) ? user.state : 'Kerala');
         setDistrict(user?.district || '');
         setPincode(user?.pincode || '');
         setTermsCheck(false);
@@ -140,6 +143,7 @@ export default function CheckoutModal({
         }
         
         if (!address.trim()) tempErrors.address = 'Please enter complete house name/street address.';
+        if (!state) tempErrors.state = 'Please select your state.';
         if (!district) tempErrors.district = 'Please select your delivery district.';
         
         if (!/^[0-9]{6}$/.test(pincode)) {
@@ -173,9 +177,10 @@ export default function CheckoutModal({
                         phone: phone.trim(),
                         whatsapp: whatsapp.trim(),
                         address: address.trim(),
+                        state: state.trim(),
                         district: district.trim(),
                         pincode: pincode.trim(),
-                        payment: 'Razorpay Online (Test Mode)'
+                        payment: 'Razorpay Online'
                     },
                     items: cart,
                     subtotal,
@@ -197,9 +202,10 @@ export default function CheckoutModal({
                         phone,
                         whatsapp,
                         address,
+                        state,
                         district,
                         pincode,
-                        payment: 'Razorpay Online (Test Mode)',
+                        payment: 'Razorpay Online',
                         couponCode: appliedCoupon ? appliedCoupon.code : undefined,
                         discount: discountAmount
                     });
@@ -229,6 +235,7 @@ export default function CheckoutModal({
                 phone: 'custPhone',
                 whatsapp: 'custWhatsApp',
                 address: 'custAddress',
+                state: 'custState',
                 district: 'custDistrict',
                 pincode: 'custPincode',
                 terms: 'termsCheck'
@@ -657,44 +664,54 @@ export default function CheckoutModal({
                                     {errors.address && <span className="validation-err">{errors.address}</span>}
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px' }}>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '14px' }}>
+                                    {/* STATE DROPDOWN (ALL INDIA) */}
                                     <div>
-                                        <label htmlFor="custDistrict" className="modern-field-label">District / Region *</label>
+                                        <label htmlFor="custState" className="modern-field-label">State / UT (All India) *</label>
+                                        <select 
+                                            id="custState" 
+                                            className="modern-form-select"
+                                            value={state}
+                                            onChange={(e) => {
+                                                const newState = e.target.value;
+                                                setState(newState);
+                                                setDistrict('');
+                                                if (errors.state) setErrors(prev => ({ ...prev, state: '' }));
+                                            }}
+                                            required
+                                        >
+                                            <option value="" disabled>Select State</option>
+                                            {ALL_INDIA_STATES.map((st) => (
+                                                <option key={st} value={st}>{st}</option>
+                                            ))}
+                                        </select>
+                                        {errors.state && <span className="validation-err">{errors.state}</span>}
+                                    </div>
+
+                                    {/* DISTRICT DROPDOWN (DEPENDENT ON STATE) */}
+                                    <div>
+                                        <label htmlFor="custDistrict" className="modern-field-label">District *</label>
                                         <select 
                                             id="custDistrict" 
                                             className="modern-form-select"
                                             value={district}
-                                            onChange={(e) => setDistrict(e.target.value)}
+                                            onChange={(e) => {
+                                                setDistrict(e.target.value);
+                                                if (errors.district) setErrors(prev => ({ ...prev, district: '' }));
+                                            }}
                                             required
+                                            disabled={!state}
                                         >
-                                            <option value="" disabled>Select District</option>
-                                            <optgroup label="Kerala Districts">
-                                                <option value="Kozhikode">Kozhikode</option>
-                                                <option value="Malappuram">Malappuram</option>
-                                                <option value="Kannur">Kannur</option>
-                                                <option value="Ernakulam">Ernakulam (Kochi)</option>
-                                                <option value="Thrissur">Thrissur</option>
-                                                <option value="Thiruvananthapuram">Thiruvananthapuram</option>
-                                                <option value="Palakkad">Palakkad</option>
-                                                <option value="Kollam">Kollam</option>
-                                                <option value="Alappuzha">Alappuzha</option>
-                                                <option value="Kottayam">Kottayam</option>
-                                                <option value="Kasaragod">Kasaragod</option>
-                                                <option value="Wayanad">Wayanad</option>
-                                                <option value="Pathanamthitta">Pathanamthitta</option>
-                                                <option value="Idukki">Idukki</option>
-                                            </optgroup>
-                                            <optgroup label="Other Regions">
-                                                <option value="Bangalore / Karnataka">Bangalore / Karnataka</option>
-                                                <option value="Tamil Nadu">Tamil Nadu</option>
-                                                <option value="Maharashtra / Mumbai">Maharashtra / Mumbai</option>
-                                                <option value="Delhi NCR">Delhi NCR</option>
-                                                <option value="Other State (All India)">Other State (All India)</option>
-                                            </optgroup>
+                                            <option value="" disabled>{state ? `Select District (${state})` : 'Select State First'}</option>
+                                            {(getDistrictsForState(state) || []).map((dist) => (
+                                                <option key={dist} value={dist}>{dist}</option>
+                                            ))}
+                                            <option value="Other District">Other District</option>
                                         </select>
                                         {errors.district && <span className="validation-err">{errors.district}</span>}
                                     </div>
 
+                                    {/* PINCODE */}
                                     <div>
                                         <label htmlFor="custPincode" className="modern-field-label">Pincode *</label>
                                         <input 
