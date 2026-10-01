@@ -1448,7 +1448,7 @@ export default function AdminPanel({
 
                                     <div className="form-group-row four-col-pricing">
                                         <div className="form-field">
-                                            <label style={{ color: 'var(--primary)', fontWeight: '700' }}>Sale Price (₹) * <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal' }}>[വിൽക്കുന്ന വില]</span></label>
+                                            <label style={{ color: 'var(--primary)', fontWeight: '700' }}>Sale Price (₹) *</label>
                                             <input 
                                                 type="number" 
                                                 required 
@@ -1460,7 +1460,7 @@ export default function AdminPanel({
                                             <small style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer selling price</small>
                                         </div>
                                         <div className="form-field">
-                                            <label style={{ fontWeight: '700' }}>Buy Price / Cost (₹) <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 'normal' }}>[വാങ്ങിയ റേറ്റ്]</span></label>
+                                            <label style={{ fontWeight: '700' }}>Buy Price / Cost (₹)</label>
                                             <input 
                                                 type="number" 
                                                 value={prodCostPrice} 
@@ -1470,7 +1470,7 @@ export default function AdminPanel({
                                             <small style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Wholesale purchase cost</small>
                                         </div>
                                         <div className="form-field highlight-margin-field">
-                                            <label style={{ color: '#10b981', fontWeight: '700' }}>Profit Margin (₹) <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 'normal' }}>[ലാഭം]</span></label>
+                                            <label style={{ color: '#10b981', fontWeight: '700' }}>Profit Margin (₹)</label>
                                             <input 
                                                 type="number" 
                                                 value={prodMarginAmount} 
