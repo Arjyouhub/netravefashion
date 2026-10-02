@@ -11,6 +11,8 @@ import AdminPanel from './components/AdminPanel';
 import AuthModal from './components/AuthModal';
 import DeveloperModal from './components/DeveloperModal';
 import ProfileModal from './components/ProfileModal';
+import TrackingModal from './components/TrackingModal';
+import WishlistModal from './components/WishlistModal';
 import { getCookie, setCookie, eraseCookie } from './utils/cookies';
 
 // Backup fallback database to ensure frontend works gracefully even if backend is offline
@@ -170,6 +172,37 @@ export default function App() {
     const [toast, setToast] = useState({ message: '', type: 'success', visible: false });
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [isOfferDismissed, setIsOfferDismissed] = useState(false);
+
+    // Wishlist & Live Tracking State (Flipkart/Amazon Features)
+    const [wishlist, setWishlist] = useState(() => {
+        try {
+            return JSON.parse(localStorage.getItem('netrave_wishlist')) || [];
+        } catch {
+            return [];
+        }
+    });
+    const [isTrackingOpen, setIsTrackingOpen] = useState(false);
+    const [trackingQuery, setTrackingQuery] = useState('');
+    const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
+    useEffect(() => {
+        localStorage.setItem('netrave_wishlist', JSON.stringify(wishlist));
+    }, [wishlist]);
+
+    const handleToggleWishlist = (productId) => {
+        if (wishlist.includes(productId)) {
+            setWishlist(wishlist.filter(id => id !== productId));
+            showToast('Removed item from Wishlist', 'info');
+        } else {
+            setWishlist([...wishlist, productId]);
+            showToast('Saved item to Wishlist ❤️', 'success');
+        }
+    };
+
+    const handleOpenTracking = (query = '') => {
+        setTrackingQuery(query);
+        setIsTrackingOpen(true);
+    };
 
     const showToast = (message, type = 'success') => {
         setToast({ message, type, visible: true });
@@ -647,6 +680,9 @@ export default function App() {
             {/* Header Navigation */}
             <Header
                 cartCount={cartCount}
+                wishlistCount={wishlist.length}
+                onWishlistOpen={() => setIsWishlistOpen(true)}
+                onTrackingOpen={() => handleOpenTracking()}
                 onCartOpen={() => setIsCartOpen(true)}
                 onBookingsOpen={() => setIsBookingsOpen(true)}
                 onProfileOpen={() => setIsProfileOpen(true)}
@@ -692,6 +728,8 @@ export default function App() {
                     onQuickView={setSelectedProductId}
                     activeTag={activeTag}
                     onTagChange={setActiveTag}
+                    wishlist={wishlist}
+                    onToggleWishlist={handleToggleWishlist}
                 />
             </main>
 
@@ -759,7 +797,7 @@ export default function App() {
                 </div>
 
                 <div className="footer-bottom">
-                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala. | <button onClick={() => { window.history.pushState({}, '', '#/developer'); setIsDeveloperOpen(true); }} style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', padding: 0, fontSize: 'inherit', fontFamily: 'inherit', fontWeight: '600' }}>Developer Page</button></p>
+                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala.</p>
                 </div>
             </footer>
 
@@ -769,6 +807,19 @@ export default function App() {
                 product={activeProduct}
                 onClose={() => setSelectedProductId(null)}
                 onAddToCart={handleAddToCart}
+                onBuyNow={(prod, size, q) => {
+                    handleAddToCart(prod, size, q);
+                    setSelectedProductId(null);
+                    if (!user) {
+                        showToast('Please login or register to complete your purchase.', 'info');
+                        setPendingCheckout(true);
+                        setIsAuthOpen(true);
+                    } else {
+                        setIsCheckoutOpen(true);
+                    }
+                }}
+                isWishlisted={wishlist.includes(selectedProductId)}
+                onToggleWishlist={handleToggleWishlist}
                 API_BASE_URL={API_BASE_URL}
             />
 
@@ -833,6 +884,7 @@ export default function App() {
                 order={placedOrder}
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsSuccessOpen(false)}
+                onTrackOrder={handleOpenTracking}
             />
 
             <BookingsModal
@@ -842,7 +894,33 @@ export default function App() {
                 onCancelSuccess={fetchBookings}
                 whatsappNumber={settings?.whatsappNumber}
                 onClose={() => setIsBookingsOpen(false)}
+                onOpenTracking={handleOpenTracking}
                 API_BASE_URL={API_BASE_URL}
+            />
+
+            <TrackingModal
+                isOpen={isTrackingOpen}
+                initialQuery={trackingQuery}
+                user={user}
+                bookings={bookings}
+                onClose={() => setIsTrackingOpen(false)}
+                API_BASE_URL={API_BASE_URL}
+                onShopClick={scrollToProducts}
+            />
+
+            <WishlistModal
+                isOpen={isWishlistOpen}
+                wishlist={wishlist}
+                products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                onClose={() => setIsWishlistOpen(false)}
+                onRemoveFromWishlist={(id) => setWishlist(prev => prev.filter(wId => wId !== id))}
+                onAddToCart={(prod) => {
+                    handleAddToCart(prod, prod.sizes?.[0] || 'M', 1);
+                }}
+                onQuickView={(id) => {
+                    setIsWishlistOpen(false);
+                    setSelectedProductId(id);
+                }}
             />
 
             <ProfileModal

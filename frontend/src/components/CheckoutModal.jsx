@@ -554,8 +554,42 @@ export default function CheckoutModal({
                         padding: 24px 20px !important;
                         border-left: none !important;
                     }
+                @media (max-width: 600px) {
+                    .modern-checkout-card {
+                        width: calc(100% - 14px) !important;
+                        max-width: 480px !important;
+                        margin: 8px auto !important;
+                        border-radius: 16px !important;
+                    }
+                    .checkout-left-form, 
                     .checkout-right-summary {
-                        border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+                        padding: 16px 12px !important;
+                    }
+                    .checkout-section-box {
+                        padding: 12px 10px !important;
+                        border-radius: 12px !important;
+                        margin-bottom: 12px !important;
+                    }
+                    .checkout-pay-btn {
+                        font-size: 13.5px !important;
+                        padding: 12px 14px !important;
+                        min-height: 44px !important;
+                        border-radius: 10px !important;
+                    }
+                    .test-simulator-btn {
+                        font-size: 11.5px !important;
+                        padding: 9px 10px !important;
+                        min-height: 38px !important;
+                    }
+                    .modern-form-input,
+                    .modern-form-select,
+                    .modern-form-textarea {
+                        padding: 9px 11px !important;
+                        font-size: 13px !important;
+                    }
+                    .checkout-badge-pill {
+                        font-size: 10px !important;
+                        padding: 3px 8px !important;
                     }
                 }
             `}</style>

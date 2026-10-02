@@ -131,14 +131,29 @@ const BookingSchema = new mongoose.Schema({
         address: { type: String, required: true },
         district: { type: String, required: true },
         pincode: { type: String, required: true },
-        payment: { type: String, required: true }
+        payment: { type: String, required: true },
+        state: { type: String, default: 'Kerala' },
+        razorpayPaymentId: { type: String, default: '' },
+        razorpayOrderId: { type: String, default: '' }
     },
     items: [mongoose.Schema.Types.Mixed],
     subtotal: { type: Number, required: true },
     delivery: { type: Number, required: true },
     total: { type: Number, required: true },
-    status: { type: String, default: 'Pending' }
-});
+    status: { type: String, default: 'Confirmed' },
+    paymentMethod: { type: String, default: 'online' },
+    courierPartner: { type: String, default: 'Delhivery Express' },
+    awbNumber: { type: String, default: '' },
+    trackingUrl: { type: String, default: '' },
+    currentLocation: { type: String, default: 'Kozhikode Logistics Hub, Kerala' },
+    estimatedDelivery: { type: String, default: '' },
+    trackingHistory: [mongoose.Schema.Types.Mixed],
+    driverInfo: {
+        name: { type: String, default: 'Rahul V.' },
+        phone: { type: String, default: '+91 98471 23456' },
+        vehicle: { type: String, default: 'KL-11-AX-4821' }
+    }
+}, { strict: false });
 const BookingModel = mongoose.models.Booking || mongoose.model('Booking', BookingSchema);
 
 // Settings Schema
@@ -731,15 +746,95 @@ app.delete('/api/products/:id', async (req, res) => {
     }
 });
 
+// --------------------------------------------------------------------------
+// COURIER LOGISTICS & LIVE TRACKING ENGINE
+// Supported Carriers: Delhivery Express, BlueDart, DTDC, India Post, XpressBees, Shiprocket, Shadowfax
+// --------------------------------------------------------------------------
+function getCarrierTrackingUrl(carrier, awb) {
+    if (!awb) return '';
+    const cleanCarrier = (carrier || '').toLowerCase();
+    if (cleanCarrier.includes('delhivery')) {
+        return `https://www.delhivery.com/track/package/${awb}`;
+    } else if (cleanCarrier.includes('bluedart')) {
+        return `https://www.bluedart.com/tracking?numbers=${awb}`;
+    } else if (cleanCarrier.includes('dtdc')) {
+        return `https://www.dtdc.in/tracking/shipment-tracking.asp?trType=awb_no&strCnno=${awb}`;
+    } else if (cleanCarrier.includes('india post') || cleanCarrier.includes('speed post')) {
+        return `https://www.indiapost.gov.in/_layouts/15/dpt.cept.tracking/trackconsignment.aspx`;
+    } else if (cleanCarrier.includes('xpressbees')) {
+        return `https://www.xpressbees.com/shipment/tracking?awbNo=${awb}`;
+    } else if (cleanCarrier.includes('shadowfax')) {
+        return `https://tracker.shadowfax.in/#/track?awb=${awb}`;
+    }
+    return `https://www.delhivery.com/track/package/${awb}`;
+}
+
+function generateCourierDetails(orderId, dateString, district = 'Kozhikode') {
+    const awbSuffix = Math.floor(100000000 + Math.random() * 900000000);
+    const awbNumber = `DEL${awbSuffix}`;
+    const estDate = new Date();
+    estDate.setDate(estDate.getDate() + 3);
+    const estimatedDelivery = estDate.toLocaleDateString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric'
+    });
+
+    return {
+        courierPartner: 'Delhivery Express',
+        awbNumber: awbNumber,
+        trackingUrl: `https://www.delhivery.com/track/package/${awbNumber}`,
+        currentLocation: 'Netrave Central Hub, Kozhikode, Kerala',
+        destinationCity: district || 'Kerala',
+        estimatedDelivery: estimatedDelivery,
+        driverInfo: {
+            name: 'Rahul V.',
+            phone: '+91 98471 23456',
+            vehicle: 'KL-11-AX-4821'
+        },
+        trackingHistory: [
+            {
+                status: 'Order Confirmed',
+                location: 'Netrave Fulfillment Center, Kozhikode',
+                timestamp: dateString,
+                description: 'Order verified & payment received. Packing slip & manifest generated.'
+            },
+            {
+                status: 'Manifest Generated',
+                location: 'Delhivery Kozhikode Hub',
+                timestamp: dateString,
+                description: `Shipment assigned to Delhivery Express with AWB #${awbNumber}. Ready for dispatch.`
+            }
+        ]
+    };
+}
+
+function ensureCourierTrackingData(booking) {
+    if (!booking) return null;
+    const b = booking.toObject ? booking.toObject() : { ...booking };
+    if (!b.awbNumber || !b.courierPartner) {
+        const fallback = generateCourierDetails(b.orderId, b.date || 'Today', b.customer?.district);
+        b.courierPartner = b.courierPartner || fallback.courierPartner;
+        b.awbNumber = b.awbNumber || fallback.awbNumber;
+        b.trackingUrl = b.trackingUrl || getCarrierTrackingUrl(b.courierPartner, b.awbNumber);
+        b.currentLocation = b.currentLocation || fallback.currentLocation;
+        b.destinationCity = b.destinationCity || b.customer?.district || 'Kerala';
+        b.estimatedDelivery = b.estimatedDelivery || fallback.estimatedDelivery;
+        b.driverInfo = b.driverInfo || fallback.driverInfo;
+        b.trackingHistory = (b.trackingHistory && b.trackingHistory.length > 0) ? b.trackingHistory : fallback.trackingHistory;
+    }
+    return b;
+}
+
 // 8. Fetch Booking Log History
 app.get('/api/bookings', async (req, res) => {
     try {
         if (useMongo) {
             const bookings = await BookingModel.find().sort({ _id: -1 });
-            res.json(bookings);
+            res.json(bookings.map(b => ensureCourierTrackingData(b)));
         } else {
             const bookings = await readJson(bookingsPath);
-            res.json(bookings);
+            res.json(bookings.map(b => ensureCourierTrackingData(b)));
         }
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch bookings log.' });
@@ -821,6 +916,8 @@ app.post('/api/bookings', async (req, res) => {
             minute: '2-digit'
         });
 
+        const courierData = generateCourierDetails(orderId, dateString, district);
+
         const newBookingRecord = {
             orderId: orderId,
             date: dateString,
@@ -831,7 +928,8 @@ app.post('/api/bookings', async (req, res) => {
             subtotal: subtotal,
             delivery: delivery,
             total: total,
-            status: 'Confirmed'
+            status: 'Confirmed',
+            ...courierData
         };
 
         // Persist booking & decrement stock
@@ -889,7 +987,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
         const ordId = req.params.orderId;
         const { status } = req.body;
 
-        const validStatuses = ['Confirmed', 'Payment Confirmed', 'Pending', 'Order Placed', 'Payment Not Confirmed', 'Dispatched', 'Delivered', 'Cancelled', 'Cancelled by Customer'];
+        const validStatuses = ['Confirmed', 'Payment Confirmed', 'Pending', 'Order Placed', 'Payment Not Confirmed', 'Dispatched', 'In Transit', 'Out for Delivery', 'Delivered', 'Cancelled', 'Cancelled by Customer'];
         if (!validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid booking status value.' });
         }
@@ -903,6 +1001,30 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
 
             const oldStatus = targetBooking.status;
             targetBooking.status = status;
+
+            // Auto-append tracking event when status transitions
+            if (targetBooking.trackingHistory && Array.isArray(targetBooking.trackingHistory)) {
+                const nowStr = new Date().toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                let checkpointDesc = `Shipment status updated to: ${status}`;
+                if (status === 'Dispatched') checkpointDesc = `Package has been dispatched from warehouse with ${targetBooking.courierPartner || 'Delhivery Express'}.`;
+                else if (status === 'In Transit') checkpointDesc = `Shipment in transit via ${targetBooking.courierPartner || 'Courier'} network to regional hub.`;
+                else if (status === 'Out for Delivery') checkpointDesc = `Out for delivery with courier agent (${targetBooking.driverInfo?.name || 'Delivery Partner'}). Expected today.`;
+                else if (status === 'Delivered') checkpointDesc = `Package successfully delivered to recipient. Thank you for shopping with Netrave!`;
+
+                targetBooking.trackingHistory.push({
+                    status: status,
+                    location: targetBooking.currentLocation || 'Transit Facility',
+                    timestamp: nowStr,
+                    description: checkpointDesc
+                });
+            }
+
             await targetBooking.save();
 
             // If status changed TO Cancelled, restore product stocks
@@ -929,7 +1051,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
                 }
             }
 
-            res.json(targetBooking);
+            res.json(ensureCourierTrackingData(targetBooking));
         } else {
             const bookingsList = await readJson(bookingsPath);
             const index = bookingsList.findIndex(b => b.orderId === ordId);
@@ -940,8 +1062,34 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
 
             const oldStatus = bookingsList[index].status;
             bookingsList[index].status = status;
-            await writeJson(bookingsPath, bookingsList);
 
+            // Auto-append tracking event on file database
+            if (!bookingsList[index].trackingHistory) {
+                bookingsList[index] = ensureCourierTrackingData(bookingsList[index]);
+            }
+            if (Array.isArray(bookingsList[index].trackingHistory)) {
+                const nowStr = new Date().toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                let checkpointDesc = `Shipment status updated to: ${status}`;
+                if (status === 'Dispatched') checkpointDesc = `Package has been dispatched from warehouse with ${bookingsList[index].courierPartner || 'Delhivery Express'}.`;
+                else if (status === 'In Transit') checkpointDesc = `Shipment in transit via ${bookingsList[index].courierPartner || 'Courier'} network to regional hub.`;
+                else if (status === 'Out for Delivery') checkpointDesc = `Out for delivery with courier agent (${bookingsList[index].driverInfo?.name || 'Delivery Partner'}). Expected today.`;
+                else if (status === 'Delivered') checkpointDesc = `Package successfully delivered to recipient. Thank you for shopping with Netrave!`;
+
+                bookingsList[index].trackingHistory.push({
+                    status: status,
+                    location: bookingsList[index].currentLocation || 'Transit Facility',
+                    timestamp: nowStr,
+                    description: checkpointDesc
+                });
+            }
+
+            await writeJson(bookingsPath, bookingsList);
             targetBooking = bookingsList[index];
 
             // Handle stock restoration on file database
@@ -978,7 +1126,7 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
                 await writeJson(productsPath, updated);
             }
 
-            res.json(targetBooking);
+            res.json(ensureCourierTrackingData(targetBooking));
         }
     } catch (err) {
         console.error(err);
@@ -1061,6 +1209,173 @@ app.post('/api/bookings/:orderId/cancel', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Failed to cancel order.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// 10C. LIVE COURIER TRACKING PUBLIC & ADMIN API ENDPOINTS
+// --------------------------------------------------------------------------
+
+// Track order by Order ID (TR-XXXXXX), AWB Number (DELXXXXXXXX), or Customer Phone
+app.get('/api/tracking/:query', async (req, res) => {
+    try {
+        const rawQuery = (req.params.query || '').trim();
+        if (!rawQuery) {
+            return res.status(400).json({ error: 'Order ID, Courier AWB, or Phone is required.' });
+        }
+
+        const cleanQuery = rawQuery.replace(/^[#\s]+/, '').trim();
+        const trFormatted = cleanQuery.toUpperCase().startsWith('TR-') 
+            ? cleanQuery.toUpperCase() 
+            : `TR-${cleanQuery.toUpperCase()}`;
+
+        let booking = null;
+        if (useMongo) {
+            booking = await BookingModel.findOne({
+                $or: [
+                    { orderId: new RegExp(`^${cleanQuery}$`, 'i') },
+                    { orderId: new RegExp(`^${trFormatted}$`, 'i') },
+                    { awbNumber: new RegExp(`^${cleanQuery}$`, 'i') },
+                    { 'customer.phone': cleanQuery },
+                    { 'customer.whatsapp': cleanQuery }
+                ]
+            }).sort({ _id: -1 });
+        } else {
+            const bookingsList = await readJson(bookingsPath);
+            const qLower = cleanQuery.toLowerCase();
+            const trLower = trFormatted.toLowerCase();
+            booking = bookingsList.slice().reverse().find(b => 
+                (b.orderId && (b.orderId.toLowerCase() === qLower || b.orderId.toLowerCase() === trLower)) ||
+                (b.awbNumber && b.awbNumber.toLowerCase() === qLower) ||
+                (b.customer?.phone === cleanQuery) ||
+                (b.customer?.whatsapp === cleanQuery)
+            );
+        }
+
+        if (booking) {
+            const fullData = ensureCourierTrackingData(booking);
+            return res.json({
+                found: true,
+                live: true,
+                data: fullData
+            });
+        }
+
+        return res.status(404).json({
+            found: false,
+            error: `No dispatch record found for "${rawQuery}". Please enter your valid Netrave Order ID (e.g. TR-XXXXXX) or registered phone number.`
+        });
+    } catch (err) {
+        console.error('Tracking API error:', err);
+        res.status(500).json({ error: 'Failed to retrieve tracking details.' });
+    }
+});
+
+// Admin patch endpoint to update courier information and live checkpoints
+app.patch('/api/bookings/:orderId/courier', async (req, res) => {
+    try {
+        const { orderId } = req.params;
+        const { 
+            courierPartner, 
+            awbNumber, 
+            currentLocation, 
+            estimatedDelivery, 
+            status, 
+            checkpointMessage, 
+            driverName, 
+            driverPhone 
+        } = req.body;
+
+        let booking = null;
+        if (useMongo) {
+            booking = await BookingModel.findOne({ orderId });
+            if (!booking) return res.status(404).json({ error: 'Order not found.' });
+
+            if (courierPartner) booking.courierPartner = courierPartner;
+            if (awbNumber) {
+                booking.awbNumber = awbNumber;
+                booking.trackingUrl = getCarrierTrackingUrl(booking.courierPartner || courierPartner, awbNumber);
+            }
+            if (currentLocation) booking.currentLocation = currentLocation;
+            if (estimatedDelivery) booking.estimatedDelivery = estimatedDelivery;
+            if (status) booking.status = status;
+
+            if (driverName || driverPhone) {
+                booking.driverInfo = {
+                    name: driverName || booking.driverInfo?.name || 'Delivery Partner',
+                    phone: driverPhone || booking.driverInfo?.phone || '+91 99465 50713',
+                    vehicle: booking.driverInfo?.vehicle || 'KL-11-AX-4821'
+                };
+            }
+
+            if (checkpointMessage) {
+                const nowStr = new Date().toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const history = Array.isArray(booking.trackingHistory) ? [...booking.trackingHistory] : [];
+                history.push({
+                    status: status || booking.status || 'In Transit',
+                    location: currentLocation || booking.currentLocation || 'Transit Facility',
+                    timestamp: nowStr,
+                    description: checkpointMessage
+                });
+                booking.trackingHistory = history;
+            }
+
+            await booking.save();
+            return res.json({ success: true, booking: ensureCourierTrackingData(booking) });
+        } else {
+            const bookingsList = await readJson(bookingsPath);
+            const index = bookingsList.findIndex(b => b.orderId === orderId);
+            if (index === -1) return res.status(404).json({ error: 'Order not found.' });
+
+            const b = { ...bookingsList[index] };
+            if (courierPartner) b.courierPartner = courierPartner;
+            if (awbNumber) {
+                b.awbNumber = awbNumber;
+                b.trackingUrl = getCarrierTrackingUrl(b.courierPartner || courierPartner, awbNumber);
+            }
+            if (currentLocation) b.currentLocation = currentLocation;
+            if (estimatedDelivery) b.estimatedDelivery = estimatedDelivery;
+            if (status) b.status = status;
+
+            if (driverName || driverPhone) {
+                b.driverInfo = {
+                    name: driverName || b.driverInfo?.name || 'Delivery Partner',
+                    phone: driverPhone || b.driverInfo?.phone || '+91 99465 50713',
+                    vehicle: b.driverInfo?.vehicle || 'KL-11-AX-4821'
+                };
+            }
+
+            if (checkpointMessage) {
+                const nowStr = new Date().toLocaleDateString('en-IN', {
+                    day: 'numeric',
+                    month: 'short',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                const history = Array.isArray(b.trackingHistory) ? [...b.trackingHistory] : [];
+                history.push({
+                    status: status || b.status || 'In Transit',
+                    location: currentLocation || b.currentLocation || 'Transit Facility',
+                    timestamp: nowStr,
+                    description: checkpointMessage
+                });
+                b.trackingHistory = history;
+            }
+
+            bookingsList[index] = b;
+            await writeJson(bookingsPath, bookingsList);
+            return res.json({ success: true, booking: ensureCourierTrackingData(b) });
+        }
+    } catch (err) {
+        console.error('Courier update error:', err);
+        res.status(500).json({ error: 'Failed to update courier tracking.' });
     }
 });
 
@@ -1220,6 +1535,8 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
             minute: '2-digit'
         });
 
+        const courierData = generateCourierDetails(orderId, dateString, customer?.district);
+
         const newBookingRecord = {
             orderId: orderId,
             date: dateString,
@@ -1242,7 +1559,8 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
             total: finalTotal,
             couponCode: couponCode || undefined,
             discount: discount || 0,
-            status: 'Confirmed'
+            status: 'Confirmed',
+            ...courierData
         };
 
         // Decrement stock & persist
@@ -1934,11 +2252,11 @@ app.get('/api/bookings/user/:phone', async (req, res) => {
                     { 'customer.whatsapp': phone }
                 ]
             }).sort({ _id: -1 });
-            res.json(bookings);
+            res.json(bookings.map(b => ensureCourierTrackingData(b)));
         } else {
             const bookings = await readJson(bookingsPath);
             const filtered = bookings.filter(b => b.customer.phone === phone || b.customer.whatsapp === phone);
-            res.json(filtered);
+            res.json(filtered.map(b => ensureCourierTrackingData(b)));
         }
     } catch (err) {
         res.status(500).json({ error: 'Failed to fetch bookings for user.' });

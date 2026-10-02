@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 
-export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess, whatsappNumber, onClose, API_BASE_URL }) {
+export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess, whatsappNumber, onClose, API_BASE_URL, onOpenTracking }) {
     // Active states for self-service cancellation and reviews
     const [cancellingOrderId, setCancellingOrderId] = useState(null);
     const [cancelConfirmId, setCancelConfirmId] = useState(null);
@@ -217,6 +217,57 @@ ${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_
                 .star-selector-btn.active {
                     color: #f59e0b;
                 }
+                @media (max-width: 600px) {
+                    .bookings-list-modal {
+                        width: calc(100% - 16px) !important;
+                        max-width: 480px !important;
+                        margin: 10px auto !important;
+                        padding: 20px 14px !important;
+                        border-radius: 16px !important;
+                        max-height: 94vh !important;
+                    }
+                    .booking-log-card {
+                        padding: 12px 10px !important;
+                        border-radius: 10px !important;
+                    }
+                    .booking-log-header {
+                        flex-direction: column !important;
+                        align-items: flex-start !important;
+                        gap: 6px !important;
+                    }
+                    .booking-log-footer {
+                        display: grid !important;
+                        grid-template-columns: 1fr 1fr !important;
+                        gap: 6px !important;
+                        justify-content: stretch !important;
+                    }
+                    .booking-log-footer > button,
+                    .booking-log-footer > a {
+                        width: 100% !important;
+                        justify-content: center !important;
+                        text-align: center !important;
+                        padding: 8px 6px !important;
+                        font-size: 11.5px !important;
+                        min-height: 38px !important;
+                        white-space: nowrap !important;
+                        box-sizing: border-box !important;
+                    }
+                    .cancel-order-btn {
+                        grid-column: 1 / -1 !important;
+                        width: 100% !important;
+                        text-align: center !important;
+                    }
+                    .booking-log-item {
+                        font-size: 12px !important;
+                        flex-wrap: wrap !important;
+                        gap: 4px !important;
+                    }
+                }
+                @media (max-width: 360px) {
+                    .booking-log-footer {
+                        grid-template-columns: 1fr !important;
+                    }
+                }
             `}</style>
 
             <div className="modal-content bookings-list-modal" style={{ maxWidth: '650px', background: 'rgba(10,11,14,0.95)', border: '1px solid rgba(245,158,11,0.15)', backdropFilter: 'blur(20px)', borderRadius: '16px', position: 'relative', overflowY: 'auto', maxHeight: '90vh' }}>
@@ -232,12 +283,57 @@ ${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_
                         </div>
                     ) : (
                         bookings.map(b => (
-                            <div className="booking-log-card" key={b.orderId} style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '18px', marginBottom: '16px' }}>
-                                <div className="booking-log-header" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
-                                    <span className="booking-id-tag" style={{ fontWeight: '700', color: '#ffffff' }}>Order ID: {b.orderId}</span>
-                                    <span className="booking-date-tag" style={{ color: '#64748b', fontSize: '12px' }}>{b.date}</span>
+                            <div className="booking-log-card" key={b.orderId} style={{ background: '#090d16', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
+                                <div className="booking-log-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '10px', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                                    <div>
+                                        <span className="booking-id-tag" style={{ fontWeight: '800', color: '#ffffff', fontSize: '14px' }}>Order ID: {b.orderId}</span>
+                                        <div style={{ color: '#64748b', fontSize: '11.5px', marginTop: '2px' }}>Placed on {b.date}</div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{
+                                            background: 'rgba(245, 158, 11, 0.12)',
+                                            border: '1px solid rgba(245, 158, 11, 0.25)',
+                                            color: 'var(--primary)',
+                                            fontSize: '11px',
+                                            fontWeight: '700',
+                                            padding: '3px 8px',
+                                            borderRadius: '12px',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '4px'
+                                        }}>
+                                            🚚 {b.courierPartner || 'Delhivery Express'}
+                                        </span>
+                                    </div>
                                 </div>
                                 <div className="booking-log-body">
+                                    {/* Mini Courier Telemetry Bar */}
+                                    <div style={{
+                                        background: 'rgba(255,255,255,0.02)',
+                                        border: '1px solid rgba(255,255,255,0.04)',
+                                        borderRadius: '8px',
+                                        padding: '10px 12px',
+                                        marginBottom: '14px'
+                                    }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94a3b8', marginBottom: '6px' }}>
+                                            <span>Telemetry: <strong style={{ color: '#fff' }}>{b.status}</strong></span>
+                                            <span style={{ color: '#10b981' }}>AWB: {b.awbNumber || 'Assigned'}</span>
+                                        </div>
+                                        {/* Progress bar */}
+                                        <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.08)', borderRadius: '10px', overflow: 'hidden' }}>
+                                            <div style={{
+                                                height: '100%',
+                                                width: b.status?.toLowerCase().includes('delivered') ? '100%' 
+                                                    : b.status?.toLowerCase().includes('out for delivery') ? '80%'
+                                                    : b.status?.toLowerCase().includes('in transit') ? '60%'
+                                                    : b.status?.toLowerCase().includes('dispatched') ? '40%'
+                                                    : '20%',
+                                                background: b.status?.toLowerCase().includes('delivered') ? '#10b981' : 'linear-gradient(90deg, #10b981, var(--primary))',
+                                                borderRadius: '10px'
+                                            }} />
+                                        </div>
+                                    </div>
+
                                     <div className="booking-log-items-list" style={{ marginBottom: '12px' }}>
                                         {b.items.map((item, idx) => {
                                             const hasReviewed = submittedReviews.includes(`${b.orderId}-${item.id}`);
@@ -280,6 +376,32 @@ ${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_
 
                                 {/* Order Action Buttons Row */}
                                 <div className="booking-log-footer" style={{ marginTop: '16px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '14px', display: 'flex', gap: '10px', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                                    {/* Primary Live Courier Tracking Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (onOpenTracking) onOpenTracking(b.orderId);
+                                        }}
+                                        style={{
+                                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0.05) 100%)',
+                                            border: '1px solid var(--primary)',
+                                            color: 'var(--primary)',
+                                            padding: '8px 16px',
+                                            borderRadius: '20px',
+                                            fontSize: '12px',
+                                            fontWeight: '800',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px',
+                                            transition: 'all 0.2s',
+                                            boxShadow: '0 2px 8px rgba(245,158,11,0.15)'
+                                        }}
+                                    >
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                                        🚚 Track Delivery Live
+                                    </button>
+
                                     {/* Pre-fill WhatsApp Receipt Resend */}
                                     <a 
                                         href={generateWhatsAppLink(b)} 
@@ -293,9 +415,9 @@ ${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_
 
                                     {/* Help & Support (WhatsApp prefill) */}
                                     <a 
-                                        href={generateSupportLink(b)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                        href={generateSupportLink(b)} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
                                         className="support-btn"
                                     >
                                         💬 Help & Support

@@ -17,7 +17,10 @@ export default function Header({
     onSortChange,
     user,
     onLogout,
-    onLoginClick
+    onLoginClick,
+    wishlistCount = 0,
+    onWishlistOpen,
+    onTrackingOpen
 }) {
     const [mobileSearchVisible, setMobileSearchVisible] = useState(false);
     const [localDrawerOpen, setLocalDrawerOpen] = useState(false);
@@ -97,7 +100,16 @@ export default function Header({
 
     const triggerTrackOrder = () => {
         setMobileDrawerOpen(false);
-        onBookingsOpen();
+        if (onTrackingOpen) {
+            onTrackingOpen();
+        } else {
+            onBookingsOpen();
+        }
+    };
+
+    const triggerWishlist = () => {
+        setMobileDrawerOpen(false);
+        if (onWishlistOpen) onWishlistOpen();
     };
 
     const triggerContact = () => {
@@ -114,15 +126,6 @@ export default function Header({
             <header className="main-header">
                 <div className="header-container">
                     <div className="header-left-group">
-                        {/* Mobile Menu Toggle */}
-                        <button 
-                            className="mobile-menu-btn" 
-                            onClick={() => setMobileDrawerOpen(true)}
-                            aria-label="Toggle Navigation Menu"
-                        >
-                            <svg viewBox="0 0 24 24" className="icon"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
-                        </button>
-
                         {/* Logo */}
                         <a href="#" className="logo" onClick={(e) => { e.preventDefault(); triggerHome(); }}>
                             <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" />
@@ -169,19 +172,48 @@ export default function Header({
                             )}
                         </div>
 
+                        {/* Search Toggle (Mobile) */}
                         <button 
                             className="action-btn mobile-search-trigger" 
                             onClick={() => setMobileSearchVisible(!mobileSearchVisible)}
                             aria-label="Search Toggle"
+                            title="Search"
                         >
                             <svg viewBox="0 0 24 24" className="icon"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
                         </button>
 
+                        {/* Desktop: Live Courier Tracking Quick Action */}
+                        <button 
+                            className="action-btn header-track-chip desktop-only-action"
+                            onClick={onTrackingOpen}
+                            title="Live Courier Delivery Telemetry"
+                            aria-label="Track Courier Live"
+                        >
+                            <span style={{ fontSize: '15px' }}>🚚</span>
+                            <span className="track-text-label">Track</span>
+                        </button>
+
+                        {/* Desktop: Wishlist Button */}
+                        <button 
+                            className="action-btn header-wishlist-chip desktop-only-action"
+                            onClick={onWishlistOpen}
+                            title="My Saved Wishlist"
+                            aria-label="Wishlist"
+                        >
+                            <span style={{ fontSize: '15px' }}>❤️</span>
+                            {wishlistCount > 0 && (
+                                <span className="cart-badge wishlist-badge">
+                                    {wishlistCount}
+                                </span>
+                            )}
+                        </button>
+
+                        {/* Desktop: User Profile / Login */}
                         {user ? (
                             <button 
-                                className="header-profile-chip"
+                                className="header-profile-chip desktop-only-action"
                                 onClick={onProfileOpen}
-                                title={`View & Edit Profile (${user.name})`}
+                                title={`View Profile (${user.name})`}
                                 aria-label="View Customer Profile"
                             >
                                 {user.avatar ? (
@@ -194,48 +226,80 @@ export default function Header({
                                 <span className="header-profile-name">{user.name?.split(' ')[0] || 'Profile'}</span>
                             </button>
                         ) : (
-                            <>
-                                <button 
-                                    className="action-btn header-login-chip" 
-                                    onClick={onLoginClick}
-                                    aria-label="Sign In / Register"
-                                    title="Sign In with Google or Phone"
-                                >
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <svg viewBox="0 0 24 24" className="icon" style={{ fill: '#ffffff' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
-                                        <span className="desktop-hide-medium" style={{ fontSize: '13px', fontWeight: '600', color: '#ffffff' }}>Login</span>
-                                    </div>
-                                </button>
-
-                                <button 
-                                    className="action-btn" 
-                                    onClick={onCartOpen}
-                                    aria-label="View Cart"
-                                >
-                                    <div className="cart-icon-wrapper">
-                                        <svg viewBox="0 0 24 24" className="icon"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
-                                        <span className="cart-badge">{cartCount}</span>
-                                    </div>
-                                </button>
-                            </>
+                            <button 
+                                className="action-btn header-login-chip desktop-only-action" 
+                                onClick={onLoginClick}
+                                aria-label="Sign In / Register"
+                                title="Sign In with Google or Phone"
+                            >
+                                <svg viewBox="0 0 24 24" className="icon" style={{ fill: '#ffffff', width: '18px', height: '18px' }}><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg>
+                                <span className="login-text-label">Login</span>
+                            </button>
                         )}
+
+                        {/* Shopping Cart Button (Mobile & Desktop) */}
+                        <button 
+                            className="action-btn header-cart-chip" 
+                            onClick={onCartOpen}
+                            aria-label="View Cart"
+                            title="View Shopping Cart"
+                        >
+                            <div className="cart-icon-wrapper" style={{ position: 'relative' }}>
+                                <svg viewBox="0 0 24 24" className="icon" style={{ width: '20px', height: '20px' }}><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+                                <span className="cart-badge">{cartCount}</span>
+                            </div>
+                        </button>
+
+                        {/* Mobile Menu Toggle Button (Visible on mobile only) */}
+                        <button 
+                            className="action-btn mobile-menu-btn" 
+                            onClick={() => setMobileDrawerOpen(true)}
+                            aria-label="Toggle Navigation Menu"
+                            title="Menu"
+                        >
+                            <svg viewBox="0 0 24 24" className="icon" style={{ width: '22px', height: '22px' }}><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+                        </button>
                     </div>
                 </div>
+
+                {/* Mobile Search Input Overlay */}
+                {mobileSearchVisible && (
+                    <div style={{ padding: '8px 16px', background: '#090a0f', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                        <div className="search-input-wrapper" style={{ width: '100%' }}>
+                            <input 
+                                type="text" 
+                                placeholder="Search T-shirts, Shirts, Pants..." 
+                                className="search-input" 
+                                value={searchQuery}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                autoFocus
+                            />
+                            {searchQuery && (
+                                <button className="clear-search-btn" onClick={() => onSearchChange('')}>
+                                    &times;
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                )}
             </header>
 
             {/* Mobile Navigation Drawer */}
             <div className={`mobile-nav-drawer ${mobileDrawerOpen ? 'open' : ''}`}>
                 <div className="drawer-header">
-                    <h3>NETRAVE MENU</h3>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <img src="/assets/logo.png" alt="NETRAVE" style={{ height: '24px' }} />
+                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800' }}>NETRAVE FASHION</h3>
+                    </div>
                     <button className="close-btn" onClick={() => setMobileDrawerOpen(false)}>&times;</button>
                 </div>
                 
                 {/* Mobile Drawer Search Bar */}
-                <div className="drawer-search" style={{ marginBottom: '20px' }}>
+                <div className="drawer-search" style={{ marginBottom: '14px' }}>
                     <div className="search-input-wrapper">
                         <input 
                             type="text" 
-                            placeholder="Search clothing..." 
+                            placeholder="Search streetwear clothing..." 
                             className="search-input" 
                             value={searchQuery}
                             onChange={(e) => onSearchChange(e.target.value)}
@@ -261,11 +325,19 @@ export default function Header({
                     <li>
                         <button className="mob-link" onClick={triggerShop}>
                             <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M20 6h-4V4c0-1.11-.89-2-2-2h-4c-1.11 0-2 .89-2 2v2H4c-1.11 0-1.99.89-1.99 2L2 19c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V8c0-1.11-.89-2-2-2zM9 4h6v2H9V4zm11 15H4V8h16v11z"/></svg>
-                            <span>Shop All</span>
+                            <span>Shop All Collections</span>
                         </button>
                     </li>
 
-                    {/* 3. Categories (Accordion) */}
+                    {/* 3. Wishlist */}
+                    <li>
+                        <button className="mob-link" onClick={triggerWishlist}>
+                            <span style={{ fontSize: '18px', marginRight: '10px' }}>❤️</span>
+                            <span>My Wishlist ({wishlistCount})</span>
+                        </button>
+                    </li>
+
+                    {/* 4. Categories (Accordion) */}
                     <li>
                         <button 
                             className={`mob-link ${categoriesExpanded ? 'expanded' : ''}`}
@@ -294,15 +366,15 @@ export default function Header({
                         )}
                     </li>
 
-                    {/* 4. Modern New */}
+                    {/* 5. Modern New */}
                     <li>
                         <button className={`mob-link ${activeTag === 'New' ? 'active' : ''}`} onClick={triggerNewArrivals}>
                             <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-                            <span>Modern New</span>
+                            <span>Modern New Arrivals</span>
                         </button>
                     </li>
 
-                    {/* 5. Best Sellers */}
+                    {/* 6. Best Sellers */}
                     <li>
                         <button className="mob-link" onClick={triggerBestSellers}>
                             <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H7c0-2.76 2.24-5 5-5s5 2.24 5 5c0 1.04-.42 1.99-1.07 2.75z"/></svg>
@@ -310,7 +382,7 @@ export default function Header({
                         </button>
                     </li>
 
-                    {/* 6. My Cart */}
+                    {/* 7. My Cart */}
                     <li>
                         <button className="mob-link" onClick={triggerCart}>
                             <div style={{ display: 'flex', alignItems: 'center', width: '100%', position: 'relative' }}>
@@ -323,7 +395,7 @@ export default function Header({
                         </button>
                     </li>
 
-                    {/* 7. Track Order / Login */}
+                    {/* 8. Track Order / Login */}
                     {!user ? (
                         <li>
                             <button className="mob-link" onClick={() => { setMobileDrawerOpen(false); onLoginClick(); }} style={{ color: 'var(--primary)' }}>
@@ -336,13 +408,13 @@ export default function Header({
                             <li>
                                 <button className="mob-link" onClick={() => { if (onProfileOpen) onProfileOpen(); setMobileDrawerOpen(false); }}>
                                     <svg viewBox="0 0 24 24" className="drawer-icon" style={{ fill: 'var(--primary)' }}><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                                    <span>My Profile & Details</span>
+                                    <span>My Profile ({user.name})</span>
                                 </button>
                             </li>
                             <li>
-                                <button className="mob-link" onClick={() => { triggerTrackOrder(); }}>
+                                <button className="mob-link" onClick={triggerTrackOrder}>
                                     <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11zM7 10h5v5H7z"/></svg>
-                                    <span>My Orders ({user.name})</span>
+                                    <span>My Orders & Bookings</span>
                                 </button>
                             </li>
                             <li>
@@ -354,7 +426,7 @@ export default function Header({
                         </>
                     )}
 
-                    {/* 8. Contact Us */}
+                    {/* 9. Contact Us */}
                     <li>
                         <button className="mob-link" onClick={triggerContact}>
                             <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56a.977.977 0 0 0-1.01.24l-2.2 2.2a15.045 15.045 0 0 1-6.59-6.59l2.2-2.21a.96.96 0 0 0 .25-1A11.36 11.36 0 0 1 8.5 4c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1 0 9.39 7.61 17 17 17 .55 0 1-.45 1-1v-3.5c0-.55-.45-1-1-.1z"/></svg>
@@ -364,27 +436,11 @@ export default function Header({
 
                     <li className="drawer-divider-label">Follow & Support</li>
 
-                    {/* 9. Instagram */}
-                    <li>
-                        <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="mob-link social-drawer-link" onClick={() => setMobileDrawerOpen(false)}>
-                            <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051C.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
-                            <span>Instagram</span>
-                        </a>
-                    </li>
-
                     {/* 10. WhatsApp */}
                     <li>
                         <a href="https://wa.me/919946550713" target="_blank" rel="noopener noreferrer" className="mob-link social-drawer-link" onClick={() => setMobileDrawerOpen(false)}>
-                            <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.248 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.197 1.45 4.817 1.453 5.461 0 9.903-4.44 9.907-9.902.002-2.646-1.02-5.133-2.873-6.988C16.591 1.862 14.103.839 11.45.839c-5.463 0-9.904 4.44-9.908 9.9.001 2.072.547 4.093 1.59 5.891L2.162 21.8l5.588-1.464-.103-.182zM17.06 14.382c-.272-.136-1.61-.794-1.86-.885-.25-.092-.432-.136-.613.136-.18.273-.704.885-.863 1.067-.159.182-.318.204-.59.068-.272-.136-1.15-.424-2.19-1.353-.81-.722-1.357-1.615-1.516-1.888-.159-.272-.017-.42.12-.556.122-.123.272-.318.408-.477.136-.159.182-.272.272-.454.09-.182.046-.341-.023-.477-.068-.136-.613-1.477-.84-2.022-.222-.533-.487-.463-.66-.463-.17 0-.363-.01-.556-.01-.193 0-.51.072-.777.363-.267.292-1.02 1.002-1.02 2.445 0 1.442 1.049 2.836 1.196 3.033.147.197 2.062 3.148 4.996 4.413.698.302 1.243.482 1.668.617.7.223 1.338.192 1.843.117.562-.083 1.61-.659 1.838-1.295.228-.636.228-1.182.159-1.295-.068-.114-.25-.205-.523-.341z"/></svg>
-                            <span>WhatsApp Support</span>
-                        </a>
-                    </li>
-
-                    {/* 11. Facebook */}
-                    <li>
-                        <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="mob-link social-drawer-link" onClick={() => setMobileDrawerOpen(false)}>
-                            <svg viewBox="0 0 24 24" className="drawer-icon"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                            <span>Facebook</span>
+                            <span style={{ fontSize: '18px', marginRight: '10px' }}>💬</span>
+                            <span>WhatsApp Support (+91 99465 50713)</span>
                         </a>
                     </li>
                 </ul>

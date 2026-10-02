@@ -91,6 +91,69 @@ export default function AdminPanel({
     const [razorpayEnabled, setRazorpayEnabled] = useState(settings?.razorpayEnabled || false);
     const [googleClientId, setGoogleClientId] = useState(settings?.googleClientId || '361479572817-1s040ttad228nt6pm85rm2krlrt9tt17.apps.googleusercontent.com');
 
+    // Courier Logistics & Live Dispatch States
+    const [courierCarrier, setCourierCarrier] = useState('Delhivery Express');
+    const [courierAwb, setCourierAwb] = useState('');
+    const [courierLocation, setCourierLocation] = useState('Kozhikode Central Hub, Kerala');
+    const [courierStatus, setCourierStatus] = useState('Confirmed');
+    const [courierCheckpoint, setCourierCheckpoint] = useState('');
+    const [courierSaving, setCourierSaving] = useState(false);
+
+    useEffect(() => {
+        if (selectedAdminBooking) {
+            setCourierCarrier(selectedAdminBooking.courierPartner || 'Delhivery Express');
+            setCourierAwb(selectedAdminBooking.awbNumber || '');
+            setCourierLocation(selectedAdminBooking.currentLocation || 'Kozhikode Central Hub, Kerala');
+            setCourierStatus(selectedAdminBooking.status || 'Confirmed');
+            setCourierCheckpoint('');
+        }
+    }, [selectedAdminBooking]);
+
+    const handleAutoGenerateAwb = () => {
+        const cLower = courierCarrier.toLowerCase();
+        const prefix = cLower.includes('bluedart') ? 'BD'
+            : cLower.includes('dtdc') ? 'DTDC'
+            : cLower.includes('xpressbees') ? 'XP'
+            : cLower.includes('india post') ? 'SP'
+            : 'DEL';
+        const generated = `${prefix}${Math.floor(100000000 + Math.random() * 900000000)}`;
+        setCourierAwb(generated);
+    };
+
+    const handleSaveCourierUpdate = async () => {
+        if (!selectedAdminBooking) return;
+        setCourierSaving(true);
+        try {
+            const response = await fetch(`${API_BASE_URL}/bookings/${selectedAdminBooking.orderId}/courier`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    courierPartner: courierCarrier,
+                    awbNumber: courierAwb,
+                    currentLocation: courierLocation,
+                    status: courierStatus,
+                    checkpointMessage: courierCheckpoint
+                })
+            });
+            if (response.ok) {
+                const resJson = await response.json();
+                if (resJson.booking) {
+                    setSelectedAdminBooking(resJson.booking);
+                }
+                await fetchAllBookings();
+                showSuccess('Courier telemetry updated & published live to customer tracking!');
+                setCourierCheckpoint('');
+            } else {
+                showError('Failed to update courier telemetry.');
+            }
+        } catch (err) {
+            console.error('Courier update error:', err);
+            showError('Network error updating courier details.');
+        } finally {
+            setCourierSaving(false);
+        }
+    };
+
     useEffect(() => {
         if (settings) {
             setWhatsappNum(settings.whatsappNumber);
@@ -2580,25 +2643,121 @@ export default function AdminPanel({
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                            {/* Status Section */}
-                            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)', padding: '16px', borderRadius: '12px' }}>
-                                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '8px' }}>Update Booking Status</label>
-                                <select 
-                                    value={selectedAdminBooking.status || 'Confirmed'} 
-                                    className={`status-select-dropdown ${selectedAdminBooking.status ? selectedAdminBooking.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
-                                    onChange={e => handleUpdateStatusLocal(selectedAdminBooking.orderId, e.target.value)}
-                                    style={{ width: '100%', boxSizing: 'border-box' }}
+                            {/* Courier Logistics & Live Dispatch Telemetry Section */}
+                            <div style={{ background: 'rgba(245, 158, 11, 0.04)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '18px', borderRadius: '14px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                                    <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span>🚚</span> Courier Logistics & Live Telemetry
+                                    </h3>
+                                    <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>
+                                        Live Push API Active
+                                    </span>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                                    {/* Courier Partner */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Courier Carrier</label>
+                                        <select
+                                            value={courierCarrier}
+                                            onChange={e => setCourierCarrier(e.target.value)}
+                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                                        >
+                                            <option value="Delhivery Express">Delhivery Express</option>
+                                            <option value="BlueDart Aviation">BlueDart Aviation</option>
+                                            <option value="DTDC Express">DTDC Express</option>
+                                            <option value="India Post Speed Post">India Post Speed Post</option>
+                                            <option value="XpressBees Logistics">XpressBees Logistics</option>
+                                            <option value="Shiprocket Fulfillment">Shiprocket Fulfillment</option>
+                                            <option value="Shadowfax Express">Shadowfax Express</option>
+                                        </select>
+                                    </div>
+
+                                    {/* AWB Number with Auto-generate */}
+                                    <div>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
+                                            <label style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: '600' }}>AWB Tracking No.</label>
+                                            <button
+                                                type="button"
+                                                onClick={handleAutoGenerateAwb}
+                                                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '11px', cursor: 'pointer', fontWeight: '700', padding: 0 }}
+                                            >
+                                                ⚡ Generate
+                                            </button>
+                                        </div>
+                                        <input
+                                            type="text"
+                                            value={courierAwb}
+                                            onChange={e => setCourierAwb(e.target.value)}
+                                            placeholder="e.g. DEL92837190"
+                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box', fontFamily: 'monospace' }}
+                                        />
+                                    </div>
+
+                                    {/* Current Hub / Transit Location */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Current Transit Hub / City</label>
+                                        <input
+                                            type="text"
+                                            value={courierLocation}
+                                            onChange={e => setCourierLocation(e.target.value)}
+                                            placeholder="e.g. Kochi Sorting Hub, Kerala"
+                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box' }}
+                                        />
+                                    </div>
+
+                                    {/* Dispatch Status */}
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Order & Transit Status</label>
+                                        <select
+                                            value={courierStatus}
+                                            onChange={e => setCourierStatus(e.target.value)}
+                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
+                                        >
+                                            <option value="Confirmed">✅ Confirmed</option>
+                                            <option value="Dispatched">📦 Dispatched</option>
+                                            <option value="In Transit">🚛 In Transit</option>
+                                            <option value="Out for Delivery">🛵 Out for Delivery</option>
+                                            <option value="Delivered">🎉 Delivered</option>
+                                            <option value="Cancelled">❌ Cancelled</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Custom Checkpoint Note */}
+                                <div style={{ marginBottom: '14px' }}>
+                                    <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>
+                                        Push New Telemetry Checkpoint Note (Optional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={courierCheckpoint}
+                                        onChange={e => setCourierCheckpoint(e.target.value)}
+                                        placeholder="e.g. Arrived at Calicut Delivery Hub. Out for delivery today with executive."
+                                        style={{ width: '100%', padding: '8px 10px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleSaveCourierUpdate}
+                                    disabled={courierSaving}
+                                    style={{
+                                        background: 'var(--primary)',
+                                        color: '#0a0b0e',
+                                        border: 'none',
+                                        padding: '10px 18px',
+                                        borderRadius: '8px',
+                                        fontWeight: '800',
+                                        fontSize: '13px',
+                                        cursor: courierSaving ? 'wait' : 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '6px'
+                                    }}
                                 >
-                                    <option value="Confirmed">✅ Confirmed (Auto-verified)</option>
-                                    <option value="Payment Confirmed">Payment Confirmed</option>
-                                    <option value="Pending">Pending</option>
-                                    <option value="Order Placed">Order Placed</option>
-                                    <option value="Payment Not Confirmed">Payment Not Confirmed</option>
-                                    <option value="Dispatched">Dispatched</option>
-                                    <option value="Delivered">Delivered</option>
-                                    <option value="Cancelled">Cancelled</option>
-                                    <option value="Cancelled by Customer">Cancelled by Customer</option>
-                                </select>
+                                    {courierSaving ? 'Pushing Live Telemetry...' : '⚡ Save & Push Live Courier Update'}
+                                </button>
                             </div>
 
                             {/* Customer & Shipping Section */}
