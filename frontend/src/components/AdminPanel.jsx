@@ -1,19 +1,40 @@
 import React, { useState, useEffect } from 'react';
 import { getCookie, setCookie, eraseCookie } from '../utils/cookies';
+import RichTextEditor from './RichTextEditor';
 
 export default function AdminPanel({
-    products,
-    bookings,
-    settings,
+    products = [],
+    categories = [],
+    bookings = [],
+    settings = {},
     onAddProduct,
     onEditProduct,
     onDeleteProduct,
     onUpdateBookingStatus,
     onSaveSettings,
     onClose,
-    API_BASE_URL
+    API_BASE_URL,
+    onRefreshCategories,
+    onRefreshProducts
 }) {
     const [activeTab, setActiveTab] = useState('analytics');
+
+    // Category Management States
+    const [categoriesList, setCategoriesList] = useState(categories || []);
+    const [isCategoryFormOpen, setIsCategoryFormOpen] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [catName, setCatName] = useState('');
+    const [catSlug, setCatSlug] = useState('');
+    const [catDescription, setCatDescription] = useState('');
+    const [catImage, setCatImage] = useState('');
+    const [catColor, setCatColor] = useState('#f59e0b');
+    const [catStatus, setCatStatus] = useState('active');
+    const [catDisplayOrder, setCatDisplayOrder] = useState(1);
+    const [catSubcategories, setCatSubcategories] = useState([]);
+    const [newSubcatInput, setNewSubcatInput] = useState('');
+    const [categoryError, setCategoryError] = useState('');
+    const [categorySaving, setCategorySaving] = useState(false);
+    const [deletingCategoryId, setDeletingCategoryId] = useState(null);
 
     // Coupon states
     const [coupons, setCoupons] = useState([]);
@@ -52,16 +73,48 @@ export default function AdminPanel({
     const [editingProduct, setEditingProduct] = useState(null);
     const [prodTitle, setProdTitle] = useState('');
     const [prodCategory, setProdCategory] = useState('t-shirt');
+    const [prodSubcategory, setProdSubcategory] = useState('');
     const [prodPrice, setProdPrice] = useState('');
     const [prodCostPrice, setProdCostPrice] = useState('');
     const [prodMarginAmount, setProdMarginAmount] = useState('');
     const [prodOriginalPrice, setProdOriginalPrice] = useState('');
     const [prodImage, setProdImage] = useState('');
+    const [prodImages, setProdImages] = useState([]);
+    const [newImageInput, setNewImageInput] = useState('');
     const [prodDesc, setProdDesc] = useState('');
+    const [prodShortDesc, setProdShortDesc] = useState('');
+    const [prodBrand, setProdBrand] = useState('NETRAVE');
+    const [prodSku, setProdSku] = useState('');
     const [prodSizes, setProdSizes] = useState(['M', 'L', 'XL']);
     const [prodTags, setProdTags] = useState([]);
     const [prodStock, setProdStock] = useState(50);
     const [prodInStock, setProdInStock] = useState(true);
+    const [prodIsFeatured, setProdIsFeatured] = useState(false);
+    const [prodIsNewArrival, setProdIsNewArrival] = useState(false);
+    const [prodIsBestSeller, setProdIsBestSeller] = useState(false);
+    const [prodWeight, setProdWeight] = useState('');
+    const [prodDimensions, setProdDimensions] = useState('');
+    const [prodShippingInfo, setProdShippingInfo] = useState('Dispatched within 24-48 hours. Express delivery across India.');
+    const [prodReturnInfo, setProdReturnInfo] = useState('7-day hassle-free exchange & return policy for unused items with tags intact.');
+
+    // Supplier & Sourcing Management States (Admin-only)
+    const [supplierName, setSupplierName] = useState('');
+    const [supplierSku, setSupplierSku] = useState('');
+    const [supplierUrl, setSupplierUrl] = useState('');
+    const [supplierShippingCost, setSupplierShippingCost] = useState('');
+    const [supplierDeliveryTime, setSupplierDeliveryTime] = useState('5-7 business days');
+    const [supplierStockStatus, setSupplierStockStatus] = useState('In Stock');
+    const [supplierNotes, setSupplierNotes] = useState('');
+
+    // Dynamic Product Variants
+    const [variantOptionTypes, setVariantOptionTypes] = useState([
+        { name: 'Size', values: ['S', 'M', 'L', 'XL', 'XXL'] },
+        { name: 'Color', values: ['Black', 'White', 'Navy'] }
+    ]);
+    const [customOptName, setCustomOptName] = useState('');
+    const [customOptValues, setCustomOptValues] = useState('');
+    const [prodVariants, setProdVariants] = useState([]);
+
     const [uploading, setUploading] = useState(false);
     const [quickEditingMarginId, setQuickEditingMarginId] = useState(null);
     const [quickSalePriceVal, setQuickSalePriceVal] = useState('');
@@ -73,6 +126,8 @@ export default function AdminPanel({
     const [statusFilter, setStatusFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
     const bookingsPerPage = 8;
+    const [internalNotesInput, setInternalNotesInput] = useState('');
+    const [savingNotes, setSavingNotes] = useState(false);
 
     // 3. Margin & Analytics States
     const [analyticsTimeframe, setAnalyticsTimeframe] = useState('all'); // 'all', 'today', '7d', '30d'
@@ -106,6 +161,7 @@ export default function AdminPanel({
             setCourierLocation(selectedAdminBooking.currentLocation || 'Kozhikode Central Hub, Kerala');
             setCourierStatus(selectedAdminBooking.status || 'Confirmed');
             setCourierCheckpoint('');
+            setInternalNotesInput(selectedAdminBooking.internalNotes || '');
         }
     }, [selectedAdminBooking]);
 
@@ -181,11 +237,222 @@ export default function AdminPanel({
         }
     };
 
+    // Category Fetch and Handlers
+    const fetchAdminCategories = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/categories`);
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    setCategoriesList(data);
+                    return;
+                }
+            }
+            const pubRes = await fetch(`${API_BASE_URL}/categories`);
+            if (pubRes.ok) {
+                const data = await pubRes.json();
+                if (Array.isArray(data)) setCategoriesList(data);
+            }
+        } catch (err) {
+            console.error('Failed to fetch categories:', err);
+        }
+    };
+
+    useEffect(() => {
+        if (categories && Array.isArray(categories)) {
+            setCategoriesList(categories);
+        }
+    }, [categories]);
+
     useEffect(() => {
         if (isLoggedIn) {
             fetchCoupons();
+            fetchAdminCategories();
         }
     }, [isLoggedIn]);
+
+    const resetCategoryForm = () => {
+        setEditingCategory(null);
+        setCatName('');
+        setCatSlug('');
+        setCatDescription('');
+        setCatImage('');
+        setCatColor('#f59e0b');
+        setCatStatus('active');
+        setCatDisplayOrder(categoriesList.length + 1);
+        setCatSubcategories([]);
+        setNewSubcatInput('');
+        setCategoryError('');
+    };
+
+    const handleOpenAddCategory = () => {
+        resetCategoryForm();
+        setIsCategoryFormOpen(true);
+    };
+
+    const handleOpenEditCategory = (cat) => {
+        setEditingCategory(cat);
+        setCatName(cat.name || '');
+        setCatSlug(cat.slug || '');
+        setCatDescription(cat.description || '');
+        setCatImage(cat.image || '');
+        setCatColor(cat.color || '#f59e0b');
+        setCatStatus(cat.status || 'active');
+        setCatDisplayOrder(cat.displayOrder || 1);
+        const rawSubs = cat.subcategories || [];
+        const cleanSubs = rawSubs.map(s => typeof s === 'object' ? (s.name || s.slug || '') : s).filter(Boolean);
+        setCatSubcategories(cleanSubs);
+        setNewSubcatInput('');
+        setCategoryError('');
+        setIsCategoryFormOpen(true);
+    };
+
+    const handleAddSubcategoryTag = () => {
+        const val = newSubcatInput.trim();
+        if (val && !catSubcategories.includes(val)) {
+            setCatSubcategories([...catSubcategories, val]);
+            setNewSubcatInput('');
+        }
+    };
+
+    const handleRemoveSubcategoryTag = (subName) => {
+        setCatSubcategories(catSubcategories.filter(s => s !== subName));
+    };
+
+    const handleCategorySubmit = async (e) => {
+        e.preventDefault();
+        if (!catName.trim()) {
+            setCategoryError('Category name is required.');
+            return;
+        }
+        setCategorySaving(true);
+        setCategoryError('');
+        const slug = catSlug.trim() || catName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const payload = {
+            name: catName.trim(),
+            slug,
+            description: catDescription,
+            image: catImage,
+            color: catColor,
+            status: catStatus,
+            displayOrder: Number(catDisplayOrder) || 1,
+            subcategories: catSubcategories.map(s => typeof s === 'object' ? (s.name || s.slug || '') : s).filter(Boolean)
+        };
+
+        try {
+            const url = editingCategory ? `${API_BASE_URL}/categories/${editingCategory.id}` : `${API_BASE_URL}/categories`;
+            const method = editingCategory ? 'PUT' : 'POST';
+            const res = await fetch(url, {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            if (res.ok) {
+                const savedData = await res.json().catch(() => null);
+                showSuccess(editingCategory ? 'Category updated successfully!' : 'Category created successfully!');
+                setIsCategoryFormOpen(false);
+                resetCategoryForm();
+                if (editingCategory) {
+                    setCategoriesList(prev => prev.map(c => (c.id === editingCategory.id || c.slug === editingCategory.slug) ? { ...c, ...payload, ...(savedData || {}) } : c));
+                } else if (savedData) {
+                    setCategoriesList(prev => [...prev, savedData]);
+                }
+                await fetchAdminCategories();
+                if (onRefreshCategories) onRefreshCategories();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                setCategoryError(errData.error || 'Failed to save category.');
+            }
+        } catch (err) {
+            setCategoryError('Network error saving category.');
+        } finally {
+            setCategorySaving(false);
+        }
+    };
+
+    const handleDeleteCategory = async (catId) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/categories/${catId}`, { method: 'DELETE' });
+            if (res.ok) {
+                showSuccess('Category deleted successfully.');
+                setDeletingCategoryId(null);
+                setCategoriesList(prev => prev.filter(c => c.id !== catId && c.slug !== catId));
+                await fetchAdminCategories();
+                if (onRefreshCategories) onRefreshCategories();
+            } else {
+                const errData = await res.json().catch(() => ({}));
+                showError(errData.error || 'Failed to delete category.');
+            }
+        } catch (err) {
+            showError('Network error deleting category.');
+        }
+    };
+
+    const handleToggleCategoryStatus = async (cat) => {
+        const newStatus = cat.status === 'active' ? 'inactive' : 'active';
+        try {
+            const res = await fetch(`${API_BASE_URL}/categories/${cat.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...cat, status: newStatus })
+            });
+            if (res.ok) {
+                showSuccess(`Category "${cat.name}" is now ${newStatus}.`);
+                setCategoriesList(prev => prev.map(c => (c.id === cat.id || c.slug === cat.slug) ? { ...c, status: newStatus } : c));
+                await fetchAdminCategories();
+                if (onRefreshCategories) onRefreshCategories();
+            } else {
+                showError('Failed to update category status.');
+            }
+        } catch (err) {
+            showError('Network error updating category status.');
+        }
+    };
+
+    // Duplicate Product Action
+    const handleDuplicateProduct = async (prodId) => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/products/${prodId}/duplicate`, {
+                method: 'POST'
+            });
+            if (res.ok) {
+                const data = await res.json();
+                showSuccess(`Duplicated "${data.product?.title || 'Product'}" successfully!`);
+                if (onRefreshProducts) onRefreshProducts();
+            } else {
+                showError('Failed to duplicate product.');
+            }
+        } catch (e) {
+            showError('Error duplicating product.');
+        }
+    };
+
+    // Save Internal Notes for an order
+    const handleSaveInternalNotes = async () => {
+        if (!selectedAdminBooking) return;
+        setSavingNotes(true);
+        try {
+            const res = await fetch(`${API_BASE_URL}/bookings/${selectedAdminBooking.orderId}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ internalNotes: internalNotesInput })
+            });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.booking) {
+                    setSelectedAdminBooking(data.booking);
+                }
+                await fetchAllBookings();
+                showSuccess('Internal notes saved successfully.');
+            } else {
+                showError('Failed to save internal notes.');
+            }
+        } catch (err) {
+            showError('Error saving internal notes.');
+        } finally {
+            setSavingNotes(false);
+        }
+    };
 
     const handleCreateCoupon = async (e) => {
         e.preventDefault();
@@ -546,17 +813,42 @@ export default function AdminPanel({
     const resetProductForm = () => {
         setEditingProduct(null);
         setProdTitle('');
-        setProdCategory('t-shirt');
+        setProdCategory(categoriesList[0]?.slug || 't-shirt');
+        setProdSubcategory('');
         setProdPrice('');
         setProdCostPrice('');
         setProdMarginAmount('');
         setProdOriginalPrice('');
         setProdImage('');
+        setProdImages([]);
+        setNewImageInput('');
         setProdDesc('');
+        setProdShortDesc('');
+        setProdBrand('NETRAVE');
+        setProdSku(`NET-${Math.floor(1000 + Math.random() * 9000)}`);
         setProdSizes(['M', 'L', 'XL']);
         setProdTags([]);
         setProdStock(50);
         setProdInStock(true);
+        setProdIsFeatured(false);
+        setProdIsNewArrival(false);
+        setProdIsBestSeller(false);
+        setProdWeight('240 GSM');
+        setProdDimensions('');
+        setProdShippingInfo('Dispatched within 24-48 hours. Express delivery available across India.');
+        setProdReturnInfo('7-day hassle-free return and exchange guarantee.');
+        setSupplierName('');
+        setSupplierSku('');
+        setSupplierUrl('');
+        setSupplierShippingCost('');
+        setSupplierDeliveryTime('5-7 business days');
+        setSupplierStockStatus('In Stock');
+        setSupplierNotes('');
+        setVariantOptionTypes([
+            { name: 'Size', values: ['S', 'M', 'L', 'XL', 'XXL'] },
+            { name: 'Color', values: ['Black', 'White', 'Navy'] }
+        ]);
+        setProdVariants([]);
         setProductFormError('');
     };
 
@@ -570,9 +862,10 @@ export default function AdminPanel({
     const handleOpenEdit = (product) => {
         setEditingProduct(product);
         setProdTitle(product.title || '');
-        setProdCategory(product.category || 't-shirt');
+        setProdCategory(product.category || (categoriesList[0]?.slug || 't-shirt'));
+        setProdSubcategory(product.subcategory || '');
         const price = product.price !== undefined && product.price !== null ? product.price : '';
-        const cost = product.costPrice !== undefined && product.costPrice !== null ? product.costPrice : '';
+        const cost = product.costPrice !== undefined && product.costPrice !== null ? product.costPrice : (product.supplierCost || '');
         setProdPrice(price);
         setProdCostPrice(cost);
         if (price !== '' && cost !== '') {
@@ -584,11 +877,34 @@ export default function AdminPanel({
         }
         setProdOriginalPrice(product.originalPrice || '');
         setProdImage(product.image || '');
+        setProdImages(Array.isArray(product.images) && product.images.length > 0 ? product.images : (product.image ? [product.image] : []));
+        setNewImageInput('');
         setProdDesc(product.description || '');
+        setProdShortDesc(product.shortDescription || '');
+        setProdBrand(product.brand || 'NETRAVE');
+        setProdSku(product.sku || '');
         setProdSizes(product.sizes || ['M', 'L', 'XL']);
         setProdTags(product.tags || []);
         setProdStock(product.stock !== undefined ? product.stock : 50);
         setProdInStock(product.inStock !== undefined ? product.inStock : true);
+        setProdIsFeatured(product.isFeatured || false);
+        setProdIsNewArrival(product.isNewArrival || false);
+        setProdIsBestSeller(product.isBestSeller || false);
+        setProdWeight(product.weight || '');
+        setProdDimensions(product.dimensions || '');
+        setProdShippingInfo(product.shippingInfo || 'Dispatched within 24-48 hours. Express delivery available across India.');
+        setProdReturnInfo(product.returnInfo || '7-day hassle-free return and exchange guarantee.');
+        setSupplierName(product.supplierName || '');
+        setSupplierSku(product.supplierSku || '');
+        setSupplierUrl(product.supplierUrl || '');
+        setSupplierShippingCost(product.supplierShippingCost || '');
+        setSupplierDeliveryTime(product.supplierDeliveryTime || '5-7 business days');
+        setSupplierStockStatus(product.supplierStockStatus || 'In Stock');
+        setSupplierNotes(product.supplierNotes || '');
+        setVariantOptionTypes(Array.isArray(product.variantOptions) && product.variantOptions.length > 0 ? product.variantOptions : [
+            { name: 'Size', values: product.sizes || ['S', 'M', 'L', 'XL'] }
+        ]);
+        setProdVariants(Array.isArray(product.variants) ? product.variants : []);
         setIsProductFormOpen(true);
     };
 
@@ -680,22 +996,49 @@ export default function AdminPanel({
         e.preventDefault();
         setProductFormError('');
         if (!prodTitle || !prodCategory || !prodPrice) {
-            setProductFormError('Please fill out all required fields.');
+            setProductFormError('Please fill out all required fields (Title, Category, Price).');
             return;
         }
+
+        const mainImage = prodImages.length > 0 ? prodImages[0] : (prodImage || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600');
+        const allImgs = prodImages.length > 0 ? prodImages : (mainImage ? [mainImage] : []);
 
         const productPayload = {
             title: prodTitle,
             category: prodCategory,
+            subcategory: prodSubcategory,
             price: parseFloat(prodPrice),
             costPrice: prodCostPrice ? parseFloat(prodCostPrice) : 0,
             originalPrice: prodOriginalPrice ? parseFloat(prodOriginalPrice) : undefined,
-            image: prodImage,
+            image: mainImage,
+            images: allImgs,
             description: prodDesc,
+            shortDescription: prodShortDesc,
+            brand: prodBrand,
+            sku: prodSku,
             sizes: prodSizes,
             tags: prodTags,
             stock: parseInt(prodStock) || 0,
-            inStock: prodInStock
+            inStock: prodInStock,
+            isFeatured: prodIsFeatured,
+            isNewArrival: prodIsNewArrival,
+            isBestSeller: prodIsBestSeller,
+            weight: prodWeight,
+            dimensions: prodDimensions,
+            shippingInfo: prodShippingInfo,
+            returnInfo: prodReturnInfo,
+            // Supplier & Sourcing Management (Admin only)
+            supplierName,
+            supplierSku,
+            supplierUrl,
+            supplierCost: prodCostPrice ? parseFloat(prodCostPrice) : 0,
+            supplierShippingCost: supplierShippingCost ? parseFloat(supplierShippingCost) : 0,
+            supplierDeliveryTime,
+            supplierStockStatus,
+            supplierNotes,
+            // Dynamic Variants
+            variantOptions: variantOptionTypes,
+            variants: prodVariants
         };
 
         if (editingProduct) {
@@ -1087,6 +1430,14 @@ export default function AdminPanel({
                     </button>
                     <button 
                         type="button"
+                        className={`admin-tab-chip ${activeTab === 'categories' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('categories')}
+                    >
+                        <span>📂 Categories</span>
+                        <span className="admin-tab-count-badge">{categoriesList.length}</span>
+                    </button>
+                    <button 
+                        type="button"
                         className={`admin-tab-chip ${activeTab === 'products' ? 'active' : ''}`}
                         onClick={() => setActiveTab('products')}
                     >
@@ -1133,6 +1484,7 @@ export default function AdminPanel({
                     <span className="admin-mobile-dropdown-title">Navigation Menu</span>
                     <span className="admin-mobile-dropdown-current-pill">
                         {activeTab === 'analytics' && '📊 Analytics'}
+                        {activeTab === 'categories' && `📂 Categories (${categoriesList.length})`}
                         {activeTab === 'products' && `🏷️ Products (${products.length})`}
                         {activeTab === 'bookings' && `📦 Orders (${bookingsList.length})`}
                         {activeTab === 'coupons' && `🎟️ Coupons (${coupons.length})`}
@@ -1152,6 +1504,7 @@ export default function AdminPanel({
                         }}
                     >
                         <option value="analytics">📊 Margin & Revenue Analytics</option>
+                        <option value="categories">📂 Manage Categories ({categoriesList.length})</option>
                         <option value="products">🏷️ Manage Products ({products.length})</option>
                         <option value="bookings">📦 Orders & Bookings ({bookingsList.length})</option>
                         <option value="coupons">🎟️ Manage Coupons ({coupons.length})</option>
@@ -1469,6 +1822,371 @@ export default function AdminPanel({
                 </div>
             )}
 
+            {/* TAB CONTENT: CATEGORIES MANAGEMENT */}
+            {activeTab === 'categories' && (
+                <div className="admin-tab-content">
+                    <div className="tab-actions-bar">
+                        <div>
+                            <h3>Category & Subcategory Management</h3>
+                            <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0' }}>
+                                Manage navigation categories, banner images, theme colors, and product subcategories.
+                            </p>
+                        </div>
+                        <button className="cta-btn primary-cta" onClick={handleOpenAddCategory}>
+                            + Add New Category
+                        </button>
+                    </div>
+
+                    {isCategoryFormOpen && (
+                        <div className="admin-form-overlay">
+                            <div className="admin-modal-content" style={{ maxWidth: '650px' }}>
+                                <div className="modal-header">
+                                    <h4>{editingCategory ? `Edit Category: ${editingCategory.name}` : 'Create New Category'}</h4>
+                                    <button className="close-btn" onClick={() => setIsCategoryFormOpen(false)}>&times;</button>
+                                </div>
+                                <form onSubmit={handleCategorySubmit} className="admin-product-form" style={{ padding: '20px' }}>
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Category Name *</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                value={catName} 
+                                                onChange={e => {
+                                                    setCatName(e.target.value);
+                                                    if (!editingCategory) {
+                                                        setCatSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''));
+                                                    }
+                                                }}
+                                                placeholder="e.g. Summer Wear, Streetwear"
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>URL Slug *</label>
+                                            <input 
+                                                type="text" 
+                                                required 
+                                                value={catSlug} 
+                                                onChange={e => setCatSlug(e.target.value)} 
+                                                placeholder="e.g. summer-wear"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Category Description</label>
+                                        <textarea 
+                                            value={catDescription} 
+                                            onChange={e => setCatDescription(e.target.value)} 
+                                            rows="2"
+                                            placeholder="Brief description for customer category hero / banner..."
+                                        />
+                                    </div>
+
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Display Color Theme</label>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                <input 
+                                                    type="color" 
+                                                    value={catColor} 
+                                                    onChange={e => setCatColor(e.target.value)}
+                                                    style={{ width: '45px', height: '38px', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }}
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    value={catColor} 
+                                                    onChange={e => setCatColor(e.target.value)} 
+                                                    style={{ flex: 1, fontFamily: 'monospace' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Display Order / Position</label>
+                                            <input 
+                                                type="number" 
+                                                min="1" 
+                                                value={catDisplayOrder} 
+                                                onChange={e => setCatDisplayOrder(e.target.value)} 
+                                            />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Status</label>
+                                            <select value={catStatus} onChange={e => setCatStatus(e.target.value)}>
+                                                <option value="active">Active (Visible)</option>
+                                                <option value="inactive">Inactive (Hidden)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Banner Image / Icon URL</label>
+                                        <div className="image-input-group">
+                                            <input 
+                                                type="text" 
+                                                value={catImage} 
+                                                onChange={e => setCatImage(e.target.value)} 
+                                                placeholder="Paste image URL or upload image"
+                                            />
+                                            <div className="file-upload-btn-wrapper">
+                                                <button type="button" className="file-btn">Upload</button>
+                                                <input 
+                                                    type="file" 
+                                                    accept="image/*" 
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (!file) return;
+                                                        const formData = new FormData();
+                                                        formData.append('image', file);
+                                                        try {
+                                                            const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: formData });
+                                                            if (res.ok) {
+                                                                const d = await res.json();
+                                                                setCatImage(d.fileUrl);
+                                                            }
+                                                        } catch (err) {
+                                                            alert('Upload failed.');
+                                                        }
+                                                    }} 
+                                                />
+                                            </div>
+                                        </div>
+                                        {catImage && (
+                                            <div style={{ marginTop: '8px' }}>
+                                                <img src={catImage} alt="Banner Preview" style={{ maxHeight: '80px', borderRadius: '6px', objectFit: 'cover' }} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Subcategories Management */}
+                                    <div className="form-field" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', padding: '14px', borderRadius: '8px' }}>
+                                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                            Manage Subcategories
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+                                            <input 
+                                                type="text" 
+                                                value={newSubcatInput} 
+                                                onChange={e => setNewSubcatInput(e.target.value)} 
+                                                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddSubcategoryTag(); } }}
+                                                placeholder="e.g. Oversized, Linen, Cargo..."
+                                                style={{ flex: 1 }}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                className="cta-btn secondary-cta" 
+                                                onClick={handleAddSubcategoryTag}
+                                                style={{ padding: '0 16px', minHeight: 'unset' }}
+                                            >
+                                                + Add Tag
+                                            </button>
+                                        </div>
+                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                                            {catSubcategories.map(sub => (
+                                                <span key={sub} style={{ background: 'rgba(245, 158, 11, 0.15)', color: 'var(--primary)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 10px', borderRadius: '20px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                                                    {sub}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => handleRemoveSubcategoryTag(sub)}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: 0, fontSize: '14px', lineHeight: 1 }}
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </span>
+                                            ))}
+                                            {catSubcategories.length === 0 && (
+                                                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No subcategories added yet.</span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {categoryError && (
+                                        <div className="validation-err" style={{ display: 'block', marginBottom: '15px' }}>
+                                            {categoryError}
+                                        </div>
+                                    )}
+
+                                    <div className="modal-footer-actions">
+                                        <button type="button" className="cta-btn secondary-cta" onClick={() => setIsCategoryFormOpen(false)}>Cancel</button>
+                                        <button type="submit" className="cta-btn primary-cta" disabled={categorySaving}>
+                                            {categorySaving ? 'Saving...' : (editingCategory ? 'Update Category' : 'Create Category')}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Categories Table View */}
+                    <div className="responsive-table-wrapper">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Banner / Icon</th>
+                                    <th>Category Name</th>
+                                    <th>Slug</th>
+                                    <th>Theme Color</th>
+                                    <th>Subcategories</th>
+                                    <th>Position</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {categoriesList.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                            No categories found. Click "+ Add New Category" to create your first category.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    categoriesList.map(cat => (
+                                        <tr key={cat.id || cat.slug}>
+                                            <td>
+                                                <img 
+                                                    src={cat.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'} 
+                                                    alt={cat.name} 
+                                                    className="table-thumbnail" 
+                                                    style={{ objectFit: 'cover', borderRadius: '6px' }}
+                                                />
+                                            </td>
+                                            <td className="bold-td">{cat.name}</td>
+                                            <td style={{ fontFamily: 'monospace', fontSize: '12.5px', color: '#94a3b8' }}>{cat.slug}</td>
+                                            <td>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                    <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: cat.color || '#f59e0b', display: 'inline-block' }}></span>
+                                                    <span style={{ fontSize: '12px', fontFamily: 'monospace' }}>{cat.color || '#f59e0b'}</span>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '240px' }}>
+                                                    {(cat.subcategories || []).map((sub, sIdx) => {
+                                                        const subLabel = typeof sub === 'object' ? (sub.name || sub.slug || '') : sub;
+                                                        return (
+                                                            <span key={typeof sub === 'object' ? (sub.id || sub.slug || sIdx) : sub} style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', color: '#cbd5e1' }}>
+                                                                {subLabel}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                    {(!cat.subcategories || cat.subcategories.length === 0) && (
+                                                        <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>None</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="bold-td">{cat.displayOrder || 1}</td>
+                                            <td>
+                                                <button 
+                                                    type="button" 
+                                                    onClick={() => handleToggleCategoryStatus(cat)}
+                                                    className={`status-pill ${cat.status === 'active' || cat.status === undefined ? 'active' : 'inactive'}`}
+                                                    style={{ cursor: 'pointer', border: 'none' }}
+                                                    title="Click to toggle category status"
+                                                >
+                                                    {cat.status === 'active' || cat.status === undefined ? '● Active' : '○ Inactive'}
+                                                </button>
+                                            </td>
+                                            <td>
+                                                <div className="table-actions">
+                                                    <button className="edit-action-btn" onClick={() => handleOpenEditCategory(cat)}>
+                                                        Edit
+                                                    </button>
+                                                    <button className="delete-action-btn" onClick={() => handleDeleteCategory(cat.id)}>
+                                                        Delete
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Mobile Category Cards View (< 768px) */}
+                    <div className="admin-mobile-cards-list">
+                        {categoriesList.length === 0 ? (
+                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)', width: '100%' }}>
+                                No categories found. Click "+ Add New Category" above.
+                            </div>
+                        ) : (
+                            categoriesList.map(cat => {
+                                const subs = cat.subcategories || [];
+                                return (
+                                    <div key={cat.id || cat.slug} className="admin-mobile-card">
+                                        <div className="admin-mobile-card-header">
+                                            <img 
+                                                src={cat.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'} 
+                                                alt={cat.name} 
+                                                className="admin-mobile-card-thumb" 
+                                                style={{ objectFit: 'cover' }}
+                                            />
+                                            <div className="admin-mobile-card-title-box">
+                                                <div className="admin-mobile-card-title">{cat.name}</div>
+                                                <div className="admin-mobile-card-cat" style={{ fontFamily: 'monospace' }}>/{cat.slug}</div>
+                                            </div>
+                                            <button 
+                                                type="button" 
+                                                onClick={() => handleToggleCategoryStatus(cat)}
+                                                className={`status-pill ${cat.status === 'active' || cat.status === undefined ? 'active' : 'inactive'}`}
+                                                style={{ cursor: 'pointer', border: 'none', alignSelf: 'flex-start' }}
+                                                title="Click to toggle category status"
+                                            >
+                                                {cat.status === 'active' || cat.status === undefined ? '● Active' : '○ Inactive'}
+                                            </button>
+                                        </div>
+
+                                        {cat.description && (
+                                            <p style={{ fontSize: '12.5px', color: '#94a3b8', margin: '4px 0 8px', lineHeight: '1.4' }}>
+                                                {cat.description}
+                                            </p>
+                                        )}
+
+                                        <div className="admin-mobile-grid-metrics">
+                                            <div className="admin-mobile-metric-item">
+                                                <span className="admin-mobile-metric-label">Theme Color</span>
+                                                <span className="admin-mobile-metric-val" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <span style={{ width: '12px', height: '12px', borderRadius: '50%', background: cat.color || '#f59e0b', display: 'inline-block' }}></span>
+                                                    <span style={{ fontSize: '12px', fontFamily: 'monospace' }}>{cat.color || '#f59e0b'}</span>
+                                                </span>
+                                            </div>
+                                            <div className="admin-mobile-metric-item">
+                                                <span className="admin-mobile-metric-label">Display Order</span>
+                                                <span className="admin-mobile-metric-val">#{cat.displayOrder || 1}</span>
+                                            </div>
+                                        </div>
+
+                                        {subs.length > 0 && (
+                                            <div style={{ marginTop: '8px' }}>
+                                                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px' }}>Subcategories:</div>
+                                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                                                    {subs.map((s, idx) => {
+                                                        const sName = typeof s === 'object' ? (s.name || s.slug) : s;
+                                                        return (
+                                                            <span key={typeof s === 'object' ? (s.id || s.slug || idx) : s} style={{ background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: '4px', fontSize: '11px', color: '#cbd5e1' }}>
+                                                                {sName}
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="admin-mobile-card-actions" style={{ marginTop: '10px' }}>
+                                            <button className="edit-action-btn" onClick={() => handleOpenEditCategory(cat)} style={{ flex: 1, padding: '7px 12px' }}>
+                                                ✏️ Edit Category
+                                            </button>
+                                            <button className="delete-action-btn" onClick={() => handleDeleteCategory(cat.id)} style={{ flex: 1, padding: '7px 12px' }}>
+                                                🗑️ Delete
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })
+                        )}
+                    </div>
+                </div>
+            )}
+
             {/* TAB CONTENT: PRODUCTS */}
             {activeTab === 'products' && (
                 <div className="admin-tab-content">
@@ -1481,34 +2199,111 @@ export default function AdminPanel({
 
                     {isProductFormOpen && (
                         <div className="admin-form-overlay">
-                            <div className="admin-modal-content">
+                            <div className="admin-modal-content" style={{ maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto' }}>
                                 <div className="modal-header">
-                                    <h4>{editingProduct ? 'Edit Product details' : 'Add New Product'}</h4>
+                                    <h4>{editingProduct ? `Edit Product: ${editingProduct.title}` : 'Add New Product'}</h4>
                                     <button className="close-btn" onClick={() => setIsProductFormOpen(false)}>&times;</button>
                                 </div>
-                                <form onSubmit={handleProductSubmit} className="admin-product-form">
+                                <form onSubmit={handleProductSubmit} className="admin-product-form" style={{ padding: '20px' }}>
+                                    {/* 1. Core Info */}
                                     <div className="form-group-row">
-                                        <div className="form-field">
+                                        <div className="form-field" style={{ flex: 2 }}>
                                             <label>Product Title *</label>
                                             <input 
                                                 type="text" 
                                                 required 
                                                 value={prodTitle} 
                                                 onChange={e => setProdTitle(e.target.value)} 
-                                                placeholder="e.g. Premium Linen Shirt"
+                                                placeholder="e.g. Acid-Washed Oversized Heavy Tee"
                                             />
                                         </div>
-                                        <div className="form-field">
+                                        <div className="form-field" style={{ flex: 1 }}>
                                             <label>Category *</label>
-                                            <select value={prodCategory} onChange={e => setProdCategory(e.target.value)}>
-                                                <option value="summer-t-shirt">Summer T-Shirts</option>
-                                                <option value="t-shirt">T-Shirts</option>
-                                                <option value="shirt">Shirts</option>
-                                                <option value="pants">Pants</option>
+                                            <select 
+                                                value={prodCategory} 
+                                                onChange={e => {
+                                                    const chosenSlug = e.target.value;
+                                                    setProdCategory(chosenSlug);
+                                                    const catObj = categoriesList.find(c => c.slug === chosenSlug);
+                                                    if (catObj?.subcategories?.length > 0) {
+                                                        const firstSub = catObj.subcategories[0];
+                                                        setProdSubcategory(typeof firstSub === 'object' ? (firstSub.name || firstSub.slug || '') : firstSub);
+                                                    } else {
+                                                        setProdSubcategory('');
+                                                    }
+                                                }}
+                                            >
+                                                {categoriesList.map(cat => (
+                                                    <option key={cat.id || cat.slug} value={cat.slug || cat.name.toLowerCase().replace(/\s+/g, '-')}>
+                                                        {cat.name}
+                                                    </option>
+                                                ))}
                                             </select>
                                         </div>
                                     </div>
 
+                                    {/* Subcategory & Brand */}
+                                    <div className="form-group-row">
+                                        {(() => {
+                                            const activeCatObj = categoriesList.find(c => c.slug === prodCategory);
+                                            const subcats = activeCatObj?.subcategories || [];
+                                            return (
+                                                <div className="form-field">
+                                                    <label>Subcategory</label>
+                                                    {subcats.length > 0 ? (
+                                                        <select value={prodSubcategory} onChange={e => setProdSubcategory(e.target.value)}>
+                                                            <option value="">General / None</option>
+                                                            {subcats.map((sub, sIdx) => {
+                                                                const subVal = typeof sub === 'object' ? (sub.name || sub.slug || '') : sub;
+                                                                const subKey = typeof sub === 'object' ? (sub.id || sub.slug || sIdx) : sub;
+                                                                return (
+                                                                    <option key={subKey} value={subVal}>{subVal}</option>
+                                                                );
+                                                            })}
+                                                        </select>
+                                                    ) : (
+                                                        <input 
+                                                            type="text" 
+                                                            value={prodSubcategory} 
+                                                            onChange={e => setProdSubcategory(e.target.value)} 
+                                                            placeholder="e.g. Oversized, Linen" 
+                                                        />
+                                                    )}
+                                                </div>
+                                            );
+                                        })()}
+                                        <div className="form-field">
+                                            <label>Brand Name</label>
+                                            <input type="text" value={prodBrand} onChange={e => setProdBrand(e.target.value)} placeholder="e.g. NETRAVE" />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>SKU</label>
+                                            <input type="text" value={prodSku} onChange={e => setProdSku(e.target.value)} placeholder="e.g. NET-TSH-001" />
+                                        </div>
+                                    </div>
+
+                                    {/* Badges */}
+                                    <div className="form-field" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', padding: '12px 14px', borderRadius: '8px' }}>
+                                        <label style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+                                            Storefront Badges & Visibility Flags
+                                        </label>
+                                        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13.5px', color: '#fff' }}>
+                                                <input type="checkbox" checked={prodIsFeatured} onChange={e => setProdIsFeatured(e.target.checked)} />
+                                                <span>🌟 Featured Collection</span>
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13.5px', color: '#fff' }}>
+                                                <input type="checkbox" checked={prodIsNewArrival} onChange={e => setProdIsNewArrival(e.target.checked)} />
+                                                <span>🔥 New Arrival</span>
+                                            </label>
+                                            <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '13.5px', color: '#fff' }}>
+                                                <input type="checkbox" checked={prodIsBestSeller} onChange={e => setProdIsBestSeller(e.target.checked)} />
+                                                <span>🏆 Best Seller</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* 2. Pricing & Margins */}
                                     <div className="form-group-row four-col-pricing">
                                         <div className="form-field">
                                             <label style={{ color: 'var(--primary)', fontWeight: '700' }}>Sale Price (₹) *</label>
@@ -1523,7 +2318,7 @@ export default function AdminPanel({
                                             <small style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Customer selling price</small>
                                         </div>
                                         <div className="form-field">
-                                            <label style={{ fontWeight: '700' }}>Buy Price / Cost (₹)</label>
+                                            <label style={{ fontWeight: '700' }}>Supplier Cost (₹)</label>
                                             <input 
                                                 type="number" 
                                                 value={prodCostPrice} 
@@ -1541,7 +2336,7 @@ export default function AdminPanel({
                                                 placeholder="e.g. 249"
                                                 style={{ borderColor: '#10b981', background: 'rgba(16, 185, 129, 0.08)' }}
                                             />
-                                            <small style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>Auto: Sale - Buy</small>
+                                            <small style={{ fontSize: '11px', color: '#10b981', fontWeight: '600' }}>Auto: Sale - Cost</small>
                                         </div>
                                         <div className="form-field">
                                             <label>Original / MRP (₹)</label>
@@ -1557,7 +2352,7 @@ export default function AdminPanel({
                                     {prodPrice && (
                                         <div className="pricing-calc-badge-row">
                                             <span className="calc-summary-pill">
-                                                Sale: <strong style={{ color: 'var(--primary)' }}>₹{prodPrice}</strong> - Buy: ₹{prodCostPrice || 0} = Profit: <strong style={{ color: '#10b981' }}>₹{prodMarginAmount || 0}</strong>
+                                                Sale: <strong style={{ color: 'var(--primary)' }}>₹{prodPrice}</strong> - Cost: ₹{prodCostPrice || 0} = Profit: <strong style={{ color: '#10b981' }}>₹{prodMarginAmount || 0}</strong>
                                             </span>
                                             <span className={`margin-badge-tag ${(Number(prodPrice) - Number(prodCostPrice || 0)) >= 0 ? 'high-margin' : 'low-margin'}`}>
                                                 Margin %: {prodPrice > 0 ? Math.round(((Number(prodPrice) - Number(prodCostPrice || 0)) / Number(prodPrice)) * 100) : 0}%
@@ -1565,85 +2360,246 @@ export default function AdminPanel({
                                         </div>
                                     )}
 
-                                    <div className="form-group-row">
-                                        <div className="form-field">
-                                            <label>Stock Count</label>
-                                            <input 
-                                                type="number" 
-                                                value={prodStock} 
-                                                onChange={e => setProdStock(e.target.value)} 
-                                                placeholder="e.g. 50"
-                                            />
-                                        </div>
-                                        <div className="form-field toggle-field">
-                                            <label>Product Availability</label>
-                                            <div className="checkbox-wrapper">
-                                                <input 
-                                                    type="checkbox" 
-                                                    id="inStockCheckbox"
-                                                    checked={prodInStock} 
-                                                    onChange={e => setProdInStock(e.target.checked)}
-                                                />
-                                                <label htmlFor="inStockCheckbox">In Stock & Listed</label>
-                                            </div>
-                                        </div>
-                                    </div>
-
+                                    {/* 3. Multi-Image Gallery */}
                                     <div className="form-field">
-                                        <label>Product Image Link / Upload</label>
-                                        <div className="image-input-group">
+                                        <label>Product Images (Main & Gallery Thumbnails)</label>
+                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                                             <input 
                                                 type="text" 
-                                                value={prodImage} 
-                                                onChange={e => setProdImage(e.target.value)} 
-                                                placeholder="Paste Unsplash image URL or upload file"
+                                                value={newImageInput} 
+                                                onChange={e => setNewImageInput(e.target.value)} 
+                                                placeholder="Paste image URL (Unsplash, CDN, etc.)..." 
+                                                style={{ flex: 1 }}
                                             />
+                                            <button 
+                                                type="button" 
+                                                className="cta-btn secondary-cta" 
+                                                style={{ minHeight: 'unset', padding: '0 14px' }}
+                                                onClick={() => {
+                                                    if (newImageInput.trim()) {
+                                                        const updated = [...prodImages, newImageInput.trim()];
+                                                        setProdImages(updated);
+                                                        if (!prodImage) setProdImage(newImageInput.trim());
+                                                        setNewImageInput('');
+                                                    }
+                                                }}
+                                            >
+                                                + Add URL
+                                            </button>
                                             <div className="file-upload-btn-wrapper">
-                                                <button type="button" className="file-btn">Upload Image</button>
-                                                <input type="file" accept="image/*" onChange={handleFileUpload} />
+                                                <button type="button" className="file-btn">Upload</button>
+                                                <input type="file" accept="image/*" onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (!file) return;
+                                                    const formData = new FormData();
+                                                    formData.append('image', file);
+                                                    try {
+                                                        const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: formData });
+                                                        if (res.ok) {
+                                                            const d = await res.json();
+                                                            const updated = [...prodImages, d.fileUrl];
+                                                            setProdImages(updated);
+                                                            if (!prodImage) setProdImage(d.fileUrl);
+                                                        }
+                                                    } catch (err) {
+                                                        alert('Upload failed.');
+                                                    }
+                                                }} />
                                             </div>
                                         </div>
-                                        {uploading && <span className="upload-indicator">Uploading to server...</span>}
-                                        {prodImage && (
-                                            <div className="image-preview-box">
-                                                <img src={prodImage} alt="Preview" style={{ maxHeight: '100px', borderRadius: '4px', marginTop: '10px' }} />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="form-field">
-                                        <label>Sizes Available (Select all that apply)</label>
-                                        <div className="sizes-checkboxes">
-                                            {['S', 'M', 'L', 'XL', 'XXL', 'One Size'].map(sz => (
-                                                <button 
-                                                    key={sz}
-                                                    type="button"
-                                                    className={`admin-size-select-btn ${prodSizes.includes(sz) ? 'selected' : ''}`}
-                                                    onClick={() => toggleSize(sz)}
-                                                >
-                                                    {sz}
-                                                </button>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
+                                            {prodImages.map((img, idx) => (
+                                                <div key={idx} style={{ position: 'relative', width: '75px', height: '75px', borderRadius: '6px', overflow: 'hidden', border: idx === 0 ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)' }}>
+                                                    <img src={img} alt={`Thumb ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    {idx === 0 && (
+                                                        <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--primary)', color: '#000', fontSize: '9px', fontWeight: 'bold', textAlign: 'center' }}>
+                                                            MAIN
+                                                        </span>
+                                                    )}
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => {
+                                                            const filtered = prodImages.filter((_, i) => i !== idx);
+                                                            setProdImages(filtered);
+                                                            if (idx === 0) setProdImage(filtered[0] || '');
+                                                        }}
+                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.7)', color: '#ef4444', border: 'none', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </div>
                                             ))}
                                         </div>
                                     </div>
 
+                                    {/* 4. Rich Text Product Description */}
                                     <div className="form-field">
-                                        <label>Product Description</label>
-                                        <textarea 
+                                        <label>Product Description (Rich Text Editor with Headings & Formatting) *</label>
+                                        <RichTextEditor 
                                             value={prodDesc} 
-                                            onChange={e => setProdDesc(e.target.value)} 
-                                            rows="3"
-                                            placeholder="Write brief description for card..."
+                                            onChange={setProdDesc} 
+                                            placeholder="Write detailed product features, fabric composition, fit recommendations, styling tips..." 
                                         />
                                     </div>
 
                                     <div className="form-field">
-                                        <label>Tags (Comma separated values)</label>
+                                        <label>Short Description (Summary for cards & checkout)</label>
+                                        <input 
+                                            type="text" 
+                                            value={prodShortDesc} 
+                                            onChange={e => setProdShortDesc(e.target.value)} 
+                                            placeholder="e.g. 240 GSM heavy cotton streetwear tee with acid wash finish." 
+                                        />
+                                    </div>
+
+                                    {/* 5. Dynamic Variants Builder */}
+                                    <div className="form-field" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', padding: '16px', borderRadius: '10px' }}>
+                                        <label style={{ fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '4px', display: 'block' }}>
+                                            ✨ Dynamic Product Variants (Size, Color, Material)
+                                        </label>
+                                        <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '0 0 12px' }}>
+                                            Add custom variant dimensions and option tags.
+                                        </p>
+
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                                            {variantOptionTypes.map((opt, optIdx) => (
+                                                <div key={optIdx} style={{ background: 'rgba(0,0,0,0.3)', padding: '8px 12px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                    <div>
+                                                        <strong style={{ color: 'var(--primary)', marginRight: '8px' }}>{opt.name}:</strong>
+                                                        <span style={{ color: '#cbd5e1', fontSize: '12.5px' }}>{opt.values.join(', ')}</span>
+                                                    </div>
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setVariantOptionTypes(variantOptionTypes.filter((_, i) => i !== optIdx))}
+                                                        style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '12px' }}
+                                                    >
+                                                        Remove
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <input 
+                                                type="text" 
+                                                placeholder="Option Name (e.g. Fit)" 
+                                                value={customOptName} 
+                                                onChange={e => setCustomOptName(e.target.value)}
+                                                style={{ width: '140px' }}
+                                            />
+                                            <input 
+                                                type="text" 
+                                                placeholder="Values separated by comma (e.g. Regular, Slim, Oversized)" 
+                                                value={customOptValues} 
+                                                onChange={e => setCustomOptValues(e.target.value)}
+                                                style={{ flex: 1 }}
+                                            />
+                                            <button 
+                                                type="button" 
+                                                className="cta-btn secondary-cta"
+                                                style={{ minHeight: 'unset', padding: '0 12px' }}
+                                                onClick={() => {
+                                                    if (customOptName.trim() && customOptValues.trim()) {
+                                                        const vals = customOptValues.split(',').map(v => v.trim()).filter(Boolean);
+                                                        setVariantOptionTypes([...variantOptionTypes, { name: customOptName.trim(), values: vals }]);
+                                                        setCustomOptName('');
+                                                        setCustomOptValues('');
+                                                    }
+                                                }}
+                                            >
+                                                + Add
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* 6. Supplier & Sourcing Management (Admin Only) */}
+                                    <div className="form-field" style={{ background: 'rgba(245, 158, 11, 0.05)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '16px', borderRadius: '10px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                            <span style={{ fontSize: '16px' }}>🛡️</span>
+                                            <h4 style={{ margin: 0, fontSize: '13.5px', fontWeight: '800', color: 'var(--primary)' }}>
+                                                Supplier & Sourcing Details (Admin Only — Confidential)
+                                            </h4>
+                                        </div>
+
+                                        <div className="form-group-row">
+                                            <div className="form-field">
+                                                <label>Supplier / Vendor Name</label>
+                                                <input type="text" value={supplierName} onChange={e => setSupplierName(e.target.value)} placeholder="e.g. IndiaMART Surat Vendor" />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>Supplier SKU / Reference</label>
+                                                <input type="text" value={supplierSku} onChange={e => setSupplierSku(e.target.value)} placeholder="e.g. SUPP-TEE-8849" />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-field">
+                                            <label>Supplier Product Source URL</label>
+                                            <input type="url" value={supplierUrl} onChange={e => setSupplierUrl(e.target.value)} placeholder="https://supplier-portal.com/item/..." />
+                                        </div>
+
+                                        <div className="form-group-row">
+                                            <div className="form-field">
+                                                <label>Supplier Shipping Cost (₹)</label>
+                                                <input type="number" value={supplierShippingCost} onChange={e => setSupplierShippingCost(e.target.value)} placeholder="e.g. 50" />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>Est. Delivery Time</label>
+                                                <input type="text" value={supplierDeliveryTime} onChange={e => setSupplierDeliveryTime(e.target.value)} placeholder="e.g. 5-7 business days" />
+                                            </div>
+                                            <div className="form-field">
+                                                <label>Supplier Stock Status</label>
+                                                <select value={supplierStockStatus} onChange={e => setSupplierStockStatus(e.target.value)}>
+                                                    <option value="In Stock">In Stock</option>
+                                                    <option value="Low Stock">Low Stock</option>
+                                                    <option value="Pre-Order">Pre-Order</option>
+                                                    <option value="Out of Stock">Out of Stock</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-field">
+                                            <label>Private Supplier Notes</label>
+                                            <textarea value={supplierNotes} onChange={e => setSupplierNotes(e.target.value)} rows="2" placeholder="Private internal notes regarding fulfillment, packaging MOQ..." />
+                                        </div>
+                                    </div>
+
+                                    {/* 7. Stock, Specifications & Policies */}
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Total Inventory Stock</label>
+                                            <input type="number" value={prodStock} onChange={e => setProdStock(e.target.value)} placeholder="e.g. 50" />
+                                        </div>
+                                        <div className="form-field toggle-field">
+                                            <label>Listing Status</label>
+                                            <div className="checkbox-wrapper">
+                                                <input type="checkbox" id="inStockCheckbox" checked={prodInStock} onChange={e => setProdInStock(e.target.checked)} />
+                                                <label htmlFor="inStockCheckbox">In Stock & Listed</label>
+                                            </div>
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Fabric / Weight</label>
+                                            <input type="text" value={prodWeight} onChange={e => setProdWeight(e.target.value)} placeholder="e.g. 240 GSM / 0.3 kg" />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-group-row">
+                                        <div className="form-field">
+                                            <label>Shipping Information</label>
+                                            <input type="text" value={prodShippingInfo} onChange={e => setProdShippingInfo(e.target.value)} />
+                                        </div>
+                                        <div className="form-field">
+                                            <label>Return & Exchange Guarantee</label>
+                                            <input type="text" value={prodReturnInfo} onChange={e => setProdReturnInfo(e.target.value)} />
+                                        </div>
+                                    </div>
+
+                                    <div className="form-field">
+                                        <label>Search & Filter Tags (Comma separated)</label>
                                         <input 
                                             type="text" 
                                             value={prodTags.join(', ')} 
                                             onChange={e => handleTagsChange(e.target.value)} 
-                                            placeholder="e.g. New, Oversized, Trending"
+                                            placeholder="e.g. New, Oversized, Trending, Cotton" 
                                         />
                                     </div>
 
@@ -1804,6 +2760,9 @@ export default function AdminPanel({
                                                             <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
                                                                 Edit
                                                             </button>
+                                                            <button className="edit-action-btn" onClick={() => handleDuplicateProduct(prod.id)} style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }} title="Duplicate this product">
+                                                                📋 Duplicate
+                                                            </button>
                                                             <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)}>
                                                                 Delete
                                                             </button>
@@ -1935,6 +2894,9 @@ export default function AdminPanel({
                                                 <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)} style={{ flex: 1, padding: '8px' }}>
                                                     ✏️ Edit
                                                 </button>
+                                                <button className="edit-action-btn" onClick={() => handleDuplicateProduct(prod.id)} style={{ flex: 1, padding: '8px', background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }}>
+                                                    📋 Copy
+                                                </button>
                                                 <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)} style={{ flex: 1, padding: '8px' }}>
                                                     🗑️ Delete
                                                 </button>
@@ -1965,15 +2927,19 @@ export default function AdminPanel({
                             <label>Filter Status: </label>
                             <select value={statusFilter} onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}>
                                 <option value="all">All Orders</option>
-                                <option value="Confirmed">✅ Confirmed (Auto-verified)</option>
-                                <option value="Payment Confirmed">Payment Confirmed</option>
-                                <option value="Pending">Pending</option>
-                                <option value="Order Placed">Order Placed</option>
-                                <option value="Payment Not Confirmed">Payment Not Confirmed</option>
-                                <option value="Dispatched">Dispatched</option>
-                                <option value="Delivered">Delivered</option>
-                                <option value="Cancelled">Cancelled</option>
-                                <option value="Cancelled by Customer">Cancelled by Customer</option>
+                                <option value="Pending">⏳ Pending</option>
+                                <option value="Confirmed">✅ Confirmed</option>
+                                <option value="Payment Confirmed">💳 Payment Confirmed</option>
+                                <option value="Processing">⚙️ Processing</option>
+                                <option value="Shipped">📦 Shipped</option>
+                                <option value="Dispatched">🚚 Dispatched</option>
+                                <option value="In Transit">🚛 In Transit</option>
+                                <option value="Out for Delivery">🛵 Out for Delivery</option>
+                                <option value="Delivered">🎉 Delivered</option>
+                                <option value="Cancelled">❌ Cancelled</option>
+                                <option value="Cancelled by Customer">❌ Cancelled by Customer</option>
+                                <option value="Returned">🔄 Returned</option>
+                                <option value="Refunded">💰 Refunded</option>
                             </select>
                         </div>
                     </div>
@@ -2037,15 +3003,19 @@ export default function AdminPanel({
                                                     className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
                                                     onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
                                                 >
+                                                    <option value="Pending">⏳ Pending</option>
                                                     <option value="Confirmed">✅ Confirmed</option>
-                                                    <option value="Payment Confirmed">Payment Confirmed</option>
-                                                    <option value="Pending">Pending</option>
-                                                    <option value="Order Placed">Order Placed</option>
-                                                    <option value="Payment Not Confirmed">Payment Not Confirmed</option>
-                                                    <option value="Dispatched">Dispatched</option>
-                                                    <option value="Delivered">Delivered</option>
-                                                    <option value="Cancelled">Cancelled</option>
-                                                    <option value="Cancelled by Customer">Cancelled by Customer</option>
+                                                    <option value="Payment Confirmed">💳 Payment Confirmed</option>
+                                                    <option value="Processing">⚙️ Processing</option>
+                                                    <option value="Shipped">📦 Shipped</option>
+                                                    <option value="Dispatched">🚚 Dispatched</option>
+                                                    <option value="In Transit">🚛 In Transit</option>
+                                                    <option value="Out for Delivery">🛵 Out for Delivery</option>
+                                                    <option value="Delivered">🎉 Delivered</option>
+                                                    <option value="Cancelled">❌ Cancelled</option>
+                                                    <option value="Cancelled by Customer">❌ Cancelled by Customer</option>
+                                                    <option value="Returned">🔄 Returned</option>
+                                                    <option value="Refunded">💰 Refunded</option>
                                                 </select>
                                             </td>
                                         </tr>
@@ -2108,15 +3078,19 @@ export default function AdminPanel({
                                             onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
                                             style={{ width: '100%' }}
                                         >
+                                            <option value="Pending">⏳ Pending</option>
                                             <option value="Confirmed">✅ Confirmed</option>
-                                            <option value="Payment Confirmed">Payment Confirmed</option>
-                                            <option value="Pending">Pending</option>
-                                            <option value="Order Placed">Order Placed</option>
-                                            <option value="Payment Not Confirmed">Payment Not Confirmed</option>
-                                            <option value="Dispatched">Dispatched</option>
-                                            <option value="Delivered">Delivered</option>
-                                            <option value="Cancelled">Cancelled</option>
-                                            <option value="Cancelled by Customer">Cancelled by Customer</option>
+                                            <option value="Payment Confirmed">💳 Payment Confirmed</option>
+                                            <option value="Processing">⚙️ Processing</option>
+                                            <option value="Shipped">📦 Shipped</option>
+                                            <option value="Dispatched">🚚 Dispatched</option>
+                                            <option value="In Transit">🚛 In Transit</option>
+                                            <option value="Out for Delivery">🛵 Out for Delivery</option>
+                                            <option value="Delivered">🎉 Delivered</option>
+                                            <option value="Cancelled">❌ Cancelled</option>
+                                            <option value="Cancelled by Customer">❌ Cancelled by Customer</option>
+                                            <option value="Returned">🔄 Returned</option>
+                                            <option value="Refunded">💰 Refunded</option>
                                         </select>
                                     </div>
 
@@ -2715,11 +3689,15 @@ export default function AdminPanel({
                                             style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
                                         >
                                             <option value="Confirmed">✅ Confirmed</option>
-                                            <option value="Dispatched">📦 Dispatched</option>
+                                            <option value="Processing">⚙️ Processing</option>
+                                            <option value="Shipped">📦 Shipped</option>
+                                            <option value="Dispatched">🚚 Dispatched</option>
                                             <option value="In Transit">🚛 In Transit</option>
                                             <option value="Out for Delivery">🛵 Out for Delivery</option>
                                             <option value="Delivered">🎉 Delivered</option>
                                             <option value="Cancelled">❌ Cancelled</option>
+                                            <option value="Returned">🔄 Returned</option>
+                                            <option value="Refunded">💰 Refunded</option>
                                         </select>
                                     </div>
                                 </div>
@@ -2757,6 +3735,52 @@ export default function AdminPanel({
                                     }}
                                 >
                                     {courierSaving ? 'Pushing Live Telemetry...' : '⚡ Save & Push Live Courier Update'}
+                                </button>
+                            </div>
+
+                            {/* Internal Order Notes (Admin Only) */}
+                            <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '16px', borderRadius: '14px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                    <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>📝</span> Internal Order Notes (Staff / Admin Only)
+                                    </h3>
+                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Never visible to customer</span>
+                                </div>
+                                <textarea
+                                    value={internalNotesInput}
+                                    onChange={e => setInternalNotesInput(e.target.value)}
+                                    placeholder="Add internal notes about this order, customer preferences, fulfillment instructions, supplier PO details..."
+                                    rows="3"
+                                    style={{
+                                        width: '100%',
+                                        padding: '10px 12px',
+                                        background: '#0a0d16',
+                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        borderRadius: '8px',
+                                        color: '#fff',
+                                        fontSize: '13px',
+                                        boxSizing: 'border-box',
+                                        resize: 'vertical',
+                                        marginBottom: '10px',
+                                        fontFamily: 'inherit'
+                                    }}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={handleSaveInternalNotes}
+                                    disabled={savingNotes}
+                                    style={{
+                                        background: 'rgba(245, 158, 11, 0.15)',
+                                        border: '1px solid rgba(245, 158, 11, 0.35)',
+                                        color: 'var(--primary)',
+                                        padding: '8px 16px',
+                                        borderRadius: '6px',
+                                        fontWeight: '700',
+                                        fontSize: '12.5px',
+                                        cursor: savingNotes ? 'wait' : 'pointer'
+                                    }}
+                                >
+                                    {savingNotes ? 'Saving...' : '💾 Save Internal Notes'}
                                 </button>
                             </div>
 

@@ -23,6 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 const productsPath = path.join(__dirname, 'data', 'products.json');
+const categoriesPath = path.join(__dirname, 'data', 'categories.json');
 const bookingsPath = path.join(__dirname, 'data', 'bookings.json');
 const settingsPath = path.join(__dirname, 'data', 'settings.json');
 const usersPath = path.join(__dirname, 'data', 'users.json');
@@ -50,6 +51,7 @@ async function initDataFolder() {
         };
 
         await ensureFile(productsPath, []);
+        await ensureFile(categoriesPath, []);
         await ensureFile(bookingsPath, []);
         await ensureFile(settingsPath, { whatsappNumber: '919946550713' });
         await ensureFile(usersPath, []);
@@ -101,23 +103,65 @@ try {
     console.warn('[Netrave Backend] MongoDB connection failed. Falling back to local JSON database.', err.message);
 }
 
+// Category Schema
+const CategorySchema = new mongoose.Schema({
+    id: { type: Number, required: true, unique: true },
+    name: { type: String, required: true },
+    slug: { type: String, required: true },
+    description: { type: String, default: '' },
+    image: { type: String, default: '' },
+    banner: { type: String, default: '' },
+    color: { type: String, default: '#f59e0b' },
+    status: { type: String, default: 'active' }, // 'active' | 'disabled'
+    displayOrder: { type: Number, default: 0 },
+    subcategories: [mongoose.Schema.Types.Mixed],
+    createdAt: { type: Date, default: Date.now }
+}, { strict: false });
+const CategoryModel = mongoose.models.Category || mongoose.model('Category', CategorySchema);
+
 // Product Schema
 const ProductSchema = new mongoose.Schema({
     id: { type: Number, required: true, unique: true },
     title: { type: String, required: true },
     category: { type: String, required: true },
+    subcategory: { type: String, default: '' },
     price: { type: Number, required: true },
     originalPrice: { type: Number },
     rating: { type: Number, default: 5 },
     reviews: { type: Number, default: 0 },
     image: { type: String },
+    images: [String],
+    video: { type: String, default: '' },
+    shortDescription: { type: String, default: '' },
     description: { type: String },
     sizes: [String],
+    colors: [String],
     tags: [String],
     stock: { type: Number, default: 50 },
+    inStock: { type: Boolean, default: true },
+    isFeatured: { type: Boolean, default: false },
+    isNewArrival: { type: Boolean, default: false },
+    isBestSeller: { type: Boolean, default: false },
+    sku: { type: String, default: '' },
+    brand: { type: String, default: 'NETRAVE' },
+    weight: { type: String, default: '' },
+    dimensions: { type: String, default: '' },
+    shippingInfo: { type: String, default: '' },
+    returnInfo: { type: String, default: '' },
+    variants: [mongoose.Schema.Types.Mixed],
+    variantOptions: [mongoose.Schema.Types.Mixed],
+    // Confidential Supplier & Sourcing Fields (Admin-Only)
     costPrice: { type: Number, default: 0 },
-    inStock: { type: Boolean, default: true }
-});
+    supplierName: { type: String, default: '' },
+    supplierSku: { type: String, default: '' },
+    supplierUrl: { type: String, default: '' },
+    supplierCost: { type: Number, default: 0 },
+    profitMargin: { type: Number, default: 0 },
+    supplierShippingCost: { type: Number, default: 0 },
+    estimatedDeliveryDays: { type: String, default: '2-4 Days' },
+    supplierStockStatus: { type: String, default: 'In Stock' },
+    supplierNotes: { type: String, default: '' }
+}, { strict: false });
 const ProductModel = mongoose.models.Product || mongoose.model('Product', ProductSchema);
 
 // Booking Schema
@@ -128,7 +172,9 @@ const BookingSchema = new mongoose.Schema({
         name: { type: String, required: true },
         phone: { type: String, required: true },
         whatsapp: { type: String, required: true },
+        email: { type: String, default: '' },
         address: { type: String, required: true },
+        city: { type: String, default: '' },
         district: { type: String, required: true },
         pincode: { type: String, required: true },
         payment: { type: String, required: true },
@@ -152,7 +198,8 @@ const BookingSchema = new mongoose.Schema({
         name: { type: String, default: 'Rahul V.' },
         phone: { type: String, default: '+91 98471 23456' },
         vehicle: { type: String, default: 'KL-11-AX-4821' }
-    }
+    },
+    internalNotes: { type: String, default: '' }
 }, { strict: false });
 const BookingModel = mongoose.models.Booking || mongoose.model('Booking', BookingSchema);
 
@@ -307,6 +354,16 @@ if (useMongo) {
             if (fileProducts && fileProducts.length > 0) {
                 await ProductModel.insertMany(fileProducts);
                 console.log('[Netrave Backend] Synchronized MongoDB products collection with products.json');
+            }
+        }
+        // Seed Categories
+        const categoryCount = await CategoryModel.countDocuments();
+        const fileCategories = await readJson(categoriesPath);
+        if (categoryCount !== fileCategories.length) {
+            await CategoryModel.deleteMany({});
+            if (fileCategories && fileCategories.length > 0) {
+                await CategoryModel.insertMany(fileCategories);
+                console.log('[Netrave Backend] Synchronized MongoDB categories collection with categories.json');
             }
         }
         const settingsCount = await SettingsModel.countDocuments();
@@ -581,8 +638,222 @@ app.post('/api/settings', async (req, res) => {
     }
 });
 
-// 4. Fetch Products List
+// Helper to check if request is from Admin or Developer
+async function isRequestAdmin(req) {
+    try {
+        const token = req.headers['x-admin-session'] || req.headers['x-developer-session'] || getCookieValue(req.headers.cookie, 'adminSessionToken') || getCookieValue(req.headers.cookie, 'developerSessionToken');
+        if (!token) return false;
+        let settings = null;
+        if (useMongo) {
+            settings = await SettingsModel.findOne({ key: 'main' });
+        } else {
+            const fileSettings = await readJson(settingsPath);
+            settings = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
+        }
+        return !!(settings && (settings.adminSessionToken === token || settings.developerSessionToken === token));
+    } catch {
+        return false;
+    }
+}
+
+// Sourcing sanitization: strips confidential supplier details from customer views
+function sanitizeProductForCustomer(prod) {
+    if (!prod) return null;
+    const item = prod.toObject ? prod.toObject() : { ...prod };
+    delete item.costPrice;
+    delete item.supplierName;
+    delete item.supplierSku;
+    delete item.supplierUrl;
+    delete item.supplierCost;
+    delete item.profitMargin;
+    delete item.supplierShippingCost;
+    delete item.supplierNotes;
+    delete item.supplierStockStatus;
+    return item;
+}
+
+// --------------------------------------------------------------------------
+// CATEGORY MANAGEMENT ENDPOINTS
+// --------------------------------------------------------------------------
+
+// Fetch Categories List (Customers see active only; Admin sees all)
+app.get('/api/categories', async (req, res) => {
+    try {
+        const isAdmin = await isRequestAdmin(req);
+        const includeAll = req.query.all === 'true' && isAdmin;
+
+        if (useMongo) {
+            const query = includeAll ? {} : { status: 'active' };
+            const categories = await CategoryModel.find(query).sort({ displayOrder: 1, id: 1 });
+            res.json(categories);
+        } else {
+            const categories = await readJson(categoriesPath);
+            const filtered = includeAll ? categories : categories.filter(c => c.status === 'active');
+            filtered.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+            res.json(filtered);
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch categories.' });
+    }
+});
+
+// Admin Fetch All Categories
+app.get('/api/admin/categories', async (req, res) => {
+    try {
+        if (useMongo) {
+            const categories = await CategoryModel.find().sort({ displayOrder: 1, id: 1 });
+            res.json(categories);
+        } else {
+            const categories = await readJson(categoriesPath);
+            categories.sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+            res.json(categories);
+        }
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch categories.' });
+    }
+});
+
+// Create Category
+app.post('/api/categories', async (req, res) => {
+    try {
+        const { name, slug, description, image, banner, color, status, displayOrder, subcategories } = req.body;
+        if (!name) {
+            return res.status(400).json({ error: 'Category name is required.' });
+        }
+        const cleanSlug = (slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')).toLowerCase();
+
+        let newCategory;
+        if (useMongo) {
+            const lastCat = await CategoryModel.findOne().sort({ id: -1 });
+            const nextId = lastCat ? lastCat.id + 1 : 1;
+            newCategory = new CategoryModel({
+                id: nextId,
+                name: name.trim(),
+                slug: cleanSlug,
+                description: description || '',
+                image: image || '',
+                banner: banner || '',
+                color: color || '#f59e0b',
+                status: status || 'active',
+                displayOrder: displayOrder !== undefined ? Number(displayOrder) : nextId,
+                subcategories: Array.isArray(subcategories) ? subcategories : [],
+                createdAt: new Date()
+            });
+            await newCategory.save();
+        } else {
+            const categoriesList = await readJson(categoriesPath);
+            const nextId = categoriesList.reduce((max, c) => c.id > max ? c.id : max, 0) + 1;
+            newCategory = {
+                id: nextId,
+                name: name.trim(),
+                slug: cleanSlug,
+                description: description || '',
+                image: image || '',
+                banner: banner || '',
+                color: color || '#f59e0b',
+                status: status || 'active',
+                displayOrder: displayOrder !== undefined ? Number(displayOrder) : nextId,
+                subcategories: Array.isArray(subcategories) ? subcategories : [],
+                createdAt: new Date().toISOString()
+            };
+            categoriesList.push(newCategory);
+            await writeJson(categoriesPath, categoriesList);
+        }
+        res.status(201).json(newCategory);
+    } catch (err) {
+        console.error('Create category error:', err);
+        res.status(500).json({ error: 'Failed to create category.' });
+    }
+});
+
+// Update Category
+app.put('/api/categories/:id', async (req, res) => {
+    try {
+        const rawParam = req.params.id;
+        const numId = parseInt(rawParam);
+        const isNum = !isNaN(numId);
+        const { name, slug, description, image, banner, color, status, displayOrder, subcategories } = req.body;
+
+        const updateData = {};
+        if (name !== undefined) updateData.name = name.trim();
+        if (slug !== undefined) updateData.slug = slug.toLowerCase().trim();
+        if (description !== undefined) updateData.description = description;
+        if (image !== undefined) updateData.image = image;
+        if (banner !== undefined) updateData.banner = banner;
+        if (color !== undefined) updateData.color = color;
+        if (status !== undefined) updateData.status = status;
+        if (displayOrder !== undefined) updateData.displayOrder = Number(displayOrder);
+        if (subcategories !== undefined) updateData.subcategories = Array.isArray(subcategories) ? subcategories : [];
+
+        if (useMongo) {
+            const filter = isNum ? { $or: [{ id: numId }, { slug: rawParam }] } : { $or: [{ slug: rawParam }, { _id: rawParam }] };
+            const updated = await CategoryModel.findOneAndUpdate(filter, updateData, { new: true });
+            if (!updated) return res.status(404).json({ error: 'Category not found.' });
+            res.json(updated);
+        } else {
+            const categoriesList = await readJson(categoriesPath);
+            const index = categoriesList.findIndex(c => (isNum && c.id === numId) || String(c.id) === rawParam || c.slug === rawParam);
+            if (index === -1) return res.status(404).json({ error: 'Category not found.' });
+            categoriesList[index] = { ...categoriesList[index], ...updateData };
+            await writeJson(categoriesPath, categoriesList);
+            res.json(categoriesList[index]);
+        }
+    } catch (err) {
+        console.error('Update category error:', err);
+        res.status(500).json({ error: 'Failed to update category.' });
+    }
+});
+
+// Delete Category
+app.delete('/api/categories/:id', async (req, res) => {
+    try {
+        const rawParam = req.params.id;
+        const numId = parseInt(rawParam);
+        const isNum = !isNaN(numId);
+        if (useMongo) {
+            const filter = isNum ? { $or: [{ id: numId }, { slug: rawParam }] } : { $or: [{ slug: rawParam }, { _id: rawParam }] };
+            const deleted = await CategoryModel.findOneAndDelete(filter);
+            if (!deleted) return res.status(404).json({ error: 'Category not found.' });
+            res.json({ message: 'Category deleted successfully.' });
+        } else {
+            const categoriesList = await readJson(categoriesPath);
+            const filtered = categoriesList.filter(c => !((isNum && c.id === numId) || String(c.id) === rawParam || c.slug === rawParam));
+            if (filtered.length === categoriesList.length) return res.status(404).json({ error: 'Category not found.' });
+            await writeJson(categoriesPath, filtered);
+            res.json({ message: 'Category deleted successfully.' });
+        }
+    } catch (err) {
+        console.error('Delete category error:', err);
+        res.status(500).json({ error: 'Failed to delete category.' });
+    }
+});
+
+// --------------------------------------------------------------------------
+// PRODUCT MANAGEMENT ENDPOINTS
+// --------------------------------------------------------------------------
+
+// Fetch Products List (Public is sanitized without supplier details; Admin gets full supplier intel)
 app.get('/api/products', async (req, res) => {
+    try {
+        const isAdmin = await isRequestAdmin(req);
+        let products = [];
+        if (useMongo) {
+            products = await ProductModel.find().sort({ id: 1 });
+        } else {
+            products = await readJson(productsPath);
+        }
+
+        if (isAdmin || req.query.adminView === 'true') {
+            return res.json(products);
+        }
+        res.json(products.map(sanitizeProductForCustomer));
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch products.' });
+    }
+});
+
+// Admin Fetch Products (Always includes full supplier intel)
+app.get('/api/admin/products', async (req, res) => {
     try {
         if (useMongo) {
             const products = await ProductModel.find().sort({ id: 1 });
@@ -592,147 +863,303 @@ app.get('/api/products', async (req, res) => {
             res.json(products);
         }
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch products.' });
+        res.status(500).json({ error: 'Failed to fetch products for admin.' });
     }
 });
 
-// 5. Add New Product
+// Fetch Single Product
+app.get('/api/products/:id', async (req, res) => {
+    try {
+        const prodId = parseInt(req.params.id);
+        const isAdmin = await isRequestAdmin(req);
+        let prod = null;
+        if (useMongo) {
+            prod = await ProductModel.findOne({ id: prodId });
+        } else {
+            const list = await readJson(productsPath);
+            prod = list.find(p => p.id === prodId);
+        }
+        if (!prod) return res.status(404).json({ error: 'Product not found.' });
+        res.json(isAdmin ? prod : sanitizeProductForCustomer(prod));
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch product.' });
+    }
+});
+
+// Add New Product
 app.post('/api/products', async (req, res) => {
     try {
-        const { title, category, price, costPrice, originalPrice, image, description, sizes, tags, stock, inStock } = req.body;
+        const {
+            title, category, subcategory, price, costPrice, originalPrice,
+            image, images, video, shortDescription, description,
+            sizes, colors, tags, stock, inStock,
+            isFeatured, isNewArrival, isBestSeller,
+            sku, brand, weight, dimensions, shippingInfo, returnInfo,
+            variants, variantOptions,
+            supplierName, supplierSku, supplierUrl, supplierCost,
+            profitMargin, supplierShippingCost, estimatedDeliveryDays,
+            supplierStockStatus, supplierNotes
+        } = req.body;
 
-        // Input validation
-        if (!title || !category || !price) {
+        if (!title || !category || price === undefined || price === null || price === '') {
             return res.status(400).json({ error: 'Title, category, and price are required.' });
         }
 
-        let productsList = [];
+        const sellingPrice = Number(price);
+        const unitCost = supplierCost !== undefined ? Number(supplierCost) : (costPrice !== undefined ? Number(costPrice) : 0);
+        const margin = profitMargin !== undefined ? Number(profitMargin) : Math.max(0, sellingPrice - unitCost);
+        const imgList = Array.isArray(images) && images.length > 0 ? images : (image ? [image] : []);
+        const primaryImage = image || (imgList[0] || '');
+
+        let newProduct;
         if (useMongo) {
             const lastProduct = await ProductModel.findOne().sort({ id: -1 });
             const nextId = lastProduct ? lastProduct.id + 1 : 1;
 
-            const newProduct = new ProductModel({
+            newProduct = new ProductModel({
                 id: nextId,
-                title,
-                category,
-                price: Number(price),
-                costPrice: costPrice !== undefined ? Number(costPrice) : 0,
+                title: title.trim(),
+                category: category.trim(),
+                subcategory: subcategory || '',
+                price: sellingPrice,
                 originalPrice: originalPrice ? Number(originalPrice) : undefined,
-                image: image || '',
+                costPrice: unitCost,
+                image: primaryImage,
+                images: imgList,
+                video: video || '',
+                shortDescription: shortDescription || '',
                 description: description || '',
                 sizes: Array.isArray(sizes) ? sizes : ['M', 'L', 'XL'],
+                colors: Array.isArray(colors) ? colors : [],
                 tags: Array.isArray(tags) ? tags : [],
                 stock: stock !== undefined ? Number(stock) : 50,
                 inStock: inStock !== undefined ? Boolean(inStock) : true,
+                isFeatured: Boolean(isFeatured),
+                isNewArrival: Boolean(isNewArrival),
+                isBestSeller: Boolean(isBestSeller),
+                sku: sku || `NET-SKU-${nextId}`,
+                brand: brand || 'NETRAVE',
+                weight: weight || '',
+                dimensions: dimensions || '',
+                shippingInfo: shippingInfo || 'Ships in 24 hours via Express Courier.',
+                returnInfo: returnInfo || '7-day replacement and return guarantee.',
+                variants: Array.isArray(variants) ? variants : [],
+                variantOptions: Array.isArray(variantOptions) ? variantOptions : [],
+                supplierName: supplierName || '',
+                supplierSku: supplierSku || '',
+                supplierUrl: supplierUrl || '',
+                supplierCost: unitCost,
+                profitMargin: margin,
+                supplierShippingCost: supplierShippingCost !== undefined ? Number(supplierShippingCost) : 0,
+                estimatedDeliveryDays: estimatedDeliveryDays || '2-4 Days',
+                supplierStockStatus: supplierStockStatus || 'In Stock',
+                supplierNotes: supplierNotes || '',
                 rating: 5.0,
                 reviews: 0
             });
             await newProduct.save();
-            res.status(201).json(newProduct);
         } else {
-            productsList = await readJson(productsPath);
+            const productsList = await readJson(productsPath);
             const nextId = productsList.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
 
-            const newProduct = {
+            newProduct = {
                 id: nextId,
-                title,
-                category,
-                price: Number(price),
-                costPrice: costPrice !== undefined ? Number(costPrice) : 0,
+                title: title.trim(),
+                category: category.trim(),
+                subcategory: subcategory || '',
+                price: sellingPrice,
                 originalPrice: originalPrice ? Number(originalPrice) : undefined,
-                image: image || '',
+                costPrice: unitCost,
+                image: primaryImage,
+                images: imgList,
+                video: video || '',
+                shortDescription: shortDescription || '',
                 description: description || '',
                 sizes: Array.isArray(sizes) ? sizes : ['M', 'L', 'XL'],
+                colors: Array.isArray(colors) ? colors : [],
                 tags: Array.isArray(tags) ? tags : [],
                 stock: stock !== undefined ? Number(stock) : 50,
                 inStock: inStock !== undefined ? Boolean(inStock) : true,
+                isFeatured: Boolean(isFeatured),
+                isNewArrival: Boolean(isNewArrival),
+                isBestSeller: Boolean(isBestSeller),
+                sku: sku || `NET-SKU-${nextId}`,
+                brand: brand || 'NETRAVE',
+                weight: weight || '',
+                dimensions: dimensions || '',
+                shippingInfo: shippingInfo || 'Ships in 24 hours via Express Courier.',
+                returnInfo: returnInfo || '7-day replacement and return guarantee.',
+                variants: Array.isArray(variants) ? variants : [],
+                variantOptions: Array.isArray(variantOptions) ? variantOptions : [],
+                supplierName: supplierName || '',
+                supplierSku: supplierSku || '',
+                supplierUrl: supplierUrl || '',
+                supplierCost: unitCost,
+                profitMargin: margin,
+                supplierShippingCost: supplierShippingCost !== undefined ? Number(supplierShippingCost) : 0,
+                estimatedDeliveryDays: estimatedDeliveryDays || '2-4 Days',
+                supplierStockStatus: supplierStockStatus || 'In Stock',
+                supplierNotes: supplierNotes || '',
                 rating: 5.0,
                 reviews: 0
             };
             productsList.push(newProduct);
             await writeJson(productsPath, productsList);
-            res.status(201).json(newProduct);
         }
+        res.status(201).json(newProduct);
     } catch (err) {
-        console.error(err);
+        console.error('Failed to add product:', err);
         res.status(500).json({ error: 'Failed to add product.' });
     }
 });
 
-// 6. Edit Existing Product
+// Edit Existing Product
 app.put('/api/products/:id', async (req, res) => {
     try {
-        const prodId = parseInt(req.params.id);
-        const { title, category, price, costPrice, originalPrice, image, description, sizes, tags, stock, inStock } = req.body;
+        const rawParam = req.params.id;
+        const numId = parseInt(rawParam);
+        const isNum = !isNaN(numId);
+        const {
+            title, category, subcategory, price, costPrice, originalPrice,
+            image, images, video, shortDescription, description,
+            sizes, colors, tags, stock, inStock,
+            isFeatured, isNewArrival, isBestSeller,
+            sku, brand, weight, dimensions, shippingInfo, returnInfo,
+            variants, variantOptions,
+            supplierName, supplierSku, supplierUrl, supplierCost,
+            profitMargin, supplierShippingCost, estimatedDeliveryDays,
+            supplierStockStatus, supplierNotes
+        } = req.body;
+
+        const updateData = {};
+        if (title !== undefined) updateData.title = title.trim();
+        if (category !== undefined) updateData.category = category.trim();
+        if (subcategory !== undefined) updateData.subcategory = subcategory;
+        if (price !== undefined) updateData.price = Number(price);
+        if (originalPrice !== undefined) updateData.originalPrice = originalPrice ? Number(originalPrice) : undefined;
+        if (costPrice !== undefined || supplierCost !== undefined) {
+            const cost = supplierCost !== undefined ? Number(supplierCost) : Number(costPrice);
+            updateData.costPrice = cost;
+            updateData.supplierCost = cost;
+        }
+        if (image !== undefined) updateData.image = image;
+        if (images !== undefined) updateData.images = Array.isArray(images) ? images : [];
+        if (video !== undefined) updateData.video = video;
+        if (shortDescription !== undefined) updateData.shortDescription = shortDescription;
+        if (description !== undefined) updateData.description = description;
+        if (sizes !== undefined) updateData.sizes = Array.isArray(sizes) ? sizes : [];
+        if (colors !== undefined) updateData.colors = Array.isArray(colors) ? colors : [];
+        if (tags !== undefined) updateData.tags = Array.isArray(tags) ? tags : [];
+        if (stock !== undefined) updateData.stock = Number(stock);
+        if (inStock !== undefined) updateData.inStock = Boolean(inStock);
+        if (isFeatured !== undefined) updateData.isFeatured = Boolean(isFeatured);
+        if (isNewArrival !== undefined) updateData.isNewArrival = Boolean(isNewArrival);
+        if (isBestSeller !== undefined) updateData.isBestSeller = Boolean(isBestSeller);
+        if (sku !== undefined) updateData.sku = sku;
+        if (brand !== undefined) updateData.brand = brand;
+        if (weight !== undefined) updateData.weight = weight;
+        if (dimensions !== undefined) updateData.dimensions = dimensions;
+        if (shippingInfo !== undefined) updateData.shippingInfo = shippingInfo;
+        if (returnInfo !== undefined) updateData.returnInfo = returnInfo;
+        if (variants !== undefined) updateData.variants = Array.isArray(variants) ? variants : [];
+        if (variantOptions !== undefined) updateData.variantOptions = Array.isArray(variantOptions) ? variantOptions : [];
+        if (supplierName !== undefined) updateData.supplierName = supplierName;
+        if (supplierSku !== undefined) updateData.supplierSku = supplierSku;
+        if (supplierUrl !== undefined) updateData.supplierUrl = supplierUrl;
+        if (profitMargin !== undefined) {
+            updateData.profitMargin = Number(profitMargin);
+        } else if (updateData.price !== undefined && (updateData.supplierCost !== undefined || updateData.costPrice !== undefined)) {
+            updateData.profitMargin = Math.max(0, updateData.price - (updateData.supplierCost || updateData.costPrice || 0));
+        }
+        if (supplierShippingCost !== undefined) updateData.supplierShippingCost = Number(supplierShippingCost);
+        if (estimatedDeliveryDays !== undefined) updateData.estimatedDeliveryDays = estimatedDeliveryDays;
+        if (supplierStockStatus !== undefined) updateData.supplierStockStatus = supplierStockStatus;
+        if (supplierNotes !== undefined) updateData.supplierNotes = supplierNotes;
 
         if (useMongo) {
-            const updateData = {
-                title,
-                category,
-                price: Number(price),
-                originalPrice: originalPrice ? Number(originalPrice) : undefined,
-                image,
-                description,
-                sizes,
-                tags,
-                stock: stock !== undefined ? Number(stock) : 50,
-                inStock: inStock !== undefined ? Boolean(inStock) : true
-            };
-            if (costPrice !== undefined) updateData.costPrice = Number(costPrice);
-
-            const updatedProduct = await ProductModel.findOneAndUpdate(
-                { id: prodId },
-                updateData,
-                { new: true }
-            );
-
-            if (!updatedProduct) {
-                return res.status(404).json({ error: 'Product not found.' });
-            }
+            const filter = isNum ? { id: numId } : { _id: rawParam };
+            const updatedProduct = await ProductModel.findOneAndUpdate(filter, updateData, { new: true });
+            if (!updatedProduct) return res.status(404).json({ error: 'Product not found.' });
             res.json(updatedProduct);
         } else {
             const productsList = await readJson(productsPath);
-            const index = productsList.findIndex(p => p.id === prodId);
-
-            if (index === -1) {
-                return res.status(404).json({ error: 'Product not found.' });
-            }
-
-            productsList[index] = {
-                ...productsList[index],
-                title,
-                category,
-                price: Number(price),
-                costPrice: costPrice !== undefined ? Number(costPrice) : (productsList[index].costPrice || 0),
-                originalPrice: originalPrice ? Number(originalPrice) : undefined,
-                image,
-                description,
-                sizes,
-                tags,
-                stock: stock !== undefined ? Number(stock) : 50,
-                inStock: inStock !== undefined ? Boolean(inStock) : true
-            };
-
+            const index = productsList.findIndex(p => (isNum && p.id === numId) || String(p.id) === rawParam);
+            if (index === -1) return res.status(404).json({ error: 'Product not found.' });
+            productsList[index] = { ...productsList[index], ...updateData };
             await writeJson(productsPath, productsList);
             res.json(productsList[index]);
         }
     } catch (err) {
+        console.error('Failed to update product:', err);
         res.status(500).json({ error: 'Failed to update product.' });
     }
 });
 
-// 7. Delete Product
-app.delete('/api/products/:id', async (req, res) => {
+// Duplicate Product
+app.post('/api/products/:id/duplicate', async (req, res) => {
     try {
         const prodId = parseInt(req.params.id);
+        let original = null;
+        let nextId = 1;
 
         if (useMongo) {
-            const deleted = await ProductModel.findOneAndDelete({ id: prodId });
+            original = await ProductModel.findOne({ id: prodId }).lean();
+            if (!original) return res.status(404).json({ error: 'Product not found.' });
+            const lastProduct = await ProductModel.findOne().sort({ id: -1 });
+            nextId = lastProduct ? lastProduct.id + 1 : 1;
+
+            const cloned = {
+                ...original,
+                _id: undefined,
+                id: nextId,
+                title: `${original.title} (Copy)`,
+                sku: original.sku ? `${original.sku}-COPY` : `NET-SKU-${nextId}`,
+                reviews: 0,
+                rating: 5.0
+            };
+            delete cloned._id;
+            const newDoc = new ProductModel(cloned);
+            await newDoc.save();
+            return res.status(201).json(newDoc);
+        } else {
+            const productsList = await readJson(productsPath);
+            original = productsList.find(p => p.id === prodId);
+            if (!original) return res.status(404).json({ error: 'Product not found.' });
+            nextId = productsList.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
+
+            const cloned = {
+                ...original,
+                id: nextId,
+                title: `${original.title} (Copy)`,
+                sku: original.sku ? `${original.sku}-COPY` : `NET-SKU-${nextId}`,
+                reviews: 0,
+                rating: 5.0
+            };
+            productsList.push(cloned);
+            await writeJson(productsPath, productsList);
+            return res.status(201).json(cloned);
+        }
+    } catch (err) {
+        console.error('Failed to duplicate product:', err);
+        res.status(500).json({ error: 'Failed to duplicate product.' });
+    }
+});
+
+// Delete Product
+app.delete('/api/products/:id', async (req, res) => {
+    try {
+        const rawParam = req.params.id;
+        const numId = parseInt(rawParam);
+        const isNum = !isNaN(numId);
+
+        if (useMongo) {
+            const filter = isNum ? { id: numId } : { _id: rawParam };
+            const deleted = await ProductModel.findOneAndDelete(filter);
             if (!deleted) return res.status(404).json({ error: 'Product not found.' });
             res.json({ message: 'Product deleted successfully.' });
         } else {
             const productsList = await readJson(productsPath);
-            const filtered = productsList.filter(p => p.id !== prodId);
+            const filtered = productsList.filter(p => !((isNum && p.id === numId) || String(p.id) === rawParam));
 
             if (productsList.length === filtered.length) {
                 return res.status(404).json({ error: 'Product not found.' });
@@ -985,22 +1412,33 @@ app.post('/api/bookings', async (req, res) => {
 app.patch('/api/bookings/:orderId', async (req, res) => {
     try {
         const ordId = req.params.orderId;
-        const { status } = req.body;
+        const { status, internalNotes, courierPartner, awbNumber } = req.body;
 
-        const validStatuses = ['Confirmed', 'Payment Confirmed', 'Pending', 'Order Placed', 'Payment Not Confirmed', 'Dispatched', 'In Transit', 'Out for Delivery', 'Delivered', 'Cancelled', 'Cancelled by Customer'];
-        if (!validStatuses.includes(status)) {
+        const validStatuses = [
+            'Pending', 'Confirmed', 'Payment Confirmed', 'Processing', 'Shipped', 
+            'Dispatched', 'In Transit', 'Out for Delivery', 'Delivered', 
+            'Cancelled', 'Cancelled by Customer', 'Returned', 'Refunded', 
+            'Order Placed', 'Payment Not Confirmed'
+        ];
+        if (status && !validStatuses.includes(status)) {
             return res.status(400).json({ error: 'Invalid booking status value.' });
         }
 
         let targetBooking = null;
-        const isCancelStatus = (s) => s === 'Cancelled' || s === 'Cancelled by Customer';
+        const isCancelStatus = (s) => s === 'Cancelled' || s === 'Cancelled by Customer' || s === 'Returned' || s === 'Refunded';
 
         if (useMongo) {
             targetBooking = await BookingModel.findOne({ orderId: ordId });
             if (!targetBooking) return res.status(404).json({ error: 'Booking not found.' });
 
             const oldStatus = targetBooking.status;
-            targetBooking.status = status;
+            if (status) targetBooking.status = status;
+            if (internalNotes !== undefined) targetBooking.internalNotes = internalNotes;
+            if (courierPartner) targetBooking.courierPartner = courierPartner;
+            if (awbNumber) {
+                targetBooking.awbNumber = awbNumber;
+                targetBooking.trackingUrl = getCarrierTrackingUrl(courierPartner || targetBooking.courierPartner, awbNumber);
+            }
 
             // Auto-append tracking event when status transitions
             if (targetBooking.trackingHistory && Array.isArray(targetBooking.trackingHistory)) {
@@ -1061,7 +1499,13 @@ app.patch('/api/bookings/:orderId', async (req, res) => {
             }
 
             const oldStatus = bookingsList[index].status;
-            bookingsList[index].status = status;
+            if (status) bookingsList[index].status = status;
+            if (internalNotes !== undefined) bookingsList[index].internalNotes = internalNotes;
+            if (courierPartner) bookingsList[index].courierPartner = courierPartner;
+            if (awbNumber) {
+                bookingsList[index].awbNumber = awbNumber;
+                bookingsList[index].trackingUrl = getCarrierTrackingUrl(courierPartner || bookingsList[index].courierPartner, awbNumber);
+            }
 
             // Auto-append tracking event on file database
             if (!bookingsList[index].trackingHistory) {

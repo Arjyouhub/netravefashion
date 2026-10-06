@@ -1,34 +1,77 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function CartDrawer({
     isOpen,
-    cart,
+    cart = [],
     onClose,
     onRemoveItem,
     onUpdateQuantity,
-    onCheckoutTrigger
+    onCheckoutTrigger,
+    API_BASE_URL
 }) {
+    const [couponCode, setCouponCode] = useState('');
+    const [appliedCoupon, setAppliedCoupon] = useState(null);
+    const [couponError, setCouponError] = useState('');
+    const [couponLoading, setCouponLoading] = useState(false);
+
     const totalCount = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const subtotal = cart.reduce((sum, item) => sum + ((Number(item.price) || 0) * item.quantity), 0);
     
+    // Calculate coupon discount
+    let discountAmount = 0;
+    if (appliedCoupon) {
+        if (appliedCoupon.discountType === 'percentage') {
+            discountAmount = Math.round((subtotal * appliedCoupon.discountValue) / 100);
+        } else {
+            discountAmount = appliedCoupon.discountValue;
+        }
+    }
+    const subtotalAfterDiscount = Math.max(0, subtotal - discountAmount);
+
     // Free delivery threshold: ₹999
     const freeDeliveryThreshold = 999;
-    const amountNeededForFree = Math.max(0, freeDeliveryThreshold - subtotal);
-    const freeDeliveryProgress = Math.min(100, Math.round((subtotal / freeDeliveryThreshold) * 100));
+    const amountNeededForFree = Math.max(0, freeDeliveryThreshold - subtotalAfterDiscount);
+    const freeDeliveryProgress = Math.min(100, Math.round((subtotalAfterDiscount / freeDeliveryThreshold) * 100));
     
-    const delivery = subtotal >= freeDeliveryThreshold ? 0 : (subtotal > 0 ? 60 : 0);
-    const total = subtotal + delivery;
+    const delivery = subtotalAfterDiscount >= freeDeliveryThreshold ? 0 : (subtotalAfterDiscount > 0 ? 60 : 0);
+    const total = subtotalAfterDiscount + delivery;
 
-    // Approximate original price to show discount savings
+    // Approximate original total to show total savings
     const estimatedOriginalTotal = cart.reduce((sum, item) => {
-        const orig = item.originalPrice || Math.round(item.price * 1.45);
+        const orig = item.originalPrice || Math.round((item.price || 0) * 1.45);
         return sum + (orig * item.quantity);
     }, 0);
-    const totalSavings = Math.max(0, estimatedOriginalTotal - subtotal + (delivery === 0 ? 60 : 0));
+    const totalSavings = Math.max(0, (estimatedOriginalTotal - subtotal) + discountAmount + (delivery === 0 && subtotalAfterDiscount > 0 ? 60 : 0));
 
-    const capitalize = (str) => {
-        if (!str) return '';
-        return str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    const handleApplyCoupon = async (e) => {
+        e.preventDefault();
+        setCouponError('');
+        if (!couponCode.trim()) return;
+        setCouponLoading(true);
+
+        try {
+            const res = await fetch(`${API_BASE_URL || ''}/api/coupons/validate`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: couponCode.trim(), subtotal })
+            });
+            const data = await res.json();
+            if (res.ok && data.valid) {
+                setAppliedCoupon(data);
+                setCouponCode('');
+            } else {
+                setCouponError(data.error || 'Invalid or expired coupon code.');
+            }
+        } catch (err) {
+            setCouponError('Network error validating coupon.');
+        } finally {
+            setCouponLoading(false);
+        }
+    };
+
+    const handleRemoveCoupon = () => {
+        setAppliedCoupon(null);
+        setCouponError('');
     };
 
     return (
@@ -45,13 +88,13 @@ export default function CartDrawer({
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '20px' }}>🛒</span>
                         <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#fff' }}>
-                            My Bag ({totalCount} {totalCount === 1 ? 'item' : 'items'})
+                            Shopping Bag ({totalCount} {totalCount === 1 ? 'item' : 'items'})
                         </h3>
                     </div>
                     <button className="close-btn" onClick={onClose}>&times;</button>
                 </div>
 
-                {/* Flipkart / Amazon Free Delivery Progress Bar */}
+                {/* Free Delivery Progress Bar */}
                 {cart.length > 0 && (
                     <div style={{
                         background: '#0d101a',
@@ -89,131 +132,233 @@ export default function CartDrawer({
                             <svg viewBox="0 0 24 24" className="cart-empty-icon">
                                 <path d="M19 6h-2c0-2.76-2.24-5-5-5S7 3.24 7 6H5c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2zm-7-3c1.66 0 3 1.34 3 3H9c0-1.66 1.34-3 3-3zm7 17H5V8h14v12z"/>
                             </svg>
-                            <h4>Your Cart is Empty</h4>
+                            <h4>Your Shopping Bag is Empty</h4>
                             <p>Discover our trendy streetwear collection and add your favorite picks!</p>
                             <button className="cta-btn primary-cta" onClick={onClose}>
-                                Shop Now
+                                Start Shopping
                             </button>
                         </div>
                     ) : (
                         /* Cart Items List */
                         <div className="cart-items-list">
-                            {cart.map((item, index) => (
-                                <div className="cart-item" key={`${item.id}-${item.size}`}>
-                                    <div className="cart-item-img-wrapper">
-                                        <img src={item.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={item.title} />
-                                    </div>
-                                    <div className="cart-item-info">
-                                        <h4 className="cart-item-title">{item.title}</h4>
-                                        <div className="cart-item-meta">
-                                            <span style={{ background: 'rgba(255,255,255,0.06)', padding: '1px 6px', borderRadius: '4px', color: '#fff', fontWeight: 'bold' }}>Size: {item.size}</span>
-                                            <span>{capitalize(item.category)}</span>
-                                        </div>
-                                        <div className="cart-item-qty-price">
-                                            <div className="cart-qty-controls">
-                                                <button 
-                                                    className="cart-qty-btn" 
-                                                    onClick={() => onUpdateQuantity(index, -1)}
-                                                    aria-label="Decrease quantity"
-                                                >
-                                                    <svg viewBox="0 0 24 24" className="icon" style={{ width: '14px', height: '14px' }}>
-                                                        <path d="M19 13H5v-2h14v2z"/>
-                                                    </svg>
-                                                </button>
-                                                <span className="cart-qty-val">{item.quantity}</span>
-                                                <button 
-                                                    className="cart-qty-btn" 
-                                                    onClick={() => onUpdateQuantity(index, 1)}
-                                                    aria-label="Increase quantity"
-                                                >
-                                                    <svg viewBox="0 0 24 24" className="icon" style={{ width: '14px', height: '14px' }}>
-                                                        <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-                                                    </svg>
-                                                </button>
+                            {cart.map((item, index) => {
+                                const maxStock = item.stock !== undefined ? item.stock : 50;
+                                const variantText = [];
+                                if (item.size) variantText.push(`Size: ${item.size}`);
+                                if (item.color) variantText.push(`Color: ${item.color}`);
+                                if (item.selectedOptions) {
+                                    Object.entries(item.selectedOptions).forEach(([k, v]) => {
+                                        if (k !== 'Size' && k !== 'Color') variantText.push(`${k}: ${v}`);
+                                    });
+                                }
+
+                                return (
+                                    <div key={`${item.id}-${item.size}-${item.color || index}`} className="cart-item" style={{
+                                        display: 'flex',
+                                        gap: '12px',
+                                        padding: '14px 18px',
+                                        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                                        alignItems: 'center'
+                                    }}>
+                                        <img 
+                                            src={item.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80'} 
+                                            alt={item.title} 
+                                            style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover' }}
+                                        />
+                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                            <h4 style={{ margin: '0 0 2px', fontSize: '13.5px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                {item.title}
+                                            </h4>
+                                            
+                                            {/* Dynamic Variant Spec Display */}
+                                            {variantText.length > 0 && (
+                                                <div style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: '600', marginBottom: '4px' }}>
+                                                    {variantText.join(' • ')}
+                                                </div>
+                                            )}
+
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '14px', fontWeight: '800', color: '#fff' }}>₹{item.price}</span>
+                                                {item.originalPrice && item.originalPrice > item.price && (
+                                                    <span style={{ fontSize: '11.5px', color: '#64748b', textDecoration: 'line-through' }}>₹{item.originalPrice}</span>
+                                                )}
                                             </div>
-                                            <span className="cart-item-price" style={{ color: 'var(--primary)', fontWeight: '800' }}>₹{item.price * item.quantity}</span>
                                         </div>
+
+                                        {/* Qty increment / decrement */}
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <button 
+                                                onClick={() => onUpdateQuantity(index, item.quantity - 1)}
+                                                style={cartQtyBtnStyle}
+                                                aria-label="Decrease quantity"
+                                            >
+                                                -
+                                            </button>
+                                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', minWidth: '18px', textAlign: 'center' }}>
+                                                {item.quantity}
+                                            </span>
+                                            <button 
+                                                onClick={() => onUpdateQuantity(index, Math.min(maxStock, item.quantity + 1))}
+                                                style={cartQtyBtnStyle}
+                                                disabled={item.quantity >= maxStock}
+                                                aria-label="Increase quantity"
+                                            >
+                                                +
+                                            </button>
+                                        </div>
+
+                                        {/* Remove item button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveItem(index)}
+                                            style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '4px', fontSize: '16px' }}
+                                            title="Remove item"
+                                        >
+                                            🗑️
+                                        </button>
                                     </div>
-                                    <button 
-                                        className="remove-cart-item-btn" 
-                                        onClick={() => onRemoveItem(index)}
-                                        aria-label="Remove item"
-                                        title="Remove item"
-                                    >
-                                        <svg viewBox="0 0 24 24" className="icon">
-                                            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
-                                        </svg>
-                                    </button>
+                                );
+                            })}
+
+                            {/* Coupon Code Input inside Cart */}
+                            <div style={{ padding: '16px 18px', background: '#090b10', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                                <div style={{ fontSize: '12px', fontWeight: '700', color: '#fff', marginBottom: '8px' }}>
+                                    🎟️ Apply Discount Coupon
                                 </div>
-                            ))}
+                                {appliedCoupon ? (
+                                    <div style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        background: 'rgba(16, 185, 129, 0.1)',
+                                        border: '1px solid #10b981',
+                                        borderRadius: '8px',
+                                        padding: '8px 12px',
+                                        color: '#10b981',
+                                        fontSize: '12.5px',
+                                        fontWeight: '700'
+                                    }}>
+                                        <span>✓ Code <strong>{appliedCoupon.code}</strong> applied (-₹{discountAmount})</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleRemoveCoupon}
+                                            style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 'bold', cursor: 'pointer' }}
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleApplyCoupon} style={{ display: 'flex', gap: '6px' }}>
+                                        <input
+                                            type="text"
+                                            placeholder="Enter coupon code (e.g. NETRAVE15)"
+                                            value={couponCode}
+                                            onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                                            style={{
+                                                flex: 1,
+                                                background: '#131826',
+                                                border: '1px solid rgba(255,255,255,0.1)',
+                                                borderRadius: '8px',
+                                                padding: '8px 12px',
+                                                color: '#fff',
+                                                fontSize: '12.5px',
+                                                textTransform: 'uppercase',
+                                                outline: 'none'
+                                            }}
+                                        />
+                                        <button
+                                            type="submit"
+                                            disabled={couponLoading || !couponCode.trim()}
+                                            style={{
+                                                background: 'var(--primary)',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                color: '#000',
+                                                fontWeight: '800',
+                                                padding: '8px 14px',
+                                                fontSize: '12px',
+                                                cursor: 'pointer'
+                                            }}
+                                        >
+                                            {couponLoading ? 'Checking...' : 'Apply'}
+                                        </button>
+                                    </form>
+                                )}
+                                {couponError && (
+                                    <div style={{ color: '#ef4444', fontSize: '11.5px', fontWeight: '600', marginTop: '6px' }}>
+                                        {couponError}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Cart Footer */}
+                {/* Cart Footer Price Breakdown & Checkout Action */}
                 {cart.length > 0 && (
-                    <div className="cart-footer">
-                        {/* Flipkart / Amazon Savings Banner */}
-                        {totalSavings > 0 && (
-                            <div style={{
-                                background: 'rgba(16, 185, 129, 0.12)',
-                                border: '1px solid rgba(16, 185, 129, 0.25)',
-                                color: '#10b981',
-                                padding: '8px 12px',
-                                borderRadius: '8px',
-                                fontSize: '12px',
-                                fontWeight: '700',
-                                marginBottom: '12px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}>
-                                <span>🎉</span>
-                                <span>You will save <strong>₹{totalSavings}</strong> on this order!</span>
-                            </div>
-                        )}
-
-                        <div className="price-summary">
-                            <div className="summary-row">
-                                <span>Total Item MRP</span>
-                                <span style={{ textDecoration: totalSavings > 0 ? 'line-through' : 'none', color: '#94a3b8' }}>
-                                    ₹{estimatedOriginalTotal}
-                                </span>
-                            </div>
-                            <div className="summary-row">
+                    <div className="cart-footer" style={{ padding: '16px 18px', background: '#0a0b0f', borderTop: '1px solid rgba(255, 255, 255, 0.1)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px', fontSize: '13px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
                                 <span>Subtotal</span>
                                 <span>₹{subtotal}</span>
                             </div>
-                            <div className="summary-row">
-                                <span>Delivery Fee</span>
-                                <span className={delivery === 0 ? 'free-delivery' : ''} style={{ color: delivery === 0 ? '#10b981' : '#fff', fontWeight: 'bold' }}>
-                                    {delivery === 0 ? 'FREE' : `₹${delivery}`}
-                                </span>
+                            {discountAmount > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#10b981', fontWeight: '700' }}>
+                                    <span>Coupon Discount</span>
+                                    <span>-₹{discountAmount}</span>
+                                </div>
+                            )}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#94a3b8' }}>
+                                <span>Express Courier Delivery</span>
+                                <span>{delivery === 0 ? <strong style={{ color: '#10b981' }}>FREE</strong> : `₹${delivery}`}</span>
                             </div>
-                            <div className="summary-row total-row" style={{ borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '10px', marginTop: '6px' }}>
-                                <span style={{ fontWeight: '800', color: '#fff', fontSize: '15px' }}>Total Amount</span>
-                                <span style={{ fontWeight: '900', color: 'var(--primary)', fontSize: '17px' }}>₹{total}</span>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', color: '#fff', fontSize: '16px', fontWeight: '900', paddingTop: '8px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                                <span>Grand Total</span>
+                                <span style={{ color: 'var(--primary)' }}>₹{total}</span>
                             </div>
+                            {totalSavings > 0 && (
+                                <div style={{ fontSize: '11.5px', color: '#10b981', textAlign: 'right', fontWeight: '700' }}>
+                                    🎉 You are saving ₹{totalSavings} on this order!
+                                </div>
+                            )}
                         </div>
 
-                        <div className="cart-footer-actions">
-                            <button className="cta-btn primary-cta checkout-trigger-btn" onClick={onCheckoutTrigger} style={{ width: '100%', fontWeight: '800', fontSize: '14px', padding: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                                <span>Proceed to Secure Checkout</span>
-                                <span>→</span>
-                            </button>
-                        </div>
-
-                        {/* Trust Footer */}
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '14px', marginTop: '12px', fontSize: '10.5px', color: '#64748b' }}>
-                            <span>🔒 100% Safe Payments</span>
-                            <span>•</span>
-                            <span>🚚 Live Courier Tracking</span>
-                            <span>•</span>
-                            <span>🔄 7-Day Returns</span>
-                        </div>
+                        <button 
+                            className="cta-btn primary-cta checkout-btn" 
+                            onClick={onCheckoutTrigger}
+                            style={{
+                                width: '100%',
+                                padding: '14px',
+                                borderRadius: '12px',
+                                fontSize: '14.5px',
+                                fontWeight: '800',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '8px'
+                            }}
+                        >
+                            <span>Proceed to Secure Checkout</span>
+                            <span>→</span>
+                        </button>
                     </div>
                 )}
             </div>
         </>
     );
 }
+
+const cartQtyBtnStyle = {
+    background: '#151928',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    color: '#fff',
+    borderRadius: '6px',
+    width: '24px',
+    height: '24px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    fontWeight: '800',
+    fontSize: '13px'
+};

@@ -16,12 +16,12 @@ export default function ProductCard({
 
     const isOutOfStock = product.stock <= 0 || product.inStock === false;
 
-    // Delivery estimate: e.g. "Tomorrow" or "In 2 Days"
-    const isFreeDelivery = product.price >= 499;
+    // Display image: fallback if not loaded
+    const mainImage = product.image || (product.images && product.images[0]) || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>';
 
     return (
         <div className={`product-card ${isOutOfStock ? 'card-out-of-stock' : ''}`} style={{ position: 'relative' }}>
-            {/* Wishlist Button (Flipkart / Amazon Heart Icon) */}
+            {/* Wishlist Heart Button */}
             <button
                 type="button"
                 className={`wishlist-heart-btn ${isWishlisted ? 'active' : ''}`}
@@ -65,18 +65,51 @@ export default function ProductCard({
 
             {/* Product Image Wrapper */}
             <div className="product-img-wrapper" onClick={() => onQuickView(product.id)} style={{ cursor: 'pointer', position: 'relative' }}>
-                {isOutOfStock ? (
-                    <span className="badge-soldout">Sold Out</span>
-                ) : (
-                    hasDiscount && (
-                        <span className="badge-discount" style={{ top: '10px', left: '10px' }}>
-                            {discountPct}% OFF
-                        </span>
-                    )
-                )}
+                {/* Badges container */}
+                <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', flexDirection: 'column', gap: '4px', zIndex: 3 }}>
+                    {isOutOfStock ? (
+                        <span className="badge-soldout">Sold Out</span>
+                    ) : (
+                        <>
+                            {hasDiscount && (
+                                <span className="badge-discount">
+                                    {discountPct}% OFF
+                                </span>
+                            )}
+                            {product.isBestSeller && (
+                                <span style={{
+                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                    color: '#000',
+                                    fontSize: '9px',
+                                    fontWeight: '900',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.4px'
+                                }}>
+                                    🔥 BESTSELLER
+                                </span>
+                            )}
+                            {product.isNewArrival && (
+                                <span style={{
+                                    background: '#38bdf8',
+                                    color: '#000',
+                                    fontSize: '9px',
+                                    fontWeight: '900',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.4px'
+                                }}>
+                                    ✨ NEW
+                                </span>
+                            )}
+                        </>
+                    )}
+                </div>
 
                 <img 
-                    src={product.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} 
+                    src={mainImage} 
                     alt={product.title} 
                     className="product-img" 
                     style={{ filter: isOutOfStock ? 'grayscale(0.6) opacity(0.5)' : 'none' }}
@@ -87,16 +120,18 @@ export default function ProductCard({
                     <svg viewBox="0 0 24 24" className="icon" style={{ width: '16px', height: '16px' }}>
                         <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
                     </svg>
-                    {isOutOfStock ? 'Out of Stock' : 'Quick View'}
+                    {isOutOfStock ? 'View Details' : 'Quick View'}
                 </button>
             </div>
 
             {/* Product Meta & Content */}
             <div className="product-info">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                    <span className="prod-category">{capitalize(product.category)}</span>
+                    <span className="prod-category">
+                        {product.brand ? `${product.brand} • ` : ''}{capitalize(product.category)}
+                    </span>
                     
-                    {/* Flipkart/Amazon Green Star Rating Pill */}
+                    {/* Star Rating Pill */}
                     <div style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -118,6 +153,22 @@ export default function ProductCard({
                     {product.title}
                 </h3>
 
+                {/* Subcategory or Short Description if available */}
+                {product.shortDescription && (
+                    <p style={{
+                        fontSize: '11.5px',
+                        color: '#94a3b8',
+                        margin: '0 0 8px',
+                        lineHeight: '1.3',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden'
+                    }}>
+                        {product.shortDescription}
+                    </p>
+                )}
+
                 {/* Price and Add button */}
                 <div className="prod-footer">
                     <div className="price-container">
@@ -128,7 +179,7 @@ export default function ProductCard({
                         className={`add-card-btn ${isOutOfStock ? 'disabled' : ''}`} 
                         onClick={() => onQuickView(product.id)}
                         disabled={isOutOfStock}
-                        aria-label={isOutOfStock ? "Out of stock" : "Select size and buy"}
+                        aria-label={isOutOfStock ? "Out of stock" : "Select options and buy"}
                         title={isOutOfStock ? "Out of stock" : "Select options"}
                     >
                         {isOutOfStock ? (

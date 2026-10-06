@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import Hero from './components/Hero';
+import HomeSections from './components/HomeSections';
 import ProductGrid from './components/ProductGrid';
 import ProductModal from './components/ProductModal';
 import CartDrawer from './components/CartDrawer';
@@ -95,7 +96,7 @@ const FALLBACK_PRODUCTS = [
 ];
 
 const API_BASE_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
-    ? 'http://localhost:5000/api'
+    ? 'http://localhost:5001/api'
     : 'https://netravefashion.onrender.com/api';
 
 function MaintenanceCountdown({ expiryTimestamp }) {
@@ -135,6 +136,7 @@ function MaintenanceCountdown({ expiryTimestamp }) {
 export default function App() {
     // A. Main State
     const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [bookings, setBookings] = useState([]);
     const [cart, setCart] = useState(() => {
         try {
@@ -211,42 +213,64 @@ export default function App() {
         }, 4000);
     };
 
-    // 1. Fetch products and settings from API on Mount
-    useEffect(() => {
-        const fetchProducts = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/products`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.length > 0) {
-                        setProducts(data);
-                    } else {
-                        setProducts(FALLBACK_PRODUCTS);
-                    }
+    // 1. Fetch categories, products and settings from API on Mount
+    const fetchCategories = async () => {
+        try {
+            const adminToken = getCookie('adminSessionToken');
+            const headers = adminToken ? { 'x-admin-session': adminToken } : {};
+            const url = adminToken ? `${API_BASE_URL}/categories?all=true` : `${API_BASE_URL}/categories`;
+            const response = await fetch(url, { headers });
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data)) {
+                    setCategories(data);
+                }
+            }
+        } catch (err) {
+            console.warn('Could not load categories from backend:', err.message);
+        }
+    };
+
+    const fetchProducts = async () => {
+        try {
+            const adminToken = getCookie('adminSessionToken');
+            const headers = adminToken ? { 'x-admin-session': adminToken } : {};
+            const response = await fetch(`${API_BASE_URL}/products`, { headers });
+            if (response.ok) {
+                const data = await response.json();
+                if (Array.isArray(data) && data.length > 0) {
+                    setProducts(data);
+                } else if (Array.isArray(data)) {
+                    setProducts(data);
                 } else {
                     setProducts(FALLBACK_PRODUCTS);
                 }
-            } catch (err) {
-                console.warn('Backend server offline. Running with fallback product data.', err.message);
+            } else {
                 setProducts(FALLBACK_PRODUCTS);
-            } finally {
-                setLoadingProducts(false);
             }
-        };
+        } catch (err) {
+            console.warn('Backend server offline. Running with fallback product data.', err.message);
+            setProducts(FALLBACK_PRODUCTS);
+        } finally {
+            setLoadingProducts(false);
+        }
+    };
 
-        const fetchSettings = async () => {
-            try {
-                const response = await fetch(`${API_BASE_URL}/settings`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setSettings(data);
-                }
-            } catch (err) {
-                console.warn('Could not load settings from backend:', err.message);
+    const fetchSettings = async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/settings`);
+            if (response.ok) {
+                const data = await response.json();
+                setSettings(data);
             }
-        };
+        } catch (err) {
+            console.warn('Could not load settings from backend:', err.message);
+        }
+    };
 
+    useEffect(() => {
         fetchProducts();
+        fetchCategories();
         fetchSettings();
     }, []);
 
@@ -280,6 +304,36 @@ export default function App() {
     const handleAuthSuccess = (userData) => {
         setUser(userData);
         setCookie('netrave_user', userData);
+
+        // Merge guest cart with user's saved cart
+        try {
+            const userCartKey = `netrave_user_cart_${userData.phone}`;
+            const userSavedCart = JSON.parse(localStorage.getItem(userCartKey)) || [];
+            if (userSavedCart.length > 0 || cart.length > 0) {
+                const mergedMap = new Map();
+                // Add previously saved user items
+                userSavedCart.forEach(item => {
+                    const key = `${item.id}_${item.size || ''}_${item.color || ''}`;
+                    mergedMap.set(key, { ...item });
+                });
+                // Merge current guest items
+                cart.forEach(item => {
+                    const key = `${item.id}_${item.size || ''}_${item.color || ''}`;
+                    if (mergedMap.has(key)) {
+                        mergedMap.get(key).quantity = (mergedMap.get(key).quantity || 1) + (item.quantity || 1);
+                    } else {
+                        mergedMap.set(key, { ...item });
+                    }
+                });
+                const mergedList = Array.from(mergedMap.values());
+                setCart(mergedList);
+                localStorage.setItem('netrave_cart', JSON.stringify(mergedList));
+                localStorage.setItem(userCartKey, JSON.stringify(mergedList));
+            }
+        } catch (e) {
+            console.error('Failed to merge guest and user carts:', e);
+        }
+
         if (pendingCheckout) {
             setIsCheckoutOpen(true);
             setPendingCheckout(false);
@@ -292,27 +346,17 @@ export default function App() {
     };
 
     const handleLogout = () => {
+        if (user?.phone) {
+            try {
+                localStorage.setItem(`netrave_user_cart_${user.phone}`, JSON.stringify(cart));
+            } catch (e) {
+                console.error(e);
+            }
+        }
         setUser(null);
         eraseCookie('netrave_user');
         setBookings([]);
     };
-
-    // 2b. Fetch Settings configuration
-    const fetchSettings = async () => {
-        try {
-            const response = await fetch(`${API_BASE_URL}/settings`);
-            if (response.ok) {
-                const data = await response.json();
-                setSettings(data);
-            }
-        } catch (err) {
-            console.warn('Could not load settings from backend API.', err.message);
-        }
-    };
-
-    useEffect(() => {
-        fetchSettings();
-    }, []);
 
     // 2c. Listen to client-side path / route changes to toggle Admin / Developer view
     useEffect(() => {
@@ -341,6 +385,17 @@ export default function App() {
     }, []);
 
     // 3. Cart State Modifications
+    const syncCartStorage = (updatedCart) => {
+        localStorage.setItem('netrave_cart', JSON.stringify(updatedCart));
+        if (user?.phone) {
+            try {
+                localStorage.setItem(`netrave_user_cart_${user.phone}`, JSON.stringify(updatedCart));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    };
+
     const handleAddToCart = (product, size, quantity) => {
         const existingIndex = cart.findIndex(item => item.id === product.id && item.size === size);
         let updatedCart = [...cart];
@@ -360,7 +415,7 @@ export default function App() {
         }
 
         setCart(updatedCart);
-        localStorage.setItem('netrave_cart', JSON.stringify(updatedCart));
+        syncCartStorage(updatedCart);
         setSelectedProductId(null); // Close the ProductModal
         setIsCartOpen(true);
     };
@@ -368,7 +423,7 @@ export default function App() {
     const handleRemoveCartItem = (index) => {
         const updatedCart = cart.filter((_, idx) => idx !== index);
         setCart(updatedCart);
-        localStorage.setItem('netrave_cart', JSON.stringify(updatedCart));
+        syncCartStorage(updatedCart);
     };
 
     const handleUpdateCartQuantity = (index, delta) => {
@@ -380,7 +435,7 @@ export default function App() {
         }
 
         setCart(updatedCart);
-        localStorage.setItem('netrave_cart', JSON.stringify(updatedCart));
+        syncCartStorage(updatedCart);
     };
 
     // 4. Place Booking Form Submission
@@ -480,17 +535,20 @@ export default function App() {
     // 5. Admin Panel Modification Handlers
     const handleAddProduct = async (productPayload) => {
         try {
+            const adminToken = getCookie('adminSessionToken');
             const response = await fetch(`${API_BASE_URL}/products`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(adminToken ? { 'x-admin-session': adminToken } : {})
+                },
                 body: JSON.stringify(productPayload)
             });
             if (response.ok) {
-                const res = await fetch(`${API_BASE_URL}/products`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setProducts(data);
-                }
+                const created = await response.json();
+                setProducts(prev => [created, ...prev]);
+                showToast('Product added successfully!', 'success');
+                await fetchProducts();
             } else {
                 showToast('Failed to save new product on server.', 'error');
             }
@@ -498,23 +556,26 @@ export default function App() {
             console.error(err);
             showToast('Backend offline. Product added locally only.', 'info');
             const nextId = products.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
-            setProducts([...products, { id: nextId, ...productPayload, rating: 5, reviews: 0 }]);
+            setProducts([{ id: nextId, ...productPayload, rating: 5, reviews: 0 }, ...products]);
         }
     };
 
     const handleEditProduct = async (id, productPayload) => {
         try {
+            const adminToken = getCookie('adminSessionToken');
             const response = await fetch(`${API_BASE_URL}/products/${id}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 
+                    'Content-Type': 'application/json',
+                    ...(adminToken ? { 'x-admin-session': adminToken } : {})
+                },
                 body: JSON.stringify(productPayload)
             });
             if (response.ok) {
-                const res = await fetch(`${API_BASE_URL}/products`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setProducts(data);
-                }
+                const updated = await response.json();
+                setProducts(prev => prev.map(p => p.id === id ? { ...p, ...productPayload, ...updated } : p));
+                showToast('Product updated successfully!', 'success');
+                await fetchProducts();
             } else {
                 showToast('Failed to update product details.', 'error');
             }
@@ -527,15 +588,15 @@ export default function App() {
 
     const handleDeleteProduct = async (id) => {
         try {
+            const adminToken = getCookie('adminSessionToken');
             const response = await fetch(`${API_BASE_URL}/products/${id}`, {
-                method: 'DELETE'
+                method: 'DELETE',
+                headers: adminToken ? { 'x-admin-session': adminToken } : {}
             });
             if (response.ok) {
-                const res = await fetch(`${API_BASE_URL}/products`);
-                if (res.ok) {
-                    const data = await res.json();
-                    setProducts(data);
-                }
+                setProducts(prev => prev.filter(p => p.id !== id));
+                showToast('Product deleted successfully.', 'success');
+                await fetchProducts();
             } else {
                 showToast('Failed to delete product.', 'error');
             }
@@ -635,6 +696,7 @@ export default function App() {
                 <main style={{ paddingTop: '20px' }}>
                     <AdminPanel
                         products={products}
+                        categories={categories}
                         bookings={bookings}
                         settings={settings}
                         onAddProduct={handleAddProduct}
@@ -642,11 +704,15 @@ export default function App() {
                         onDeleteProduct={handleDeleteProduct}
                         onUpdateBookingStatus={handleUpdateBookingStatus}
                         onSaveSettings={handleSaveSettings}
+                        onRefreshCategories={fetchCategories}
+                        onRefreshProducts={fetchProducts}
                         API_BASE_URL={API_BASE_URL}
                         showToast={showToast}
                         onClose={() => {
                             setIsAdminView(false);
                             window.history.pushState({}, '', '/');
+                            fetchProducts();
+                            fetchCategories();
                         }}
                     />
                 </main>
@@ -705,6 +771,8 @@ export default function App() {
                 user={user}
                 onLogout={handleLogout}
                 onLoginClick={() => setIsAuthOpen(true)}
+                categories={categories}
+                products={products.length > 0 ? products : FALLBACK_PRODUCTS}
             />
 
             {/* Main Area */}
@@ -713,8 +781,21 @@ export default function App() {
                     onShopClick={scrollToProducts}
                     onSummerClick={handleSummerCtaClick}
                 />
+                <HomeSections
+                    categories={categories}
+                    products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                    onSelectCategory={(catSlug) => {
+                        setActiveCategory(catSlug);
+                        scrollToProducts();
+                    }}
+                    onQuickView={setSelectedProductId}
+                    wishlist={wishlist}
+                    onToggleWishlist={handleToggleWishlist}
+                    onShopClick={scrollToProducts}
+                />
                 <ProductGrid
                     products={products}
+                    categories={categories}
                     loading={loadingProducts}
                     activeCategory={activeCategory}
                     onCategoryChange={(catId) => {
@@ -805,6 +886,7 @@ export default function App() {
             <ProductModal
                 isOpen={selectedProductId !== null}
                 product={activeProduct}
+                allProducts={products.length > 0 ? products : FALLBACK_PRODUCTS}
                 onClose={() => setSelectedProductId(null)}
                 onAddToCart={handleAddToCart}
                 onBuyNow={(prod, size, q) => {
@@ -820,6 +902,7 @@ export default function App() {
                 }}
                 isWishlisted={wishlist.includes(selectedProductId)}
                 onToggleWishlist={handleToggleWishlist}
+                onQuickView={setSelectedProductId}
                 API_BASE_URL={API_BASE_URL}
             />
 

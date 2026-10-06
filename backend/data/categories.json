@@ -1,0 +1,87 @@
+[
+  {
+    "id": 1,
+    "name": "T-Shirts",
+    "slug": "t-shirt",
+    "description": "Heavyweight premium cotton graphic and acid-washed oversized streetwear tees.",
+    "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=1200&auto=format&fit=crop&q=80",
+    "color": "#f59e0b",
+    "status": "active",
+    "displayOrder": 1,
+    "subcategories": [
+      { "id": "oversized-tees", "name": "Oversized Tees", "slug": "oversized-tees" },
+      { "id": "graphic-tees", "name": "Graphic Backprint", "slug": "graphic-tees" },
+      { "id": "acid-wash", "name": "Acid Wash", "slug": "acid-wash" },
+      { "id": "basics", "name": "Essential Crewnecks", "slug": "basics" }
+    ],
+    "createdAt": "2026-01-10T10:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Summer Wear",
+    "slug": "summer-t-shirt",
+    "description": "Ultra-lightweight breathable pastel t-shirts and relaxed fit casuals for hot climate.",
+    "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&auto=format&fit=crop&q=80",
+    "color": "#38bdf8",
+    "status": "active",
+    "displayOrder": 2,
+    "subcategories": [
+      { "id": "breeze-tees", "name": "Breeze Cotton Tees", "slug": "breeze-tees" },
+      { "id": "pastel-collection", "name": "Pastel Tops", "slug": "pastel-collection" },
+      { "id": "beachwear", "name": "Resort & Beach", "slug": "beachwear" }
+    ],
+    "createdAt": "2026-01-12T10:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Casual Shirts",
+    "slug": "shirt",
+    "description": "Pure linen and textured oxford cotton shirts tailored for modern everyday luxury.",
+    "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=1200&auto=format&fit=crop&q=80",
+    "color": "#10b981",
+    "status": "active",
+    "displayOrder": 3,
+    "subcategories": [
+      { "id": "linen-blend", "name": "Linen Blend", "slug": "linen-blend" },
+      { "id": "oxford-cotton", "name": "Oxford Cotton", "slug": "oxford-cotton" },
+      { "id": "cuban-collar", "name": "Cuban Collar", "slug": "cuban-collar" }
+    ],
+    "createdAt": "2026-01-15T10:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "name": "Pants & Cargos",
+    "slug": "pants",
+    "description": "Multi-pocket tactical cargos, relaxed twill chinos, and aesthetic streetwear bottoms.",
+    "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1479064555552-3ef4979f8908?w=1200&auto=format&fit=crop&q=80",
+    "color": "#a855f7",
+    "status": "active",
+    "displayOrder": 4,
+    "subcategories": [
+      { "id": "tactical-cargo", "name": "Multi-Pocket Cargo", "slug": "tactical-cargo" },
+      { "id": "relaxed-chinos", "name": "Relaxed Chinos", "slug": "relaxed-chinos" },
+      { "id": "joggers", "name": "Street Joggers", "slug": "joggers" }
+    ],
+    "createdAt": "2026-01-18T10:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "name": "Hoodies & Jackets",
+    "slug": "hoodies",
+    "description": "Heavyweight 380 GSM fleece pullover hoodies and oversized zip track jackets.",
+    "image": "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1200&auto=format&fit=crop&q=80",
+    "color": "#f43f5e",
+    "status": "active",
+    "displayOrder": 5,
+    "subcategories": [
+      { "id": "pullover-hoodies", "name": "Pullover Hoodies", "slug": "pullover-hoodies" },
+      { "id": "zip-jackets", "name": "Zip Jackets", "slug": "zip-jackets" }
+    ],
+    "createdAt": "2026-01-20T10:00:00.000Z"
+  }
+]
