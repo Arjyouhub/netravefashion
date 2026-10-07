@@ -38,6 +38,7 @@ export default function ProductGrid({
     const availableColors = useMemo(() => {
         const colorsSet = new Set();
         products.forEach(p => {
+            if (Array.isArray(p.colorVariants)) p.colorVariants.forEach(cv => { if (cv.color) colorsSet.add(cv.color); });
             if (Array.isArray(p.colors)) p.colors.forEach(c => colorsSet.add(c));
             if (Array.isArray(p.variants)) {
                 p.variants.forEach(v => {
@@ -121,8 +122,9 @@ export default function ProductGrid({
 
         // 7. Color Filter
         if (selectedColor !== 'all') {
-            const hasColor = prod.colors?.includes(selectedColor) ||
-                prod.variants?.some(v => v.options?.Color === selectedColor);
+            const hasColor = prod.colorVariants?.some(cv => cv.color?.toLowerCase() === selectedColor.toLowerCase()) ||
+                prod.colors?.some(c => c.toLowerCase() === selectedColor.toLowerCase()) ||
+                prod.variants?.some(v => v.options?.Color?.toLowerCase() === selectedColor.toLowerCase());
             if (!hasColor) return false;
         }
 

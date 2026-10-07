@@ -46,9 +46,12 @@ export default function Header({
         { id: 'all', slug: 'all', name: 'All Items' },
         ...(categories.length > 0 ? categories : [
             { id: 1, slug: 't-shirt', name: 'T-Shirts' },
-            { id: 2, slug: 'summer-t-shirt', name: 'Summer Wear' },
-            { id: 3, slug: 'shirt', name: 'Casual Shirts' },
-            { id: 4, slug: 'pants', name: 'Pants & Cargos' }
+            { id: 2, slug: 'shirt', name: 'Shirts' },
+            { id: 3, slug: 'hoodies', name: 'Jackets & Hoodies' },
+            { id: 4, slug: 'pants', name: 'Pants & Cargos' },
+            { id: 5, slug: 'footwear', name: 'Footwear & Shoes' },
+            { id: 6, slug: 'saree', name: 'Sarees' },
+            { id: 7, slug: 'kurti', name: 'Kurtis & Ethnic' }
         ])
     ];
 

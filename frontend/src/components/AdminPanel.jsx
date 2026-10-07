@@ -115,7 +115,18 @@ export default function AdminPanel({
     const [customOptValues, setCustomOptValues] = useState('');
     const [prodVariants, setProdVariants] = useState([]);
 
+    // Flipkart-Style Color Variants & Photos
+    const [prodColorVariants, setProdColorVariants] = useState([]);
+    const [newColorName, setNewColorName] = useState('');
+    const [newColorHex, setNewColorHex] = useState('#090b10');
+    const [newColorImage, setNewColorImage] = useState('');
+    const [colorUploading, setColorUploading] = useState(false);
+
     const [uploading, setUploading] = useState(false);
+    const [catUploading, setCatUploading] = useState(false);
+    const [showProductUrlInput, setShowProductUrlInput] = useState(false);
+    const [showColorUrlInput, setShowColorUrlInput] = useState(false);
+    const [showCatUrlInput, setShowCatUrlInput] = useState(false);
     const [quickEditingMarginId, setQuickEditingMarginId] = useState(null);
     const [quickSalePriceVal, setQuickSalePriceVal] = useState('');
     const [quickBuyPriceVal, setQuickBuyPriceVal] = useState('');
@@ -849,6 +860,10 @@ export default function AdminPanel({
             { name: 'Color', values: ['Black', 'White', 'Navy'] }
         ]);
         setProdVariants([]);
+        setProdColorVariants([]);
+        setNewColorName('');
+        setNewColorHex('#090b10');
+        setNewColorImage('');
         setProductFormError('');
     };
 
@@ -905,7 +920,156 @@ export default function AdminPanel({
             { name: 'Size', values: product.sizes || ['S', 'M', 'L', 'XL'] }
         ]);
         setProdVariants(Array.isArray(product.variants) ? product.variants : []);
+        
+        // Flipkart-style Color Variants
+        if (Array.isArray(product.colorVariants) && product.colorVariants.length > 0) {
+            setProdColorVariants(product.colorVariants);
+        } else if (Array.isArray(product.colors) && product.colors.length > 0) {
+            setProdColorVariants(product.colors.map(col => ({
+                color: col,
+                hex: '#090b10',
+                image: product.image || '',
+                images: product.images || []
+            })));
+        } else {
+            setProdColorVariants([]);
+        }
+        setNewColorName('');
+        setNewColorHex('#090b10');
+        setNewColorImage('');
+
         setIsProductFormOpen(true);
+    };
+
+    // Color Variant Actions
+    const handleAddColorVariant = () => {
+        if (!newColorName.trim()) {
+            setProductFormError('Please enter a color name (e.g. Jet Black, Crimson Red).');
+            return;
+        }
+        const imgToAdd = newColorImage.trim() || prodImage || (prodImages[0] || '');
+        const newVar = {
+            color: newColorName.trim(),
+            hex: newColorHex || '#090b10',
+            image: imgToAdd,
+            images: imgToAdd ? [imgToAdd] : []
+        };
+        const updated = [...prodColorVariants.filter(c => c.color.toLowerCase() !== newVar.color.toLowerCase()), newVar];
+        setProdColorVariants(updated);
+        
+        // Ensure main product images include this if empty
+        if (!prodImage && imgToAdd) {
+            setProdImage(imgToAdd);
+        }
+        if (imgToAdd && !prodImages.includes(imgToAdd)) {
+            setProdImages([...prodImages, imgToAdd]);
+        }
+        setNewColorName('');
+        setNewColorHex('#090b10');
+        setNewColorImage('');
+        setProductFormError('');
+    };
+
+    const handleRemoveColorVariant = (indexToRemove) => {
+        setProdColorVariants(prodColorVariants.filter((_, idx) => idx !== indexToRemove));
+    };
+
+    // Helper to upload an image file either to backend /upload or fallback to Data URL (base64)
+    const uploadSingleImage = async (file) => {
+        if (!file) return null;
+        // Try backend upload first
+        try {
+            const formData = new FormData();
+            formData.append('image', file);
+            const uploadUrl = API_BASE_URL 
+                ? (API_BASE_URL.endsWith('/api') ? `${API_BASE_URL}/upload` : `${API_BASE_URL}/api/upload`) 
+                : '/api/upload';
+            const res = await fetch(uploadUrl, { method: 'POST', body: formData });
+            if (res.ok) {
+                const data = await res.json();
+                if (data.fileUrl || data.url) {
+                    return data.fileUrl || data.url;
+                }
+            }
+        } catch (e) {
+            console.warn('Backend image upload endpoint not reachable, converting locally:', e);
+        }
+
+        // Reliable client-side fallback: compressed Data URL
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // Handle multiple product gallery photos selection
+    const handleGalleryFilesUpload = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        setUploading(true);
+        try {
+            const uploadedUrls = [];
+            for (const file of files) {
+                const url = await uploadSingleImage(file);
+                if (url) uploadedUrls.push(url);
+            }
+            if (uploadedUrls.length > 0) {
+                const updated = [...prodImages, ...uploadedUrls];
+                setProdImages(updated);
+                if (!prodImage) {
+                    setProdImage(uploadedUrls[0]);
+                }
+                showSuccess(`Successfully uploaded ${uploadedUrls.length} photo(s)!`);
+            }
+        } catch (err) {
+            console.error('Gallery files upload error:', err);
+            showError('Failed to process photos.');
+        } finally {
+            setUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    // Handle Color Variant Photo upload
+    const handleColorPhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setColorUploading(true);
+        try {
+            const url = await uploadSingleImage(file);
+            if (url) {
+                setNewColorImage(url);
+                showSuccess('Color photo uploaded!');
+            }
+        } catch (err) {
+            console.error('Color photo upload error:', err);
+            showError('Failed to upload color photo.');
+        } finally {
+            setColorUploading(false);
+            e.target.value = '';
+        }
+    };
+
+    // Handle Category Photo upload
+    const handleCategoryPhotoUpload = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setCatUploading(true);
+        try {
+            const url = await uploadSingleImage(file);
+            if (url) {
+                setCatImage(url);
+                showSuccess('Category image uploaded!');
+            }
+        } catch (err) {
+            console.error('Category photo upload error:', err);
+            showError('Failed to upload category image.');
+        } finally {
+            setCatUploading(false);
+            e.target.value = '';
+        }
     };
 
     // Two-way interactive margin & price calculators
@@ -1027,6 +1191,9 @@ export default function AdminPanel({
             dimensions: prodDimensions,
             shippingInfo: prodShippingInfo,
             returnInfo: prodReturnInfo,
+            // Flipkart-style Color Variants
+            colorVariants: prodColorVariants,
+            colors: prodColorVariants.length > 0 ? prodColorVariants.map(cv => cv.color) : (prodVariants.map(v => v.options?.Color).filter(Boolean)),
             // Supplier & Sourcing Management (Admin only)
             supplierName,
             supplierSku,
@@ -1919,43 +2086,76 @@ export default function AdminPanel({
                                         </div>
                                     </div>
 
-                                    <div className="form-field">
-                                        <label>Banner Image / Icon URL</label>
-                                        <div className="image-input-group">
-                                            <input 
-                                                type="text" 
-                                                value={catImage} 
-                                                onChange={e => setCatImage(e.target.value)} 
-                                                placeholder="Paste image URL or upload image"
-                                            />
-                                            <div className="file-upload-btn-wrapper">
-                                                <button type="button" className="file-btn">Upload</button>
-                                                <input 
-                                                    type="file" 
-                                                    accept="image/*" 
-                                                    onChange={async (e) => {
-                                                        const file = e.target.files[0];
-                                                        if (!file) return;
-                                                        const formData = new FormData();
-                                                        formData.append('image', file);
-                                                        try {
-                                                            const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: formData });
-                                                            if (res.ok) {
-                                                                const d = await res.json();
-                                                                setCatImage(d.fileUrl);
-                                                            }
-                                                        } catch (err) {
-                                                            alert('Upload failed.');
-                                                        }
-                                                    }} 
-                                                />
+                                    <div className="form-field" style={{ background: '#0e111a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '14px', marginBottom: '16px' }}>
+                                        <label style={{ fontSize: '13px', fontWeight: '800', color: '#fff', marginBottom: '8px', display: 'block' }}>
+                                            📁 Category Banner / Photo (Upload from Device)
+                                        </label>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                                            {catImage ? (
+                                                <div style={{ position: 'relative', width: '70px', height: '70px', borderRadius: '8px', overflow: 'hidden', border: '2px solid var(--primary)', flexShrink: 0, background: '#090b10' }}>
+                                                    <img src={catImage} alt="Category Banner" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setCatImage('')}
+                                                        style={{ position: 'absolute', top: 2, right: 2, background: 'rgba(0,0,0,0.8)', color: '#ef4444', border: 'none', borderRadius: '50%', width: '18px', height: '18px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                        title="Remove photo"
+                                                    >
+                                                        &times;
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div style={{ width: '70px', height: '70px', borderRadius: '8px', border: '1.5px dashed rgba(255,255,255,0.18)', background: '#12141c', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px', flexShrink: 0 }}>
+                                                    📂
+                                                </div>
+                                            )}
+                                            <div style={{ flex: 1, minWidth: '180px' }}>
+                                                <label style={{
+                                                    display: 'inline-flex',
+                                                    alignItems: 'center',
+                                                    gap: '8px',
+                                                    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                                    color: '#0a0b0e',
+                                                    fontWeight: '800',
+                                                    fontSize: '12.5px',
+                                                    padding: '9px 16px',
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    boxShadow: '0 2px 10px rgba(245,158,11,0.25)'
+                                                }}>
+                                                    <span>{catUploading ? '⏳ Uploading...' : (catImage ? '🔄 Change Category Photo' : '📁 Upload Photo from Device')}</span>
+                                                    <input 
+                                                        type="file" 
+                                                        accept="image/*" 
+                                                        disabled={catUploading}
+                                                        onChange={handleCategoryPhotoUpload}
+                                                        style={{ display: 'none' }}
+                                                    />
+                                                </label>
+                                                <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '5px' }}>
+                                                    Select image file directly from phone or computer • JPG, PNG, WEBP
+                                                </div>
                                             </div>
                                         </div>
-                                        {catImage && (
-                                            <div style={{ marginTop: '8px' }}>
-                                                <img src={catImage} alt="Banner Preview" style={{ maxHeight: '80px', borderRadius: '6px', objectFit: 'cover' }} />
-                                            </div>
-                                        )}
+                                        <div style={{ marginTop: '8px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCatUrlInput(!showCatUrlInput)}
+                                                style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                            >
+                                                {showCatUrlInput ? 'Hide URL input' : '🔗 Or add via image URL (Optional)'}
+                                            </button>
+                                            {showCatUrlInput && (
+                                                <div style={{ marginTop: '5px' }}>
+                                                    <input 
+                                                        type="text" 
+                                                        value={catImage} 
+                                                        onChange={e => setCatImage(e.target.value)} 
+                                                        placeholder="Paste image URL (Unsplash or CDN)..."
+                                                        style={{ width: '100%', padding: '7px 10px', fontSize: '12px', borderRadius: '6px' }}
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Subcategories Management */}
@@ -2360,75 +2560,183 @@ export default function AdminPanel({
                                         </div>
                                     )}
 
-                                    {/* 3. Multi-Image Gallery */}
-                                    <div className="form-field">
-                                        <label>Product Images (Main & Gallery Thumbnails)</label>
-                                        <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                                    {/* 3. Multi-Image Gallery - Upload First Design */}
+                                    <div className="form-field" style={{ background: '#0e111a', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '16px', marginBottom: '18px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                                            <label style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff', margin: 0 }}>
+                                                📸 Product Photos (Main & Gallery)
+                                            </label>
+                                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                                {prodImages.length} photo{prodImages.length === 1 ? '' : 's'} configured
+                                            </span>
+                                        </div>
+
+                                        {/* Primary Direct File Upload Zone */}
+                                        <div style={{
+                                            border: '2px dashed rgba(245, 158, 11, 0.45)',
+                                            background: 'rgba(245, 158, 11, 0.04)',
+                                            borderRadius: '10px',
+                                            padding: '22px 16px',
+                                            textAlign: 'center',
+                                            cursor: 'pointer',
+                                            position: 'relative',
+                                            transition: 'all 0.2s ease',
+                                            marginBottom: '12px'
+                                        }}>
                                             <input 
-                                                type="text" 
-                                                value={newImageInput} 
-                                                onChange={e => setNewImageInput(e.target.value)} 
-                                                placeholder="Paste image URL (Unsplash, CDN, etc.)..." 
-                                                style={{ flex: 1 }}
-                                            />
-                                            <button 
-                                                type="button" 
-                                                className="cta-btn secondary-cta" 
-                                                style={{ minHeight: 'unset', padding: '0 14px' }}
-                                                onClick={() => {
-                                                    if (newImageInput.trim()) {
-                                                        const updated = [...prodImages, newImageInput.trim()];
-                                                        setProdImages(updated);
-                                                        if (!prodImage) setProdImage(newImageInput.trim());
-                                                        setNewImageInput('');
-                                                    }
+                                                type="file" 
+                                                multiple 
+                                                accept="image/*" 
+                                                disabled={uploading}
+                                                onChange={handleGalleryFilesUpload}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: '100%',
+                                                    height: '100%',
+                                                    opacity: 0,
+                                                    cursor: 'pointer',
+                                                    zIndex: 2
                                                 }}
-                                            >
-                                                + Add URL
-                                            </button>
-                                            <div className="file-upload-btn-wrapper">
-                                                <button type="button" className="file-btn">Upload</button>
-                                                <input type="file" accept="image/*" onChange={async (e) => {
-                                                    const file = e.target.files[0];
-                                                    if (!file) return;
-                                                    const formData = new FormData();
-                                                    formData.append('image', file);
-                                                    try {
-                                                        const res = await fetch(`${API_BASE_URL}/upload`, { method: 'POST', body: formData });
-                                                        if (res.ok) {
-                                                            const d = await res.json();
-                                                            const updated = [...prodImages, d.fileUrl];
-                                                            setProdImages(updated);
-                                                            if (!prodImage) setProdImage(d.fileUrl);
-                                                        }
-                                                    } catch (err) {
-                                                        alert('Upload failed.');
-                                                    }
-                                                }} />
+                                                title="Click to select photos from computer or phone"
+                                            />
+                                            <div style={{ fontSize: '32px', marginBottom: '6px' }}>
+                                                {uploading ? '⏳' : '📁'}
+                                            </div>
+                                            <div style={{ color: '#fff', fontWeight: '800', fontSize: '14px', marginBottom: '4px' }}>
+                                                {uploading ? 'Uploading photos, please wait...' : 'Click to Upload Photos from Device (or Drag & Drop)'}
+                                            </div>
+                                            <div style={{ color: '#94a3b8', fontSize: '12px' }}>
+                                                Select multiple photos at once • Supports JPG, PNG, WEBP • Direct device upload
                                             </div>
                                         </div>
-                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
-                                            {prodImages.map((img, idx) => (
-                                                <div key={idx} style={{ position: 'relative', width: '75px', height: '75px', borderRadius: '6px', overflow: 'hidden', border: idx === 0 ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.1)' }}>
-                                                    <img src={img} alt={`Thumb ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                                    {idx === 0 && (
-                                                        <span style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'var(--primary)', color: '#000', fontSize: '9px', fontWeight: 'bold', textAlign: 'center' }}>
-                                                            MAIN
-                                                        </span>
-                                                    )}
+
+                                        {/* Uploaded Photos Grid */}
+                                        {prodImages.length > 0 && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(90px, 1fr))', gap: '10px', marginBottom: '10px' }}>
+                                                {prodImages.map((img, idx) => {
+                                                    const isMain = (prodImage === img || (!prodImage && idx === 0));
+                                                    return (
+                                                        <div key={idx} style={{ 
+                                                            position: 'relative', 
+                                                            height: '92px', 
+                                                            borderRadius: '8px', 
+                                                            overflow: 'hidden', 
+                                                            border: isMain ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.14)',
+                                                            background: '#090b10',
+                                                            boxShadow: isMain ? '0 0 12px rgba(245,158,11,0.3)' : 'none'
+                                                        }}>
+                                                            <img src={img} alt={`Thumb ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            
+                                                            {/* Main Photo Badge */}
+                                                            {isMain ? (
+                                                                <span style={{ 
+                                                                    position: 'absolute', 
+                                                                    bottom: 0, 
+                                                                    left: 0, 
+                                                                    right: 0, 
+                                                                    background: 'var(--primary)', 
+                                                                    color: '#000', 
+                                                                    fontSize: '9.5px', 
+                                                                    fontWeight: '900', 
+                                                                    textAlign: 'center',
+                                                                    padding: '2px 0'
+                                                                }}>
+                                                                    ★ MAIN
+                                                                </span>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setProdImage(img)}
+                                                                    style={{
+                                                                        position: 'absolute',
+                                                                        bottom: 0,
+                                                                        left: 0,
+                                                                        right: 0,
+                                                                        background: 'rgba(0,0,0,0.85)',
+                                                                        color: '#f59e0b',
+                                                                        border: 'none',
+                                                                        fontSize: '9.5px',
+                                                                        fontWeight: '700',
+                                                                        padding: '2px 0',
+                                                                        cursor: 'pointer'
+                                                                    }}
+                                                                    title="Set as main display photo"
+                                                                >
+                                                                    Make Main
+                                                                </button>
+                                                            )}
+
+                                                            {/* Remove Photo */}
+                                                            <button 
+                                                                type="button" 
+                                                                onClick={() => {
+                                                                    const filtered = prodImages.filter((_, i) => i !== idx);
+                                                                    setProdImages(filtered);
+                                                                    if (isMain) setProdImage(filtered[0] || '');
+                                                                }}
+                                                                style={{ 
+                                                                    position: 'absolute', 
+                                                                    top: '3px', 
+                                                                    right: '3px', 
+                                                                    background: 'rgba(0,0,0,0.8)', 
+                                                                    color: '#ef4444', 
+                                                                    border: 'none', 
+                                                                    borderRadius: '50%', 
+                                                                    width: '20px', 
+                                                                    height: '20px', 
+                                                                    cursor: 'pointer', 
+                                                                    fontSize: '12px', 
+                                                                    display: 'flex', 
+                                                                    alignItems: 'center', 
+                                                                    justifyContent: 'center' 
+                                                                }}
+                                                                title="Remove photo"
+                                                            >
+                                                                &times;
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* Optional URL input fallback toggle */}
+                                        <div style={{ marginTop: '8px' }}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowProductUrlInput(!showProductUrlInput)}
+                                                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '11.5px', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                            >
+                                                {showProductUrlInput ? 'Hide URL input' : '🔗 Or add photo by web URL (Optional)'}
+                                            </button>
+                                            {showProductUrlInput && (
+                                                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                                                    <input 
+                                                        type="text" 
+                                                        value={newImageInput} 
+                                                        onChange={e => setNewImageInput(e.target.value)} 
+                                                        placeholder="Paste image URL (Unsplash, CDN, etc.)..." 
+                                                        style={{ flex: 1, padding: '7px 10px', fontSize: '12px', borderRadius: '6px' }}
+                                                    />
                                                     <button 
                                                         type="button" 
+                                                        className="cta-btn secondary-cta" 
+                                                        style={{ minHeight: 'unset', padding: '0 14px', fontSize: '12px' }}
                                                         onClick={() => {
-                                                            const filtered = prodImages.filter((_, i) => i !== idx);
-                                                            setProdImages(filtered);
-                                                            if (idx === 0) setProdImage(filtered[0] || '');
+                                                            if (newImageInput.trim()) {
+                                                                const updated = [...prodImages, newImageInput.trim()];
+                                                                setProdImages(updated);
+                                                                if (!prodImage) setProdImage(newImageInput.trim());
+                                                                setNewImageInput('');
+                                                            }
                                                         }}
-                                                        style={{ position: 'absolute', top: '2px', right: '2px', background: 'rgba(0,0,0,0.7)', color: '#ef4444', border: 'none', borderRadius: '50%', width: '18px', height: '18px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                                                     >
-                                                        &times;
+                                                        + Add
                                                     </button>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     </div>
 
@@ -2450,6 +2758,245 @@ export default function AdminPanel({
                                             onChange={e => setProdShortDesc(e.target.value)} 
                                             placeholder="e.g. 240 GSM heavy cotton streetwear tee with acid wash finish." 
                                         />
+                                    </div>
+
+                                    {/* 4.5 Flipkart-Style Color Variants & Dedicated Photos Manager */}
+                                    <div className="form-field" style={{ 
+                                        background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.05), rgba(15, 23, 42, 0.6))', 
+                                        border: '1.5px solid rgba(245, 158, 11, 0.3)', 
+                                        padding: '18px', 
+                                        borderRadius: '12px',
+                                        marginBottom: '20px'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                <span style={{ fontSize: '18px' }}>🎨</span>
+                                                <label style={{ fontSize: '14px', fontWeight: '800', color: '#fff', margin: 0 }}>
+                                                    Color Variants & Photos <span style={{ color: 'var(--primary)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>(Flipkart / Amazon Style)</span>
+                                                </label>
+                                            </div>
+                                            <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                                {prodColorVariants.length} color{prodColorVariants.length === 1 ? '' : 's'} configured
+                                            </span>
+                                        </div>
+                                        <p style={{ color: '#94a3b8', fontSize: '12px', margin: '0 0 14px', lineHeight: '1.4' }}>
+                                            Add each product color option with its specific photo. When a customer selects this color in the store, the main product gallery will instantly switch to this color's photo!
+                                        </p>
+
+                                        {/* Existing Color Variants List */}
+                                        {prodColorVariants.length > 0 && (
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                                                {prodColorVariants.map((cVar, cIdx) => (
+                                                    <div key={cIdx} style={{ 
+                                                        background: '#12141c', 
+                                                        border: '1px solid rgba(255, 255, 255, 0.1)', 
+                                                        borderRadius: '8px', 
+                                                        padding: '8px 10px', 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        gap: '10px',
+                                                        position: 'relative'
+                                                    }}>
+                                                        {/* Thumbnail of color */}
+                                                        <div style={{ width: '46px', height: '46px', borderRadius: '6px', overflow: 'hidden', background: '#090b10', flexShrink: 0, position: 'relative' }}>
+                                                            {cVar.image ? (
+                                                                <img src={cVar.image} alt={cVar.color} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                            ) : (
+                                                                <div style={{ width: '100%', height: '100%', backgroundColor: cVar.hex || '#333' }} />
+                                                            )}
+                                                            <span style={{ 
+                                                                position: 'absolute', 
+                                                                bottom: 2, 
+                                                                right: 2, 
+                                                                width: '12px', 
+                                                                height: '12px', 
+                                                                borderRadius: '50%', 
+                                                                backgroundColor: cVar.hex || '#fff', 
+                                                                border: '1.5px solid #000' 
+                                                            }} />
+                                                        </div>
+                                                        <div style={{ flex: 1, minWidth: 0 }}>
+                                                            <div style={{ fontWeight: '700', fontSize: '13px', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                                {cVar.color}
+                                                            </div>
+                                                            <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', backgroundColor: cVar.hex || '#888' }} />
+                                                                <span>{cVar.hex || 'Color'}</span>
+                                                            </div>
+                                                        </div>
+                                                        <button 
+                                                            type="button" 
+                                                            onClick={() => handleRemoveColorVariant(cIdx)}
+                                                            style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontSize: '16px', padding: '4px' }}
+                                                            title="Remove color variant"
+                                                        >
+                                                            &times;
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* Add New Color Variant Inputs */}
+                                        <div style={{ background: 'rgba(0,0,0,0.35)', padding: '12px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.06)' }}>
+                                            <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', marginBottom: '8px' }}>
+                                                + Add a Color Variant with Photo:
+                                            </div>
+                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', marginBottom: '8px' }}>
+                                                <div>
+                                                    <label style={{ fontSize: '11px', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Color Name *</label>
+                                                    <input 
+                                                        type="text" 
+                                                        placeholder="e.g. Jet Black, Olive" 
+                                                        value={newColorName} 
+                                                        onChange={e => setNewColorName(e.target.value)}
+                                                        style={{ width: '100%', padding: '7px 10px', fontSize: '12.5px', borderRadius: '6px' }}
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label style={{ fontSize: '11px', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Swatch / Hex Color</label>
+                                                    <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                        <input 
+                                                            type="color" 
+                                                            value={newColorHex} 
+                                                            onChange={e => setNewColorHex(e.target.value)}
+                                                            style={{ width: '38px', height: '34px', padding: 0, borderRadius: '6px', cursor: 'pointer', border: 'none' }}
+                                                            title="Pick color"
+                                                        />
+                                                        <input 
+                                                            type="text" 
+                                                            value={newColorHex} 
+                                                            onChange={e => setNewColorHex(e.target.value)}
+                                                            placeholder="#090b10"
+                                                            style={{ flex: 1, padding: '7px 10px', fontSize: '12.5px', borderRadius: '6px' }}
+                                                        />
+                                                    </div>
+                                                </div>
+                                                <div style={{ gridColumn: 'span 2' }}>
+                                                    <label style={{ fontSize: '11.5px', color: '#cbd5e1', display: 'block', marginBottom: '4px', fontWeight: '700' }}>
+                                                        Color Photo (Upload from Device) *
+                                                    </label>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', background: '#090b10', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '8px 12px' }}>
+                                                        {/* Live preview if photo is selected */}
+                                                        {newColorImage ? (
+                                                            <div style={{ position: 'relative', width: '48px', height: '48px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, border: '1.5px solid var(--primary)' }}>
+                                                                <img src={newColorImage} alt="Color preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => setNewColorImage('')}
+                                                                    style={{ position: 'absolute', top: 0, right: 0, background: 'rgba(0,0,0,0.7)', color: '#ef4444', border: 'none', width: '16px', height: '16px', fontSize: '11px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                                                    title="Remove photo"
+                                                                >
+                                                                    &times;
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <div style={{ width: '48px', height: '48px', borderRadius: '6px', background: '#161922', border: '1px dashed rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
+                                                                📷
+                                                            </div>
+                                                        )}
+
+                                                        {/* Upload Button */}
+                                                        <div style={{ flex: 1 }}>
+                                                            <label style={{
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '6px',
+                                                                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+                                                                color: '#000',
+                                                                fontWeight: '800',
+                                                                fontSize: '12px',
+                                                                padding: '8px 14px',
+                                                                borderRadius: '6px',
+                                                                cursor: 'pointer',
+                                                                boxShadow: '0 2px 8px rgba(245,158,11,0.2)'
+                                                            }}>
+                                                                <span>{colorUploading ? '⏳ Uploading...' : (newColorImage ? '🔄 Change Device Photo' : '📁 Upload Photo from Device')}</span>
+                                                                <input 
+                                                                    type="file" 
+                                                                    accept="image/*" 
+                                                                    disabled={colorUploading}
+                                                                    onChange={handleColorPhotoUpload}
+                                                                    style={{ display: 'none' }}
+                                                                />
+                                                            </label>
+                                                            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '3px' }}>
+                                                                {newColorImage ? '✓ Photo selected for this color' : 'Click to select image file from computer or phone • No URL needed'}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Optional URL input fallback toggle */}
+                                                    <div style={{ marginTop: '5px' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setShowColorUrlInput(!showColorUrlInput)}
+                                                            style={{ background: 'none', border: 'none', color: '#64748b', fontSize: '11px', cursor: 'pointer', textDecoration: 'underline', padding: 0 }}
+                                                        >
+                                                            {showColorUrlInput ? 'Hide URL input' : '🔗 Or paste photo URL instead'}
+                                                        </button>
+                                                        {showColorUrlInput && (
+                                                            <input 
+                                                                type="text" 
+                                                                placeholder="Paste image URL (Unsplash or CDN)..." 
+                                                                value={newColorImage} 
+                                                                onChange={e => setNewColorImage(e.target.value)}
+                                                                style={{ width: '100%', padding: '6px 10px', fontSize: '12px', borderRadius: '6px', marginTop: '4px' }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Quick Color Palette Shortcuts */}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                                                <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>Presets:</span>
+                                                {[
+                                                    { name: 'Black', hex: '#111827' },
+                                                    { name: 'White', hex: '#ffffff' },
+                                                    { name: 'Navy Blue', hex: '#1e3a8a' },
+                                                    { name: 'Olive Green', hex: '#3f6212' },
+                                                    { name: 'Crimson Red', hex: '#dc2626' },
+                                                    { name: 'Royal Maroon', hex: '#881337' },
+                                                    { name: 'Dusty Pink', hex: '#f472b6' },
+                                                    { name: 'Gold / Mustard', hex: '#eab308' },
+                                                    { name: 'Vintage Grey', hex: '#64748b' }
+                                                ].map(preset => (
+                                                    <button
+                                                        key={preset.name}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            if (!newColorName) setNewColorName(preset.name);
+                                                            setNewColorHex(preset.hex);
+                                                        }}
+                                                        style={{
+                                                            background: 'rgba(255,255,255,0.06)',
+                                                            border: '1px solid rgba(255,255,255,0.1)',
+                                                            borderRadius: '20px',
+                                                            padding: '2px 8px',
+                                                            fontSize: '11px',
+                                                            color: '#cbd5e1',
+                                                            cursor: 'pointer',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px'
+                                                        }}
+                                                    >
+                                                        <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: preset.hex, border: '1px solid #444' }} />
+                                                        {preset.name}
+                                                    </button>
+                                                ))}
+                                            </div>
+
+                                            <button 
+                                                type="button" 
+                                                className="cta-btn primary-cta" 
+                                                onClick={handleAddColorVariant}
+                                                style={{ width: '100%', padding: '9px', fontSize: '13px', fontWeight: '800' }}
+                                            >
+                                                + Add Color Option
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {/* 5. Dynamic Variants Builder */}

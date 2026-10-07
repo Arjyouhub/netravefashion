@@ -35,7 +35,8 @@ export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess,
     // 2. WhatsApp Order Confirm Link Generator
     const generateWhatsAppLink = (orderRecord) => {
         const itemsText = orderRecord.items.map((item, i) => {
-            return `${i + 1}. ${item.title} (Size: ${item.size}) x ${item.quantity} - ₹${item.price * item.quantity}`;
+            const variantDetails = [item.color ? `Color: ${item.color}` : '', item.size ? `Size: ${item.size}` : ''].filter(Boolean).join(', ');
+            return `${i + 1}. ${item.title}${variantDetails ? ` (${variantDetails})` : ''} x ${item.quantity} - ₹${item.price * item.quantity}`;
         }).join('\n');
 
         const isRazorpay = (orderRecord.customer?.payment || orderRecord.paymentMethod || '').toLowerCase().includes('razorpay') 
@@ -339,7 +340,7 @@ ${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_
                                             const hasReviewed = submittedReviews.includes(`${b.orderId}-${item.id}`);
                                             return (
                                                 <div className="booking-log-item" key={idx} style={{ padding: '6px 0', borderBottom: idx < b.items.length - 1 ? '1px dashed rgba(255,255,255,0.03)' : 'none', color: '#cbd5e1', fontSize: '13px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                    <span>• {item.title} (Size: {item.size}) x {item.quantity} - ₹{item.price * item.quantity}</span>
+                                                    <span>• {item.title} {item.color ? `[${item.color}] ` : ''}{item.size ? `(Size: ${item.size}) ` : ''}x {item.quantity} - ₹{item.price * item.quantity}</span>
                                                     
                                                     {/* Review option if Order Status is Delivered */}
                                                     {b.status.toLowerCase() === 'delivered' && (

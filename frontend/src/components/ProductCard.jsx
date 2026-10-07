@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 
 export default function ProductCard({ 
     product, 
@@ -6,6 +6,8 @@ export default function ProductCard({
     isWishlisted = false, 
     onToggleWishlist 
 }) {
+    const [selectedColorVar, setSelectedColorVar] = useState(null);
+
     const hasDiscount = product.originalPrice > product.price;
     const discountPct = hasDiscount ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100) : 0;
 
@@ -16,8 +18,14 @@ export default function ProductCard({
 
     const isOutOfStock = product.stock <= 0 || product.inStock === false;
 
-    // Display image: fallback if not loaded
-    const mainImage = product.image || (product.images && product.images[0]) || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>';
+    // Available color variants
+    const colorVars = Array.isArray(product.colorVariants) && product.colorVariants.length > 0 ? product.colorVariants : [];
+
+    // Display image: prioritize selected color variant image, fallback to product image
+    const mainImage = (selectedColorVar && selectedColorVar.image) 
+        || product.image 
+        || (product.images && product.images[0]) 
+        || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>';
 
     return (
         <div className={`product-card ${isOutOfStock ? 'card-out-of-stock' : ''}`} style={{ position: 'relative' }}>
@@ -152,6 +160,41 @@ export default function ProductCard({
                 <h3 className="prod-title" onClick={() => onQuickView(product.id)} style={{ cursor: 'pointer' }}>
                     {product.title}
                 </h3>
+
+                {/* Color swatches preview (Flipkart/Amazon style) */}
+                {colorVars.length > 0 && (
+                    <div style={{ display: 'flex', gap: '5px', alignItems: 'center', margin: '4px 0 6px' }}>
+                        {colorVars.slice(0, 4).map((cv, i) => {
+                            const isCur = (selectedColorVar?.color === cv.color) || (!selectedColorVar && i === 0);
+                            return (
+                                <button
+                                    key={cv.color || i}
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedColorVar(cv);
+                                    }}
+                                    title={cv.color}
+                                    style={{
+                                        width: '14px',
+                                        height: '14px',
+                                        borderRadius: '50%',
+                                        backgroundColor: cv.hex || '#333',
+                                        border: isCur ? '2px solid var(--primary)' : '1px solid rgba(255,255,255,0.25)',
+                                        padding: 0,
+                                        cursor: 'pointer',
+                                        transform: isCur ? 'scale(1.2)' : 'scale(1)',
+                                        transition: 'all 0.15s ease',
+                                        boxShadow: isCur ? '0 0 6px rgba(245, 158, 11, 0.4)' : 'none'
+                                    }}
+                                />
+                            );
+                        })}
+                        {colorVars.length > 4 && (
+                            <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: '700' }}>+{colorVars.length - 4}</span>
+                        )}
+                    </div>
+                )}
 
                 {/* Subcategory or Short Description if available */}
                 {product.shortDescription && (

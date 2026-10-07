@@ -1,23 +1,51 @@
 [
   {
     "id": 1,
-    "title": "Oversized Acid-Wash Graphic Tee",
+    "title": "Oversized Acid-Wash Graphic Streetwear Tee",
     "category": "t-shirt",
     "subcategory": "acid-wash",
     "price": 699,
     "originalPrice": 1199,
     "rating": 4.8,
-    "reviews": 24,
+    "reviews": 128,
     "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
     "images": [
       "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80"
     ],
-    "shortDescription": "Heavyweight 240 GSM organic cotton streetwear tee with vintage acid wash.",
+    "shortDescription": "Heavyweight 240 GSM organic cotton streetwear tee with vintage acid wash finish.",
     "description": "<h3>Streetwear Aesthetic Oversized T-Shirt</h3><p>Crafted from heavy <strong>240 GSM organic combed cotton</strong>. Featuring a handcrafted vintage acid-washed finish and custom graphic backprint designed for relaxed casual urban styling.</p><ul><li>100% Combed Heavy Cotton (240 GSM)</li><li>Pre-shrunk fabric with double-needle collar stitching</li><li>Drop-shoulder relaxed streetwear cut</li><li>Machine wash cold, iron inside-out</li></ul>",
     "sizes": ["S", "M", "L", "XL", "XXL"],
     "colors": ["Charcoal Black", "Washed Olive", "Vintage Grey"],
+    "colorVariants": [
+      {
+        "color": "Charcoal Black",
+        "hex": "#1e293b",
+        "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+          "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Washed Olive",
+        "hex": "#4b5320",
+        "image": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
+          "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Vintage Grey",
+        "hex": "#64748b",
+        "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
+    ],
     "tags": ["New", "Oversized", "Trending", "Streetwear"],
     "stock": 50,
     "inStock": true,
@@ -30,143 +58,332 @@
     "dimensions": "32 x 24 x 3 cm",
     "shippingInfo": "Ships within 24 hours. Express courier delivery across India in 2-4 business days.",
     "returnInfo": "7-day hassle-free replacement and return policy on unwashed items with tags attached.",
-    "variants": [
-      { "id": "v1-1", "title": "Charcoal Black / M", "options": { "Size": "M", "Color": "Charcoal Black" }, "price": 699, "stock": 20, "sku": "NET-OVT-BLK-M", "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v1-2", "title": "Charcoal Black / L", "options": { "Size": "L", "Color": "Charcoal Black" }, "price": 699, "stock": 18, "sku": "NET-OVT-BLK-L", "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v1-3", "title": "Charcoal Black / XL", "options": { "Size": "XL", "Color": "Charcoal Black" }, "price": 699, "stock": 12, "sku": "NET-OVT-BLK-XL", "image": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v1-4", "title": "Washed Olive / L", "options": { "Size": "L", "Color": "Washed Olive" }, "price": 699, "stock": 15, "sku": "NET-OVT-OLV-L", "image": "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80" }
-    ],
-    "variantOptions": [
-      { "name": "Size", "values": ["S", "M", "L", "XL", "XXL"] },
-      { "name": "Color", "values": ["Charcoal Black", "Washed Olive", "Vintage Grey"] }
-    ],
     "costPrice": 280,
-    "supplierName": "Shenzhen Fashion Trend Logistics",
-    "supplierSku": "SZ-TEE-ACID-99",
-    "supplierUrl": "https://supplier.example.com/item/SZ-TEE-ACID-99",
-    "supplierCost": 280,
     "profitMargin": 419,
-    "supplierShippingCost": 40,
-    "estimatedDeliveryDays": "3-5 Days",
-    "supplierStockStatus": "In Stock",
-    "supplierNotes": "Fast dispatch within 12 hours from South Hub."
+    "supplierName": "Tirupur Heavy Knit Export Hub"
   },
   {
     "id": 2,
-    "title": "Classic Vintage Crewneck Tee",
-    "category": "t-shirt",
-    "subcategory": "basics",
-    "price": 499,
-    "originalPrice": 899,
-    "rating": 4.5,
-    "reviews": 42,
-    "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
+    "title": "AeroStryke Chunky Streetwear Sneakers",
+    "category": "footwear",
+    "subcategory": "sneakers",
+    "price": 1899,
+    "originalPrice": 3499,
+    "rating": 4.9,
+    "reviews": 215,
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
     "images": [
-      "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1581655353564-df123a1eb820?w=600&auto=format&fit=crop&q=80"
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80"
     ],
-    "shortDescription": "100% combed cotton everyday crewneck t-shirt with ribbed neck.",
-    "description": "<h3>Essential Everyday Crewneck Tee</h3><p>Made from <strong>100% super-combed cotton (190 GSM)</strong>. Featuring reinforced neck tape, soft fabric handfeel, and durable double-needle stitching that retains shape wash after wash.</p>",
-    "sizes": ["S", "M", "L", "XL"],
-    "colors": ["Pure White", "Jet Black", "Navy Blue"],
-    "tags": ["Basic", "Best Seller", "Essential"],
-    "stock": 50,
+    "shortDescription": "High-impact cushioned EVA chunky sole streetwear sneakers with breathable mesh.",
+    "description": "<h3>NETRAVE AeroStryke Streetwear Sneakers</h3><p>Engineered for maximum street style and all-day shock absorption. Built with lightweight TPU heel stabilizers, ultra-responsive cushioned midsole, and anti-slip rubber traction tread.</p><ul><li>High-traction multi-directional grip outsole</li><li>Breathable mesh upper with vegan leather overlays</li><li>Orthopedic memory foam insole</li><li>Featherweight construction (310g per shoe)</li></ul>",
+    "sizes": ["UK 6", "UK 7", "UK 8", "UK 9", "UK 10", "UK 11"],
+    "colors": ["Crimson Red", "Stealth Black", "Triple White"],
+    "colorVariants": [
+      {
+        "color": "Crimson Red",
+        "hex": "#dc2626",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Stealth Black",
+        "hex": "#090b10",
+        "image": "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Triple White",
+        "hex": "#f8fafc",
+        "image": "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1595950653106-6c9ebd614d3a?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
+    ],
+    "tags": ["Footwear", "Trending", "Sneakers", "Comfort"],
+    "stock": 40,
     "inStock": true,
-    "isFeatured": false,
-    "isNewArrival": false,
+    "isFeatured": true,
+    "isNewArrival": true,
     "isBestSeller": true,
-    "sku": "NET-BAS-002",
-    "brand": "NETRAVE Basics",
-    "weight": "210g",
-    "dimensions": "30 x 22 x 2 cm",
-    "shippingInfo": "Ships within 24 hours. Express courier delivery in 2-4 business days.",
-    "returnInfo": "7-day return and exchange policy on unworn items.",
-    "variants": [
-      { "id": "v2-1", "title": "Pure White / M", "options": { "Size": "M", "Color": "Pure White" }, "price": 499, "stock": 25, "sku": "NET-BAS-WHT-M", "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v2-2", "title": "Pure White / L", "options": { "Size": "L", "Color": "Pure White" }, "price": 499, "stock": 25, "sku": "NET-BAS-WHT-L", "image": "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80" }
+    "sku": "NET-SHOE-002",
+    "brand": "NETRAVE Kicks",
+    "weight": "620g",
+    "dimensions": "32 x 20 x 12 cm",
+    "shippingInfo": "Free Express shipping with sturdy double-box packaging.",
+    "returnInfo": "7-day easy size exchange guarantee.",
+    "costPrice": 850,
+    "profitMargin": 1049,
+    "supplierName": "Agra Premium Footwear Crafts"
+  },
+  {
+    "id": 3,
+    "title": "Royal Kanjivaram Pure Silk Zari Saree",
+    "category": "saree",
+    "subcategory": "kanjivaram-silk",
+    "price": 2499,
+    "originalPrice": 5999,
+    "rating": 4.9,
+    "reviews": 184,
+    "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"
     ],
-    "variantOptions": [
-      { "name": "Size", "values": ["S", "M", "L", "XL"] },
-      { "name": "Color", "values": ["Pure White", "Jet Black", "Navy Blue"] }
+    "shortDescription": "Traditional lustrous pure art silk saree with intricate golden zari floral pallu.",
+    "description": "<h3>Royal Heritage Kanjivaram Silk Saree</h3><p>Exclusively handwoven with rich golden zari borders and intricate floral peacock motifs across the regal pallu. Comes with an unstitched contrast designer blouse piece (0.8m).</p><ul><li>Saree Length: 5.5 meters + 0.8 meter matching blouse piece</li><li>Fabric: Premium Rich Soft Silk Blend</li><li>Weave Type: Jacquard Golden Zari Weaving</li><li>Dry clean recommended for longevity</li></ul>",
+    "sizes": ["Free Size (5.5m + 0.8m)"],
+    "colors": ["Royal Maroon", "Emerald Green", "Peacock Blue"],
+    "colorVariants": [
+      {
+        "color": "Royal Maroon",
+        "hex": "#881337",
+        "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Emerald Green",
+        "hex": "#065f46",
+        "image": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Peacock Blue",
+        "hex": "#0284c7",
+        "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
     ],
-    "costPrice": 210,
-    "supplierName": "Tirupur Knitwear Export Hub",
-    "supplierSku": "TP-CREW-190",
-    "supplierUrl": "https://supplier.example.com/item/TP-CREW-190",
-    "supplierCost": 210,
-    "profitMargin": 289,
-    "supplierShippingCost": 30,
-    "estimatedDeliveryDays": "2-3 Days",
-    "supplierStockStatus": "In Stock",
-    "supplierNotes": "Direct domestic supplier with high inventory."
+    "tags": ["Ethnic", "Saree", "Wedding", "Festive", "Silk"],
+    "stock": 35,
+    "inStock": true,
+    "isFeatured": true,
+    "isNewArrival": true,
+    "isBestSeller": true,
+    "sku": "NET-SAR-003",
+    "brand": "NETRAVE Heritage",
+    "weight": "650g",
+    "dimensions": "40 x 30 x 4 cm",
+    "shippingInfo": "Dispatched within 24 hours in luxury protective gift box.",
+    "returnInfo": "7-day return policy for unused items with security tag.",
+    "costPrice": 1100,
+    "profitMargin": 1399,
+    "supplierName": "Kanchipuram Master Weavers Co-op"
   },
   {
     "id": 4,
-    "title": "Premium Linen Casual Shirt",
+    "title": "Designer Embroidered Anarkali Kurti Set",
+    "category": "kurti",
+    "subcategory": "anarkali-sets",
+    "price": 1499,
+    "originalPrice": 2799,
+    "rating": 4.7,
+    "reviews": 96,
+    "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Full-flair georgette Anarkali kurti with intricate sequin yoke and organza dupatta.",
+    "description": "<h3>Festive Designer Anarkali Kurti Suit Set</h3><p>Elevate your ethnic fashion with this graceful Anarkali suit set. Tailored with a rich hand-worked sequin neckline, tiered flared hemline, matching comfortable elastic pants, and a flowy designer dupatta.</p><ul><li>Fabric: Viscose Chanderi with Soft Butter Silk Inner Lining</li><li>Sleeve: 3/4th with Gota Patti Lace detailing</li><li>Flared Hem: 3.5 meter wide ghera</li><li>Wash Care: Gentle Hand Wash or Dry Clean</li></ul>",
+    "sizes": ["S", "M", "L", "XL", "XXL"],
+    "colors": ["Dusty Rose Pink", "Mustard Gold", "Sky Blue"],
+    "colorVariants": [
+      {
+        "color": "Dusty Rose Pink",
+        "hex": "#f472b6",
+        "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Mustard Gold",
+        "hex": "#eab308",
+        "image": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Sky Blue",
+        "hex": "#38bdf8",
+        "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
+    ],
+    "tags": ["Ethnic", "Kurti", "Anarkali", "Festive", "Trending"],
+    "stock": 45,
+    "inStock": true,
+    "isFeatured": true,
+    "isNewArrival": true,
+    "isBestSeller": false,
+    "sku": "NET-KRT-004",
+    "brand": "NETRAVE Ethnic",
+    "weight": "420g",
+    "dimensions": "35 x 25 x 3 cm",
+    "shippingInfo": "Express courier delivery across India in 2-4 business days.",
+    "returnInfo": "7-day replacement and exchange guarantee.",
+    "costPrice": 620,
+    "profitMargin": 879,
+    "supplierName": "Jaipur Handblock Ethnic Mills"
+  },
+  {
+    "id": 5,
+    "title": "Tactical Multi-Pocket Streetwear Bomber Jacket",
+    "category": "hoodies",
+    "subcategory": "bomber-jackets",
+    "price": 1999,
+    "originalPrice": 3999,
+    "rating": 4.8,
+    "reviews": 112,
+    "image": "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Thermal insulated water-resistant streetwear flight bomber jacket with arm utility zip.",
+    "description": "<h3>Urban Tactical Flight Bomber Jacket</h3><p>Engineered for all-season versatility with water-repellent matte polyester shell, ribbed storm collar, dual interior safety pockets, and heavy-duty brass zippers.</p><ul><li>Water & Wind resistant outer nylon weave</li><li>Diamond quilt thermal insulation lining</li><li>Heavy-duty ribbed cuffs and hem to lock warmth</li><li>Sleeve utility zip pocket with red flight pull tag</li></ul>",
+    "sizes": ["M", "L", "XL", "XXL"],
+    "colors": ["Matte Black", "Military Olive", "Midnight Navy"],
+    "colorVariants": [
+      {
+        "color": "Matte Black",
+        "hex": "#111827",
+        "image": "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Military Olive",
+        "hex": "#365314",
+        "image": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
+    ],
+    "tags": ["Jackets", "Winter", "Streetwear", "Bomber"],
+    "stock": 30,
+    "inStock": true,
+    "isFeatured": true,
+    "isNewArrival": true,
+    "isBestSeller": true,
+    "sku": "NET-JKT-005",
+    "brand": "NETRAVE Tactical",
+    "weight": "680g",
+    "dimensions": "38 x 28 x 6 cm",
+    "shippingInfo": "Ships within 24 hours. Express courier delivery in 2-4 business days.",
+    "returnInfo": "7-day return and exchange policy.",
+    "costPrice": 920,
+    "profitMargin": 1079,
+    "supplierName": "Ludhiana Heavy Knitwear & Outerwear"
+  },
+  {
+    "id": 6,
+    "title": "Pure French Linen Casual Button-Down Shirt",
     "category": "shirt",
     "subcategory": "linen-blend",
     "price": 1199,
     "originalPrice": 1999,
     "rating": 4.6,
-    "reviews": 35,
+    "reviews": 85,
     "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
     "images": [
       "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&auto=format&fit=crop&q=80"
     ],
-    "shortDescription": "Tailored from ultra-breathable pure linen blend with classic collar.",
-    "description": "<h3>Modern Linen Casual Button-Down</h3><p>Tailored from <strong>ultra-breathable French linen blend fabric</strong>. Designed with a structured spread collar, mother-of-pearl style buttons, and curved hemline for effortless smart-casual wear.</p>",
+    "shortDescription": "Tailored from ultra-breathable pure linen blend with classic spread collar.",
+    "description": "<h3>Modern Linen Casual Button-Down</h3><p>Tailored from <strong>ultra-breathable French linen blend fabric</strong>. Designed with a structured spread collar, mother-of-pearl style buttons, and curved hemline for effortless smart-casual wear.</p><ul><li>100% Breathable Linen-Cotton blend</li><li>Pre-washed to prevent shrinkage</li><li>Relaxed tailored fit for tropical weather</li></ul>",
     "sizes": ["M", "L", "XL", "XXL"],
     "colors": ["Sage Green", "Crisp White", "Dusty Khaki"],
-    "tags": ["Breathable", "Premium", "Linen"],
+    "colorVariants": [
+      {
+        "color": "Sage Green",
+        "hex": "#4d7c0f",
+        "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Crisp White",
+        "hex": "#f8fafc",
+        "image": "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1598033129183-c4f50c736f10?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
+    ],
+    "tags": ["Breathable", "Premium", "Linen", "Shirt"],
     "stock": 50,
     "inStock": true,
     "isFeatured": true,
     "isNewArrival": false,
     "isBestSeller": false,
-    "sku": "NET-SHT-004",
+    "sku": "NET-SHT-006",
     "brand": "NETRAVE Couture",
     "weight": "240g",
     "dimensions": "34 x 26 x 3 cm",
     "shippingInfo": "Ships within 24 hours. Express courier delivery in 2-4 business days.",
     "returnInfo": "7-day return and exchange policy.",
-    "variants": [
-      { "id": "v4-1", "title": "Sage Green / M", "options": { "Size": "M", "Color": "Sage Green" }, "price": 1199, "stock": 20, "sku": "NET-SHT-SGE-M", "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v4-2", "title": "Sage Green / L", "options": { "Size": "L", "Color": "Sage Green" }, "price": 1199, "stock": 30, "sku": "NET-SHT-SGE-L", "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80" }
-    ],
-    "variantOptions": [
-      { "name": "Size", "values": ["M", "L", "XL", "XXL"] },
-      { "name": "Color", "values": ["Sage Green", "Crisp White", "Dusty Khaki"] }
-    ],
     "costPrice": 520,
-    "supplierName": "Surat Prime Textiles Hub",
-    "supplierSku": "SR-LINEN-SH-52",
-    "supplierUrl": "https://supplier.example.com/item/SR-LINEN-SH-52",
-    "supplierCost": 520,
     "profitMargin": 679,
-    "supplierShippingCost": 45,
-    "estimatedDeliveryDays": "3-4 Days",
-    "supplierStockStatus": "In Stock",
-    "supplierNotes": "Quality verified. Fabric does not shrink."
+    "supplierName": "Surat Prime Textiles Hub"
   },
   {
     "id": 7,
-    "title": "Multi-Pocket Athletic Cargo Pants",
+    "title": "Tactical 6-Pocket Heavy Ripstop Cargo Pants",
     "category": "pants",
     "subcategory": "tactical-cargo",
     "price": 1299,
     "originalPrice": 2199,
     "rating": 4.8,
-    "reviews": 31,
+    "reviews": 142,
     "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
     "images": [
       "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
       "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=600&auto=format&fit=crop&q=80"
     ],
-    "shortDescription": "Heavy cotton twill cargo pants with 6 utility pockets and drawstring cuffs.",
+    "shortDescription": "Heavy cotton twill cargo pants with 6 utility pockets and drawstring ankle cuffs.",
     "description": "<h3>Rugged Multi-Pocket Tactical Cargo</h3><p>Crafted from <strong>heavy 320 GSM cotton ripstop twill</strong>. Features 6 deep utility bellows pockets, elasticated waistband with drawstring, and ankle cinch cords for an authentic streetwear silhouette.</p>",
-    "sizes": ["30", "32", "34", "36"],
+    "sizes": ["30", "32", "34", "36", "38"],
     "colors": ["Matte Black", "Olive Drab", "Desert Khaki"],
+    "colorVariants": [
+      {
+        "color": "Matte Black",
+        "hex": "#111827",
+        "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80"
+        ]
+      },
+      {
+        "color": "Olive Drab",
+        "hex": "#3f6212",
+        "image": "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=600&auto=format&fit=crop&q=80",
+        "images": [
+          "https://images.unsplash.com/photo-1517445312882-bc9910d016b7?w=600&auto=format&fit=crop&q=80"
+        ]
+      }
+    ],
     "tags": ["Rugged", "Cargo", "Utility", "Streetwear"],
     "stock": 50,
     "inStock": true,
@@ -179,72 +396,8 @@
     "dimensions": "36 x 28 x 4 cm",
     "shippingInfo": "Ships within 24 hours. Express courier delivery in 2-4 business days.",
     "returnInfo": "7-day return and exchange policy.",
-    "variants": [
-      { "id": "v7-1", "title": "Matte Black / 32", "options": { "Size": "32", "Color": "Matte Black" }, "price": 1299, "stock": 25, "sku": "NET-PNT-BLK-32", "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v7-2", "title": "Matte Black / 34", "options": { "Size": "34", "Color": "Matte Black" }, "price": 1299, "stock": 25, "sku": "NET-PNT-BLK-34", "image": "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80" }
-    ],
-    "variantOptions": [
-      { "name": "Size", "values": ["30", "32", "34", "36"] },
-      { "name": "Color", "values": ["Matte Black", "Olive Drab", "Desert Khaki"] }
-    ],
     "costPrice": 580,
-    "supplierName": "Guangzhou Tactical Apparel",
-    "supplierSku": "GZ-CARGO-TACT-01",
-    "supplierUrl": "https://supplier.example.com/item/GZ-CARGO-TACT-01",
-    "supplierCost": 580,
     "profitMargin": 719,
-    "supplierShippingCost": 60,
-    "estimatedDeliveryDays": "4-6 Days",
-    "supplierStockStatus": "In Stock",
-    "supplierNotes": "Reinforced knee stitching and premium metal zippers."
-  },
-  {
-    "id": 16,
-    "title": "Sunset Beach Breeze Tee",
-    "category": "summer-t-shirt",
-    "subcategory": "breeze-tees",
-    "price": 549,
-    "originalPrice": 999,
-    "rating": 4.7,
-    "reviews": 32,
-    "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
-    "images": [
-      "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=600&auto=format&fit=crop&q=80"
-    ],
-    "shortDescription": "Ultra-lightweight breathable pastel cream summer tee in 180 GSM cotton.",
-    "description": "<h3>Sunset Beach Breeze Tee</h3><p>Designed for tropical and hot climates using <strong>180 GSM airy combed cotton</strong>. Soft pastel palette with subtle chest typography and anti-sweat breathable weave.</p>",
-    "sizes": ["S", "M", "L", "XL"],
-    "colors": ["Cream Pastel", "Sky Blue", "Coral Peach"],
-    "tags": ["Summer", "Breathable", "Lightweight"],
-    "stock": 45,
-    "inStock": true,
-    "isFeatured": false,
-    "isNewArrival": true,
-    "isBestSeller": false,
-    "sku": "NET-SMR-016",
-    "brand": "NETRAVE Summer",
-    "weight": "190g",
-    "dimensions": "30 x 22 x 2 cm",
-    "shippingInfo": "Ships within 24 hours. Express courier delivery in 2-4 business days.",
-    "returnInfo": "7-day return and exchange policy.",
-    "variants": [
-      { "id": "v16-1", "title": "Cream Pastel / M", "options": { "Size": "M", "Color": "Cream Pastel" }, "price": 549, "stock": 20, "sku": "NET-SMR-CRM-M", "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80" },
-      { "id": "v16-2", "title": "Cream Pastel / L", "options": { "Size": "L", "Color": "Cream Pastel" }, "price": 549, "stock": 25, "sku": "NET-SMR-CRM-L", "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80" }
-    ],
-    "variantOptions": [
-      { "name": "Size", "values": ["S", "M", "L", "XL"] },
-      { "name": "Color", "values": ["Cream Pastel", "Sky Blue", "Coral Peach"] }
-    ],
-    "costPrice": 230,
-    "supplierName": "Coastal Garments Hub",
-    "supplierSku": "CG-BRZ-TEE-22",
-    "supplierUrl": "https://supplier.example.com/item/CG-BRZ-TEE-22",
-    "supplierCost": 230,
-    "profitMargin": 319,
-    "supplierShippingCost": 35,
-    "estimatedDeliveryDays": "2-3 Days",
-    "supplierStockStatus": "In Stock",
-    "supplierNotes": "High summer demand item."
+    "supplierName": "Guangzhou Tactical Apparel"
   }
 ]

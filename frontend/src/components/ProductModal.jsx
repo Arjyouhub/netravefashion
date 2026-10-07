@@ -33,11 +33,43 @@ export default function ProductModal({
 
     // Recently Viewed Products
     const [recentlyViewedIds, setRecentlyViewedIds] = useState([]);
+    const [selectedColor, setSelectedColor] = useState('');
 
-    // Image list builder
-    const imagesList = product
-        ? (Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80'])
+    // Available Color Variants (Flipkart Style)
+    const availableColorVariants = product
+        ? (Array.isArray(product.colorVariants) && product.colorVariants.length > 0
+            ? product.colorVariants
+            : (Array.isArray(product.colors) && product.colors.length > 0
+                ? product.colors.map(col => ({
+                    color: col,
+                    hex: col.toLowerCase().includes('black') ? '#090b10' : col.toLowerCase().includes('white') ? '#ffffff' : col.toLowerCase().includes('red') ? '#dc2626' : col.toLowerCase().includes('blue') ? '#1e3a8a' : col.toLowerCase().includes('green') ? '#15803d' : '#475569',
+                    image: product.image || '',
+                    images: product.images || []
+                }))
+                : []))
         : [];
+
+    const activeColorVariant = availableColorVariants.find(cv => cv.color === selectedColor) || availableColorVariants[0] || null;
+
+    // Dynamic Image List for Selected Color
+    let imagesList = [];
+    if (activeColorVariant) {
+        if (Array.isArray(activeColorVariant.images) && activeColorVariant.images.length > 0) {
+            imagesList = [...activeColorVariant.images];
+        } else if (activeColorVariant.image) {
+            imagesList = [activeColorVariant.image];
+            if (Array.isArray(product.images)) {
+                product.images.forEach(img => {
+                    if (!imagesList.includes(img)) imagesList.push(img);
+                });
+            }
+        }
+    }
+    if (imagesList.length === 0) {
+        imagesList = product
+            ? (Array.isArray(product.images) && product.images.length > 0 ? product.images : [product.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80'])
+            : [];
+    }
 
     const activeImage = imagesList[activeImageIndex] || imagesList[0];
 
@@ -49,8 +81,16 @@ export default function ProductModal({
         setQty(1);
         setVariantError('');
 
+        // Determine default Color
+        const defaultColor = (product.colorVariants && product.colorVariants[0]?.color)
+            || (product.colors && product.colors[0])
+            || '';
+        setSelectedColor(defaultColor);
+
         // Initialize default option selections
         const initial = {};
+        if (defaultColor) initial['Color'] = defaultColor;
+
         if (Array.isArray(product.variantOptions) && product.variantOptions.length > 0) {
             product.variantOptions.forEach(opt => {
                 if (opt.values && opt.values.length > 0) {
@@ -60,9 +100,6 @@ export default function ProductModal({
         } else {
             if (Array.isArray(product.sizes) && product.sizes.length > 0) {
                 initial['Size'] = product.sizes[0];
-            }
-            if (Array.isArray(product.colors) && product.colors.length > 0) {
-                initial['Color'] = product.colors[0];
             }
         }
         setSelectedOptions(initial);
@@ -119,10 +156,21 @@ export default function ProductModal({
     // Recently viewed product models
     const recentlyViewedProducts = allProducts.filter(p => recentlyViewedIds.includes(p.id)).slice(0, 4);
 
+    // Flipkart-style Color Selection Handler
+    const handleSelectColor = (colorName) => {
+        setSelectedColor(colorName);
+        setSelectedOptions(prev => ({ ...prev, Color: colorName }));
+        setActiveImageIndex(0);
+        setVariantError('');
+    };
+
     const handleSelectOption = (optName, val) => {
+        if (optName === 'Color') {
+            handleSelectColor(val);
+            return;
+        }
         setSelectedOptions(prev => {
             const updated = { ...prev, [optName]: val };
-            // If the matching variant has an image, switch gallery preview
             if (Array.isArray(product.variants)) {
                 const match = product.variants.find(v => {
                     if (!v.options) return false;
@@ -405,13 +453,180 @@ export default function ProductModal({
                             </p>
                         )}
 
-                        {/* DYNAMIC VARIANT SELECTORS (Size, Color, Material, etc.) */}
-                        {Array.isArray(product.variantOptions) && product.variantOptions.length > 0 ? (
-                            product.variantOptions.map(option => (
+                        {/* 1. FLIPKART-STYLE COLOR VARIANT SELECTOR */}
+                        {availableColorVariants.length > 0 && (
+                            <div className="color-variant-selector-section" style={{ marginBottom: '18px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                        Color: <strong style={{ color: 'var(--primary)', textTransform: 'none', fontSize: '14px' }}>{selectedColor || 'Select a color'}</strong>
+                                    </span>
+                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                                        {availableColorVariants.length} Color{availableColorVariants.length > 1 ? 's' : ''} Available
+                                    </span>
+                                </div>
+                                <div style={{ 
+                                    display: 'flex', 
+                                    gap: '10px', 
+                                    overflowX: 'auto', 
+                                    paddingBottom: '6px',
+                                    paddingTop: '2px',
+                                    WebkitOverflowScrolling: 'touch' 
+                                }}>
+                                    {availableColorVariants.map((cVar, idx) => {
+                                        const isSelected = (selectedColor === cVar.color);
+                                        return (
+                                            <button
+                                                key={cVar.color || idx}
+                                                type="button"
+                                                onClick={() => handleSelectColor(cVar.color)}
+                                                style={{
+                                                    display: 'flex',
+                                                    flexDirection: 'column',
+                                                    alignItems: 'center',
+                                                    padding: '6px',
+                                                    borderRadius: '10px',
+                                                    background: isSelected ? 'rgba(245, 158, 11, 0.12)' : '#12141c',
+                                                    border: isSelected ? '2px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.14)',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                                    position: 'relative',
+                                                    minWidth: '68px',
+                                                    maxWidth: '84px',
+                                                    flexShrink: 0,
+                                                    boxShadow: isSelected ? '0 0 16px rgba(245, 158, 11, 0.25)' : 'none',
+                                                    transform: isSelected ? 'scale(1.03)' : 'scale(1)'
+                                                }}
+                                                title={`Select ${cVar.color}`}
+                                            >
+                                                {/* Selected Checkmark Badge */}
+                                                {isSelected && (
+                                                    <span style={{
+                                                        position: 'absolute',
+                                                        top: '-5px',
+                                                        right: '-5px',
+                                                        background: 'var(--primary)',
+                                                        color: '#0a0b0e',
+                                                        borderRadius: '50%',
+                                                        width: '18px',
+                                                        height: '18px',
+                                                        fontSize: '11px',
+                                                        fontWeight: '900',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.5)',
+                                                        zIndex: 3
+                                                    }}>
+                                                        ✓
+                                                    </span>
+                                                )}
+                                                
+                                                {/* Color Preview Image / Swatch */}
+                                                <div style={{
+                                                    width: '54px',
+                                                    height: '54px',
+                                                    borderRadius: '8px',
+                                                    overflow: 'hidden',
+                                                    background: '#090b10',
+                                                    marginBottom: '5px',
+                                                    position: 'relative',
+                                                    border: '1px solid rgba(255,255,255,0.08)'
+                                                }}>
+                                                    {cVar.image ? (
+                                                        <img src={cVar.image} alt={cVar.color} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                    ) : (
+                                                        <div style={{ width: '100%', height: '100%', backgroundColor: cVar.hex || '#1e293b' }} />
+                                                    )}
+                                                    {cVar.hex && (
+                                                        <span style={{
+                                                            position: 'absolute',
+                                                            bottom: '2px',
+                                                            right: '2px',
+                                                            width: '12px',
+                                                            height: '12px',
+                                                            borderRadius: '50%',
+                                                            backgroundColor: cVar.hex,
+                                                            border: '1.5px solid #000'
+                                                        }} />
+                                                    )}
+                                                </div>
+
+                                                <span style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: isSelected ? '800' : '600',
+                                                    color: isSelected ? 'var(--primary)' : '#cbd5e1',
+                                                    textAlign: 'center',
+                                                    lineHeight: '1.2',
+                                                    whiteSpace: 'nowrap',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis',
+                                                    maxWidth: '70px'
+                                                }}>
+                                                    {cVar.color}
+                                                </span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 2. SIZE SELECTOR */}
+                        {(() => {
+                            const sizesList = (product.variantOptions?.find(o => o.name?.toLowerCase() === 'size')?.values) 
+                                || product.sizes 
+                                || [];
+                            if (sizesList.length === 0) return null;
+                            const currentSize = selectedOptions['Size'] || sizesList[0];
+                            return (
+                                <div style={{ marginBottom: '18px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                        <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                                            Select Size: <strong style={{ color: 'var(--primary)', textTransform: 'none', fontSize: '14px' }}>{currentSize}</strong>
+                                        </span>
+                                        <span style={{ fontSize: '11.5px', color: 'var(--primary)', cursor: 'pointer', fontWeight: '700' }}>
+                                            📏 Size Chart
+                                        </span>
+                                    </div>
+                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                                        {sizesList.map(size => {
+                                            const isSelected = (currentSize === size);
+                                            return (
+                                                <button
+                                                    key={size}
+                                                    type="button"
+                                                    onClick={() => handleSelectOption('Size', size)}
+                                                    style={{
+                                                        background: isSelected ? 'var(--primary)' : '#141828',
+                                                        color: isSelected ? '#0a0b0e' : '#fff',
+                                                        border: isSelected ? '1.5px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                                        borderRadius: '8px',
+                                                        padding: '8px 16px',
+                                                        fontSize: '13px',
+                                                        fontWeight: '800',
+                                                        cursor: 'pointer',
+                                                        transition: 'all 0.15s ease',
+                                                        minWidth: '48px',
+                                                        boxShadow: isSelected ? '0 0 12px rgba(245, 158, 11, 0.25)' : 'none'
+                                                    }}
+                                                >
+                                                    {size}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
+                        {/* 3. OTHER CUSTOM VARIANT OPTIONS (e.g. Fit, Material) */}
+                        {Array.isArray(product.variantOptions) && product.variantOptions
+                            .filter(opt => opt.name?.toLowerCase() !== 'size' && opt.name?.toLowerCase() !== 'color')
+                            .map(option => (
                                 <div key={option.name} style={{ marginBottom: '16px' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                                         <span style={{ fontSize: '13px', fontWeight: '700', color: '#fff' }}>
-                                            Select {option.name}: <strong style={{ color: 'var(--primary)' }}>{selectedOptions[option.name]}</strong>
+                                            {option.name}: <strong style={{ color: 'var(--primary)' }}>{selectedOptions[option.name]}</strong>
                                         </span>
                                     </div>
                                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -440,41 +655,48 @@ export default function ProductModal({
                                         })}
                                     </div>
                                 </div>
-                            ))
-                        ) : (
-                            /* Fallback to simple sizes selector */
-                            product.sizes?.length > 0 && (
-                                <div style={{ marginBottom: '16px' }}>
-                                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '6px' }}>
-                                        Select Size: <strong style={{ color: 'var(--primary)' }}>{selectedOptions['Size']}</strong>
-                                    </div>
-                                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                                        {product.sizes.map(size => {
-                                            const isSelected = selectedOptions['Size'] === size;
-                                            return (
-                                                <button
-                                                    key={size}
-                                                    type="button"
-                                                    onClick={() => handleSelectOption('Size', size)}
-                                                    style={{
-                                                        background: isSelected ? 'var(--primary)' : '#141828',
-                                                        color: isSelected ? '#0a0b0e' : '#fff',
-                                                        border: isSelected ? '1.5px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.15)',
-                                                        borderRadius: '8px',
-                                                        padding: '7px 14px',
-                                                        fontSize: '13px',
-                                                        fontWeight: '700',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    {size}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
+                            ))}
+
+                        {/* 4. FLIPKART STYLE TRUST & CONFIDENCE BADGES */}
+                        <div style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(2, 1fr)',
+                            gap: '8px',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            borderRadius: '10px',
+                            padding: '12px',
+                            marginBottom: '16px'
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '18px' }}>🛡️</span>
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>100% Genuine</div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Netrave Assured Quality</div>
                                 </div>
-                            )
-                        )}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '18px' }}>🔄</span>
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>7-Day Returns</div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Easy & Hassle-Free</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '18px' }}>🚚</span>
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>Free Express Shipping</div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>On orders above ₹999</div>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontSize: '18px' }}>⚡</span>
+                                <div>
+                                    <div style={{ fontSize: '12px', fontWeight: '800', color: '#fff' }}>24h Fast Dispatch</div>
+                                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Kerala Hub Express</div>
+                                </div>
+                            </div>
+                        </div>
 
                         {variantError && (
                             <div style={{ color: '#ef4444', fontSize: '12.5px', fontWeight: '700', marginBottom: '10px' }}>

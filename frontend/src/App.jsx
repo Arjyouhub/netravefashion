@@ -20,77 +20,218 @@ import { getCookie, setCookie, eraseCookie } from './utils/cookies';
 const FALLBACK_PRODUCTS = [
     {
         id: 1,
-        title: "Oversized Acid-Wash Graphic Tee",
+        title: "Oversized Acid-Wash Graphic Streetwear Tee",
         category: "t-shirt",
+        subcategory: "acid-wash",
         price: 699,
         originalPrice: 1199,
         rating: 4.8,
-        reviews: 24,
+        reviews: 128,
         image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
-        description: "Streetwear aesthetic oversized t-shirt crafted from heavy 240 GSM organic cotton. Featuring a vintage acid-washed finish and custom graphic backprint. Perfect for relaxed casual styling.",
-        sizes: ["M", "L", "XL", "XXL"],
-        tags: ["New", "Oversized"],
+        images: [
+            "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80"
+        ],
+        shortDescription: "Heavyweight 240 GSM organic cotton streetwear tee with vintage acid wash finish.",
+        description: "Streetwear aesthetic oversized t-shirt crafted from heavy 240 GSM organic cotton. Featuring a vintage acid-washed finish and custom graphic backprint.",
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Charcoal Black", "Washed Olive", "Vintage Grey"],
+        colorVariants: [
+            {
+                color: "Charcoal Black",
+                hex: "#1e293b",
+                image: "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Washed Olive",
+                hex: "#4b5320",
+                image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["New", "Oversized", "Trending"],
         stock: 50,
         inStock: true
     },
     {
         id: 2,
-        title: "Classic Vintage Crewneck Tee",
-        category: "t-shirt",
-        price: 499,
-        originalPrice: 899,
-        rating: 4.5,
-        reviews: 42,
-        image: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80",
-        description: "Essential everyday crewneck t-shirt made from 100% premium combed cotton. Super-soft feel, breathable fabric, and durable double-needle stitching that retains shape wash after wash.",
-        sizes: ["M", "L", "XL"],
-        tags: ["Basic"],
-        stock: 50,
+        title: "AeroStryke Chunky Streetwear Sneakers",
+        category: "footwear",
+        subcategory: "sneakers",
+        price: 1899,
+        originalPrice: 3499,
+        rating: 4.9,
+        reviews: 215,
+        image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+        images: [
+            "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80"
+        ],
+        shortDescription: "High-impact cushioned EVA chunky sole streetwear sneakers with breathable mesh.",
+        description: "Engineered for maximum street style and all-day shock absorption. Built with lightweight TPU heel stabilizers.",
+        sizes: ["UK 7", "UK 8", "UK 9", "UK 10"],
+        colors: ["Crimson Red", "Stealth Black"],
+        colorVariants: [
+            {
+                color: "Crimson Red",
+                hex: "#dc2626",
+                image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Stealth Black",
+                hex: "#090b10",
+                image: "https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1608231387042-66d1773070a5?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["Footwear", "Trending", "Sneakers"],
+        stock: 40,
+        inStock: true
+    },
+    {
+        id: 3,
+        title: "Royal Kanjivaram Pure Silk Zari Saree",
+        category: "saree",
+        subcategory: "kanjivaram-silk",
+        price: 2499,
+        originalPrice: 5999,
+        rating: 4.9,
+        reviews: 184,
+        image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+        images: [
+            "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"
+        ],
+        shortDescription: "Traditional lustrous pure art silk saree with intricate golden zari floral pallu.",
+        description: "Exclusively handwoven with rich golden zari borders and intricate floral peacock motifs across the regal pallu.",
+        sizes: ["Free Size (5.5m + 0.8m)"],
+        colors: ["Royal Maroon", "Emerald Green"],
+        colorVariants: [
+            {
+                color: "Royal Maroon",
+                hex: "#881337",
+                image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Emerald Green",
+                hex: "#065f46",
+                image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["Ethnic", "Saree", "Wedding"],
+        stock: 35,
         inStock: true
     },
     {
         id: 4,
-        title: "Premium Linen Casual Shirt",
+        title: "Designer Embroidered Anarkali Kurti Set",
+        category: "kurti",
+        subcategory: "anarkali-sets",
+        price: 1499,
+        originalPrice: 2799,
+        rating: 4.7,
+        reviews: 96,
+        image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+        images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"],
+        shortDescription: "Full-flair georgette Anarkali kurti with intricate sequin yoke and organza dupatta.",
+        description: "Elevate your ethnic fashion with this graceful Anarkali suit set with hand-worked sequin neckline.",
+        sizes: ["M", "L", "XL", "XXL"],
+        colors: ["Dusty Rose Pink"],
+        colorVariants: [
+            {
+                color: "Dusty Rose Pink",
+                hex: "#f472b6",
+                image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["Ethnic", "Kurti", "Festive"],
+        stock: 45,
+        inStock: true
+    },
+    {
+        id: 5,
+        title: "Tactical Multi-Pocket Bomber Jacket",
+        category: "hoodies",
+        subcategory: "bomber-jackets",
+        price: 1999,
+        originalPrice: 3999,
+        rating: 4.8,
+        reviews: 112,
+        image: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+        images: ["https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80"],
+        shortDescription: "Thermal insulated water-resistant streetwear flight bomber jacket with arm utility zip.",
+        description: "Engineered for all-season versatility with water-repellent matte polyester shell.",
+        sizes: ["M", "L", "XL"],
+        colors: ["Matte Black"],
+        colorVariants: [
+            {
+                color: "Matte Black",
+                hex: "#111827",
+                image: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["Jackets", "Winter", "Bomber"],
+        stock: 30,
+        inStock: true
+    },
+    {
+        id: 6,
+        title: "Pure French Linen Casual Button-Down Shirt",
         category: "shirt",
+        subcategory: "linen-blend",
         price: 1199,
         originalPrice: 1999,
         rating: 4.6,
-        reviews: 35,
+        reviews: 85,
         image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
-        description: "Tailored from ultra-breathable pure linen blend fabric. Featuring structured collar, button-up front, and curved hemline. Perfect styling option for humid Kerala weather.",
+        images: ["https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80"],
+        shortDescription: "Tailored from ultra-breathable pure linen blend with classic spread collar.",
+        description: "Tailored from ultra-breathable French linen blend fabric. Designed with a structured spread collar.",
         sizes: ["M", "L", "XL", "XXL"],
-        tags: ["Breathable"],
+        colors: ["Sage Green"],
+        colorVariants: [
+            {
+                color: "Sage Green",
+                hex: "#4d7c0f",
+                image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["Breathable", "Premium", "Linen"],
         stock: 50,
         inStock: true
     },
     {
         id: 7,
-        title: "Multi-Pocket Athletic Cargo Pants",
+        title: "Tactical 6-Pocket Heavy Ripstop Cargo Pants",
         category: "pants",
+        subcategory: "tactical-cargo",
         price: 1299,
         originalPrice: 2199,
         rating: 4.8,
-        reviews: 31,
+        reviews: 142,
         image: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
-        description: "Rugged and functional cargo pants featuring double side utility pockets, elasticated cuffs, and heavy cotton twill fabric. Designed for outdoor adventure and urban streetwear aesthetic.",
-        sizes: ["M", "L", "XL", "XXL"],
-        tags: ["Rugged"],
+        images: ["https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80"],
+        shortDescription: "Heavy cotton twill cargo pants with 6 utility pockets and drawstring ankle cuffs.",
+        description: "Crafted from heavy 320 GSM cotton ripstop twill. Features 6 deep utility bellows pockets.",
+        sizes: ["30", "32", "34", "36"],
+        colors: ["Matte Black"],
+        colorVariants: [
+            {
+                color: "Matte Black",
+                hex: "#111827",
+                image: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80"]
+            }
+        ],
+        tags: ["Rugged", "Cargo", "Utility"],
         stock: 50,
-        inStock: true
-    },
-    {
-        id: 16,
-        title: "Sunset Beach Breeze Tee",
-        category: "summer-t-shirt",
-        price: 549,
-        originalPrice: 999,
-        rating: 4.7,
-        reviews: 32,
-        image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
-        description: "Ultra-lightweight premium summer t-shirt in a pastel cream tone, designed for hot days. 100% combed cotton, 180 GSM, and a relaxed comfort fit.",
-        sizes: ["M", "L", "XL"],
-        tags: ["Summer", "Breathable"],
-        stock: 45,
         inStock: true
     }
 ];
@@ -397,7 +538,9 @@ export default function App() {
     };
 
     const handleAddToCart = (product, size, quantity) => {
-        const existingIndex = cart.findIndex(item => item.id === product.id && item.size === size);
+        const itemColor = product.color || product.selectedOptions?.Color || '';
+        const itemImage = product.image || (product.images && product.images[0]) || '';
+        const existingIndex = cart.findIndex(item => item.id === product.id && item.size === size && (item.color || '') === itemColor);
         let updatedCart = [...cart];
 
         if (existingIndex > -1) {
@@ -406,11 +549,14 @@ export default function App() {
             updatedCart.push({
                 id: product.id,
                 title: product.title,
-                image: product.image,
+                image: itemImage,
                 price: product.price,
                 size: size,
+                color: itemColor,
+                selectedOptions: product.selectedOptions || {},
                 quantity: quantity,
-                category: product.category
+                category: product.category,
+                sku: product.sku
             });
         }
 

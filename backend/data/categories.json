@@ -19,37 +19,37 @@
   },
   {
     "id": 2,
-    "name": "Summer Wear",
-    "slug": "summer-t-shirt",
-    "description": "Ultra-lightweight breathable pastel t-shirts and relaxed fit casuals for hot climate.",
-    "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
-    "banner": "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&auto=format&fit=crop&q=80",
-    "color": "#38bdf8",
-    "status": "active",
-    "displayOrder": 2,
-    "subcategories": [
-      { "id": "breeze-tees", "name": "Breeze Cotton Tees", "slug": "breeze-tees" },
-      { "id": "pastel-collection", "name": "Pastel Tops", "slug": "pastel-collection" },
-      { "id": "beachwear", "name": "Resort & Beach", "slug": "beachwear" }
-    ],
-    "createdAt": "2026-01-12T10:00:00.000Z"
-  },
-  {
-    "id": 3,
-    "name": "Casual Shirts",
+    "name": "Casual & Linen Shirts",
     "slug": "shirt",
     "description": "Pure linen and textured oxford cotton shirts tailored for modern everyday luxury.",
     "image": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
     "banner": "https://images.unsplash.com/photo-1489987707025-afc232f7ea0f?w=1200&auto=format&fit=crop&q=80",
     "color": "#10b981",
     "status": "active",
-    "displayOrder": 3,
+    "displayOrder": 2,
     "subcategories": [
       { "id": "linen-blend", "name": "Linen Blend", "slug": "linen-blend" },
       { "id": "oxford-cotton", "name": "Oxford Cotton", "slug": "oxford-cotton" },
       { "id": "cuban-collar", "name": "Cuban Collar", "slug": "cuban-collar" }
     ],
     "createdAt": "2026-01-15T10:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Jackets & Hoodies",
+    "slug": "hoodies",
+    "description": "Heavyweight 380 GSM fleece pullover hoodies, bomber jackets, and streetwear zip tracks.",
+    "image": "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1200&auto=format&fit=crop&q=80",
+    "color": "#f43f5e",
+    "status": "active",
+    "displayOrder": 3,
+    "subcategories": [
+      { "id": "bomber-jackets", "name": "Bomber Jackets", "slug": "bomber-jackets" },
+      { "id": "pullover-hoodies", "name": "Pullover Hoodies", "slug": "pullover-hoodies" },
+      { "id": "zip-jackets", "name": "Zip Track Jackets", "slug": "zip-jackets" }
+    ],
+    "createdAt": "2026-01-20T10:00:00.000Z"
   },
   {
     "id": 4,
@@ -70,18 +70,71 @@
   },
   {
     "id": 5,
-    "name": "Hoodies & Jackets",
-    "slug": "hoodies",
-    "description": "Heavyweight 380 GSM fleece pullover hoodies and oversized zip track jackets.",
-    "image": "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
-    "banner": "https://images.unsplash.com/photo-1509631179647-0177331693ae?w=1200&auto=format&fit=crop&q=80",
-    "color": "#f43f5e",
+    "name": "Footwear & Shoes",
+    "slug": "footwear",
+    "description": "Premium chunky streetwear sneakers, lightweight running shoes, and luxury leather casuals.",
+    "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1552346154-21d32810aba3?w=1200&auto=format&fit=crop&q=80",
+    "color": "#ec4899",
     "status": "active",
     "displayOrder": 5,
     "subcategories": [
-      { "id": "pullover-hoodies", "name": "Pullover Hoodies", "slug": "pullover-hoodies" },
-      { "id": "zip-jackets", "name": "Zip Jackets", "slug": "zip-jackets" }
+      { "id": "sneakers", "name": "Streetwear Sneakers", "slug": "sneakers" },
+      { "id": "running-shoes", "name": "Sport & Running", "slug": "running-shoes" },
+      { "id": "casual-shoes", "name": "Casual Loafers & Slides", "slug": "casual-shoes" }
     ],
-    "createdAt": "2026-01-20T10:00:00.000Z"
+    "createdAt": "2026-02-01T10:00:00.000Z"
+  },
+  {
+    "id": 6,
+    "name": "Sarees & Traditional",
+    "slug": "saree",
+    "description": "Authentic Kanjivaram silk, designer chiffon, organza, and festive wedding collection sarees.",
+    "image": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=1200&auto=format&fit=crop&q=80",
+    "color": "#eab308",
+    "status": "active",
+    "displayOrder": 6,
+    "subcategories": [
+      { "id": "kanjivaram-silk", "name": "Kanjivaram Silk", "slug": "kanjivaram-silk" },
+      { "id": "designer-chiffon", "name": "Designer Chiffon & Georgette", "slug": "designer-chiffon" },
+      { "id": "banarasi", "name": "Banarasi Weaves", "slug": "banarasi" },
+      { "id": "linen-cotton-saree", "name": "Linen & Handloom Cotton", "slug": "linen-cotton-saree" }
+    ],
+    "createdAt": "2026-02-02T10:00:00.000Z"
+  },
+  {
+    "id": 7,
+    "name": "Kurtis & Ethnic Sets",
+    "slug": "kurti",
+    "description": "Designer embroidered Anarkali sets, daily wear straight kurtis, and festive palazzo co-ords.",
+    "image": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=1200&auto=format&fit=crop&q=80",
+    "color": "#06b6d4",
+    "status": "active",
+    "displayOrder": 7,
+    "subcategories": [
+      { "id": "anarkali-sets", "name": "Anarkali Suit Sets", "slug": "anarkali-sets" },
+      { "id": "straight-kurtis", "name": "Straight Cut Kurtis", "slug": "straight-kurtis" },
+      { "id": "festive-ethnic", "name": "Festive & Wedding Ethnic", "slug": "festive-ethnic" }
+    ],
+    "createdAt": "2026-02-03T10:00:00.000Z"
+  },
+  {
+    "id": 8,
+    "name": "Summer Wear",
+    "slug": "summer-t-shirt",
+    "description": "Ultra-lightweight breathable pastel t-shirts and relaxed fit casuals for hot climate.",
+    "image": "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+    "banner": "https://images.unsplash.com/photo-1469334031218-e382a71b716b?w=1200&auto=format&fit=crop&q=80",
+    "color": "#38bdf8",
+    "status": "active",
+    "displayOrder": 8,
+    "subcategories": [
+      { "id": "breeze-tees", "name": "Breeze Cotton Tees", "slug": "breeze-tees" },
+      { "id": "pastel-collection", "name": "Pastel Tops", "slug": "pastel-collection" },
+      { "id": "beachwear", "name": "Resort & Beach", "slug": "beachwear" }
+    ],
+    "createdAt": "2026-01-12T10:00:00.000Z"
   }
 ]

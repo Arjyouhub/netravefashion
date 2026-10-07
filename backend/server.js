@@ -20,7 +20,8 @@ app.set('trust proxy', true);
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 const productsPath = path.join(__dirname, 'data', 'products.json');
 const categoriesPath = path.join(__dirname, 'data', 'categories.json');
@@ -150,6 +151,7 @@ const ProductSchema = new mongoose.Schema({
     returnInfo: { type: String, default: '' },
     variants: [mongoose.Schema.Types.Mixed],
     variantOptions: [mongoose.Schema.Types.Mixed],
+    colorVariants: [mongoose.Schema.Types.Mixed],
     // Confidential Supplier & Sourcing Fields (Admin-Only)
     costPrice: { type: Number, default: 0 },
     supplierName: { type: String, default: '' },
@@ -489,40 +491,89 @@ const requireAdminOrDeveloper = async (req, res, next) => {
 };
 
 // Static files for Uploads
-app.use('/uploads', express.static(path.join(__dirname, 'public', 'uploads')));
+const publicUploadsDir = path.join(__dirname, 'public', 'uploads');
+app.use('/uploads', express.static(publicUploadsDir));
+app.use('/public/uploads', express.static(publicUploadsDir));
+app.use('/api/uploads', express.static(publicUploadsDir));
 
 // Multer Upload Setup
 const storage = multer.diskStorage({
     destination: async (req, file, cb) => {
-        const uploadDir = path.join(__dirname, 'public', 'uploads');
-        await fs.mkdir(uploadDir, { recursive: true });
-        cb(null, uploadDir);
+        try {
+            await fs.mkdir(publicUploadsDir, { recursive: true });
+            cb(null, publicUploadsDir);
+        } catch (e) {
+            cb(e, publicUploadsDir);
+        }
     },
     filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, uniqueSuffix + path.extname(file.originalname));
+        const ext = path.extname(file.originalname) || '.jpg';
+        cb(null, `photo-${uniqueSuffix}${ext}`);
     }
 });
-const upload = multer({ storage });
+const upload = multer({ 
+    storage,
+    limits: { fileSize: 25 * 1024 * 1024 } // 25MB limit
+});
+
+// Helper for building absolute public URL
+const getUploadedFileUrl = (req, filename) => {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol || 'http';
+    const host = req.get('host') || 'localhost:5001';
+    return `${protocol}://${host}/uploads/${filename}`;
+};
 
 // --------------------------------------------------------------------------
 // API ENDPOINTS
 // --------------------------------------------------------------------------
 
-// 1. Upload Product Image
-app.post('/api/upload', upload.single('image'), (req, res) => {
+// 1. Upload Single Product / Variant Image
+const handleSingleUpload = (req, res) => {
     try {
-        if (!req.file) {
+        const file = req.file;
+        if (!file) {
             return res.status(400).json({ error: 'No image file uploaded.' });
         }
-        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
-        const host = req.get('host');
-        const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
-        res.json({ fileUrl });
+        const fileUrl = getUploadedFileUrl(req, file.filename);
+        res.json({ 
+            success: true, 
+            fileUrl, 
+            url: fileUrl, 
+            filename: file.filename,
+            size: file.size
+        });
     } catch (err) {
+        console.error('Single image upload error:', err);
         res.status(500).json({ error: 'Image upload failed.' });
     }
-});
+};
+
+app.post('/api/upload', upload.single('image'), handleSingleUpload);
+app.post('/upload', upload.single('image'), handleSingleUpload);
+
+// Multi-file upload endpoint (for bulk photo gallery upload)
+const handleMultipleUpload = (req, res) => {
+    try {
+        const files = req.files;
+        if (!files || files.length === 0) {
+            return res.status(400).json({ error: 'No image files uploaded.' });
+        }
+        const fileUrls = files.map(f => getUploadedFileUrl(req, f.filename));
+        res.json({
+            success: true,
+            fileUrls,
+            urls: fileUrls,
+            count: files.length
+        });
+    } catch (err) {
+        console.error('Multiple image upload error:', err);
+        res.status(500).json({ error: 'Multiple image upload failed.' });
+    }
+};
+
+app.post('/api/upload-multiple', upload.array('images', 20), handleMultipleUpload);
+app.post('/upload-multiple', upload.array('images', 20), handleMultipleUpload);
 
 // 2. Fetch Shop Settings
 app.get('/api/settings', async (req, res) => {
@@ -895,7 +946,7 @@ app.post('/api/products', async (req, res) => {
             sizes, colors, tags, stock, inStock,
             isFeatured, isNewArrival, isBestSeller,
             sku, brand, weight, dimensions, shippingInfo, returnInfo,
-            variants, variantOptions,
+            variants, variantOptions, colorVariants,
             supplierName, supplierSku, supplierUrl, supplierCost,
             profitMargin, supplierShippingCost, estimatedDeliveryDays,
             supplierStockStatus, supplierNotes
@@ -945,6 +996,7 @@ app.post('/api/products', async (req, res) => {
                 returnInfo: returnInfo || '7-day replacement and return guarantee.',
                 variants: Array.isArray(variants) ? variants : [],
                 variantOptions: Array.isArray(variantOptions) ? variantOptions : [],
+                colorVariants: Array.isArray(colorVariants) ? colorVariants : [],
                 supplierName: supplierName || '',
                 supplierSku: supplierSku || '',
                 supplierUrl: supplierUrl || '',
@@ -991,6 +1043,7 @@ app.post('/api/products', async (req, res) => {
                 returnInfo: returnInfo || '7-day replacement and return guarantee.',
                 variants: Array.isArray(variants) ? variants : [],
                 variantOptions: Array.isArray(variantOptions) ? variantOptions : [],
+                colorVariants: Array.isArray(colorVariants) ? colorVariants : [],
                 supplierName: supplierName || '',
                 supplierSku: supplierSku || '',
                 supplierUrl: supplierUrl || '',
@@ -1025,7 +1078,7 @@ app.put('/api/products/:id', async (req, res) => {
             sizes, colors, tags, stock, inStock,
             isFeatured, isNewArrival, isBestSeller,
             sku, brand, weight, dimensions, shippingInfo, returnInfo,
-            variants, variantOptions,
+            variants, variantOptions, colorVariants,
             supplierName, supplierSku, supplierUrl, supplierCost,
             profitMargin, supplierShippingCost, estimatedDeliveryDays,
             supplierStockStatus, supplierNotes
@@ -1063,6 +1116,7 @@ app.put('/api/products/:id', async (req, res) => {
         if (returnInfo !== undefined) updateData.returnInfo = returnInfo;
         if (variants !== undefined) updateData.variants = Array.isArray(variants) ? variants : [];
         if (variantOptions !== undefined) updateData.variantOptions = Array.isArray(variantOptions) ? variantOptions : [];
+        if (colorVariants !== undefined) updateData.colorVariants = Array.isArray(colorVariants) ? colorVariants : [];
         if (supplierName !== undefined) updateData.supplierName = supplierName;
         if (supplierSku !== undefined) updateData.supplierSku = supplierSku;
         if (supplierUrl !== undefined) updateData.supplierUrl = supplierUrl;
