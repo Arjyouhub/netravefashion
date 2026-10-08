@@ -4,7 +4,6 @@ import Footer from './components/Footer';
 import Hero from './components/Hero';
 import HomeSections from './components/HomeSections';
 import ProductGrid from './components/ProductGrid';
-import ProductModal from './components/ProductModal';
 import CartDrawer from './components/CartDrawer';
 import CheckoutModal from './components/CheckoutModal';
 import SuccessModal from './components/SuccessModal';
@@ -389,16 +388,24 @@ export default function App() {
     const navigate = (page, params = {}) => {
         setCurrentPage(page);
         setPageParams(params);
-        if (page === 'category' && params.category) {
-            setActiveCategory(params.category);
-        }
-        if (page === 'product' && params.id) {
+        if (page === 'category') {
+            if (params.category) {
+                setActiveCategory(params.category);
+            }
+            setSelectedProductId(null);
+        } else if (page === 'product' && params.id) {
             setSelectedProductId(params.id);
+        } else {
+            setSelectedProductId(null);
         }
         if (page === 'search' && params.query) {
             setSearchQuery(params.query);
         }
-        const hash = page === 'home' ? '' : `#/${page}${params.id ? '/' + params.id : ''}`;
+        const hash = page === 'home' 
+            ? '' 
+            : page === 'category' 
+                ? (params.category && params.category !== 'all' ? `#/category/${params.category}` : '#/category')
+                : `#/${page}${params.id ? '/' + params.id : ''}`;
         window.history.pushState({}, '', hash || '/');
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -409,6 +416,7 @@ export default function App() {
             if (!raw) {
                 setCurrentPage('home');
                 setPageParams({});
+                setSelectedProductId(null);
             } else {
                 const parts = raw.split('/');
                 const p = parts[0];
@@ -416,8 +424,13 @@ export default function App() {
                 setCurrentPage(p);
                 if (p === 'product' && id) {
                     setSelectedProductId(Number(id));
-                } else if (p === 'category' && id) {
-                    setActiveCategory(id);
+                } else if (p === 'category') {
+                    setSelectedProductId(null);
+                    if (id) {
+                        setActiveCategory(id);
+                    }
+                } else {
+                    setSelectedProductId(null);
                 }
             }
         };
@@ -981,7 +994,7 @@ export default function App() {
             )}
 
             {/* Offer Announcement Banner */}
-            {(settings.offerNotification && !isOfferDismissed && !settings.maintenanceMode) && (
+            {(!['login', 'signup', 'forgot-password'].includes(currentPage) && settings.offerNotification && !isOfferDismissed && !settings.maintenanceMode) && (
                 <div className="offer-banner">
                     📢 {settings.offerNotification}
                     <button className="offer-close-btn" onClick={() => setIsOfferDismissed(true)}>×</button>
@@ -989,38 +1002,41 @@ export default function App() {
             )}
 
             {/* Header Navigation */}
-            <Header
-                cartCount={cartCount}
-                wishlistCount={wishlist.length}
-                onWishlistOpen={() => navigate('wishlist')}
-                onTrackingOpen={() => navigate('tracking')}
-                onCartOpen={() => navigate('cart')}
-                onBookingsOpen={() => navigate('orders')}
-                onProfileOpen={() => navigate('account')}
-                activeCategory={activeCategory}
-                onCategoryChange={(catId) => {
-                    setActiveCategory(catId);
-                    setActiveTag(null);
-                    navigate('category', { category: catId });
-                }}
-                searchQuery={searchQuery}
-                onSearchChange={setSearchQuery}
-                mobileDrawerOpen={mobileDrawerOpen}
-                setMobileDrawerOpen={setMobileDrawerOpen}
-                activeTag={activeTag}
-                onTagChange={(tag) => {
-                    setActiveTag(tag);
-                    setActiveCategory('all');
-                }}
-                setIsAdminView={setIsAdminView}
-                onSortChange={setSortMethod}
-                user={user}
-                onLogout={handleLogout}
-                onLoginClick={() => navigate('login')}
-                onNavigate={navigate}
-                categories={categories}
-                products={products.length > 0 ? products : FALLBACK_PRODUCTS}
-            />
+            {!['login', 'signup', 'forgot-password'].includes(currentPage) && (
+                <Header
+                    currentPage={currentPage}
+                    cartCount={cartCount}
+                    wishlistCount={wishlist.length}
+                    onWishlistOpen={() => navigate('wishlist')}
+                    onTrackingOpen={() => navigate('tracking')}
+                    onCartOpen={() => navigate('cart')}
+                    onBookingsOpen={() => navigate('orders')}
+                    onProfileOpen={() => navigate('account')}
+                    activeCategory={activeCategory}
+                    onCategoryChange={(catId) => {
+                        setActiveCategory(catId);
+                        setActiveTag(null);
+                        navigate('category', { category: catId });
+                    }}
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    mobileDrawerOpen={mobileDrawerOpen}
+                    setMobileDrawerOpen={setMobileDrawerOpen}
+                    activeTag={activeTag}
+                    onTagChange={(tag) => {
+                        setActiveTag(tag);
+                        setActiveCategory('all');
+                    }}
+                    setIsAdminView={setIsAdminView}
+                    onSortChange={setSortMethod}
+                    user={user}
+                    onLogout={handleLogout}
+                    onLoginClick={() => navigate('login')}
+                    onNavigate={navigate}
+                    categories={categories}
+                    products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                />
+            )}
 
             {/* Main Area: 15 Dedicated Page Views */}
             <main className="netrave-main-viewport">
@@ -1146,6 +1162,7 @@ export default function App() {
                         onAuthSuccess={handleAuthSuccess}
                         onNavigate={navigate}
                         API_BASE_URL={API_BASE_URL}
+                        settings={settings}
                     />
                 )}
 
@@ -1155,6 +1172,7 @@ export default function App() {
                         onAuthSuccess={handleAuthSuccess}
                         onNavigate={navigate}
                         API_BASE_URL={API_BASE_URL}
+                        settings={settings}
                     />
                 )}
 
@@ -1164,6 +1182,7 @@ export default function App() {
                         onAuthSuccess={handleAuthSuccess}
                         onNavigate={navigate}
                         API_BASE_URL={API_BASE_URL}
+                        settings={settings}
                     />
                 )}
 
@@ -1238,34 +1257,11 @@ export default function App() {
             </main>
 
             {/* Dedicated Modern Footer with Preserved Logo */}
-            <Footer onNavigate={navigate} categories={categories} />
+            {!['login', 'signup', 'forgot-password'].includes(currentPage) && (
+                <Footer onNavigate={navigate} categories={categories} />
+            )}
 
             {/* Intermediary Modals & Drawers */}
-            <ProductModal
-                isOpen={selectedProductId !== null && currentPage !== 'product'}
-                product={activeProduct}
-                allProducts={products.length > 0 ? products : FALLBACK_PRODUCTS}
-                onClose={() => setSelectedProductId(null)}
-                onAddToCart={handleAddToCart}
-                onBuyNow={(prod, size, q) => {
-                    handleAddToCart(prod, size, q);
-                    setSelectedProductId(null);
-                    if (!user) {
-                        showToast('Please login or register to complete your purchase.', 'info');
-                        setPendingCheckout(true);
-                        setIsAuthOpen(true);
-                    } else {
-                        setIsCheckoutOpen(true);
-                    }
-                }}
-                isWishlisted={wishlist.includes(selectedProductId)}
-                onToggleWishlist={handleToggleWishlist}
-                onQuickView={setSelectedProductId}
-                API_BASE_URL={API_BASE_URL}
-                cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
-                onOpenCart={() => setIsCartOpen(true)}
-            />
-
             <CartDrawer
                 isOpen={isCartOpen}
                 cart={cart}
@@ -1392,7 +1388,7 @@ export default function App() {
             />
 
             {/* Mobile Bottom Navigation Bar Matching Reference */}
-            {currentPage !== 'product' && currentPage !== 'checkout' && (
+            {currentPage !== 'product' && currentPage !== 'checkout' && !['login', 'signup', 'forgot-password'].includes(currentPage) && (
                 <BottomNav
                     currentPage={currentPage}
                     cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}

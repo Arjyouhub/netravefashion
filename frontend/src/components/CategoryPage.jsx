@@ -1,10 +1,25 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import ProductCard from './ProductCard';
+
+const DEFAULT_CATEGORIES = [
+    { slug: 'all', name: 'All', icon: '🛍️' },
+    { slug: 'men', name: 'Men', icon: '👔' },
+    { slug: 'women', name: 'Women', icon: '👗' },
+    { slug: 't-shirt', name: 'T-Shirts', icon: '👕' },
+    { slug: 'shirt', name: 'Shirts', icon: '👔' },
+    { slug: 'footwear', name: 'Footwear', icon: '👟' },
+    { slug: 'watches', name: 'Watches', icon: '⌚' },
+    { slug: 'saree', name: 'Sarees', icon: '🥻' },
+    { slug: 'kurti', name: 'Kurtis', icon: '👗' },
+    { slug: 'hoodies', name: 'Jackets & Hoodies', icon: '🧥' },
+    { slug: 'pants', name: 'Jeans & Pants', icon: '👖' },
+    { slug: 'accessories', name: 'Accessories', icon: '🕶️' }
+];
 
 export default function CategoryPage({
     products = [],
     categories = [],
-    initialCategory = 'footwear',
+    initialCategory = 'all',
     onQuickView,
     wishlist = [],
     onToggleWishlist,
@@ -13,10 +28,10 @@ export default function CategoryPage({
 }) {
     const [selectedCategory, setSelectedCategory] = useState(initialCategory || 'all');
     const [sortMethod, setSortMethod] = useState('recommended');
-    const [priceRange, setPriceRange] = useState(5000);
+    const [priceRange, setPriceRange] = useState(6000);
+    const [quickPriceMax, setQuickPriceMax] = useState(null);
     const [selectedBrands, setSelectedBrands] = useState([]);
     const [selectedSizes, setSelectedSizes] = useState([]);
-    const [selectedColors, setSelectedColors] = useState([]);
     const [minRating, setMinRating] = useState(0);
     const [onlyDiscounted, setOnlyDiscounted] = useState(false);
     
@@ -25,34 +40,69 @@ export default function CategoryPage({
     const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
     const [searchLocalQuery, setSearchLocalQuery] = useState('');
 
+    // Keep state in sync if prop changes (e.g. from header nav click)
+    useEffect(() => {
+        if (initialCategory) {
+            setSelectedCategory(initialCategory);
+        }
+    }, [initialCategory]);
+
     const allBrands = ['Nike', 'Adidas', 'Puma', 'Netrave Studio', 'Campus', 'Fastrack'];
-    const allSizes = ['6', '7', '8', '9', '10', 'S', 'M', 'L', 'XL'];
-    const allColors = [
-        { name: 'Black', hex: '#000000' },
-        { name: 'White', hex: '#ffffff' },
-        { name: 'Red', hex: '#ef4444' },
-        { name: 'Yellow', hex: '#FFD400' },
-        { name: 'Blue', hex: '#3b82f6' }
-    ];
+    const allSizes = ['6', '7', '8', '9', '10', 'S', 'M', 'L', 'XL', 'XXL'];
+
+    // Combine prop categories or fallbacks
+    const navCategories = useMemo(() => {
+        if (categories && categories.length > 0) {
+            const list = [{ slug: 'all', name: 'All', icon: '🛍️' }];
+            categories.forEach(c => {
+                list.push({
+                    slug: c.slug || c.name.toLowerCase(),
+                    name: c.name,
+                    icon: c.icon || '✨'
+                });
+            });
+            return list;
+        }
+        return DEFAULT_CATEGORIES;
+    }, [categories]);
 
     // Filter and sort products
     const filteredProducts = useMemo(() => {
         return products.filter(p => {
             // Category check
             if (selectedCategory && selectedCategory !== 'all') {
-                if (p.category !== selectedCategory && !p.subcategory?.includes(selectedCategory)) {
-                    return false;
+                const sel = selectedCategory.toLowerCase();
+                const pCat = (p.category || '').toLowerCase();
+                const pSub = (typeof p.subcategory === 'string' ? p.subcategory : p.subcategory?.slug || '').toLowerCase();
+                const pTags = Array.isArray(p.tags) ? p.tags.map(t => t.toLowerCase()) : [];
+                const pGender = (p.gender || '').toLowerCase();
+
+                let matches = false;
+                if (sel === 'men') {
+                    matches = pGender === 'men' || ['shirt', 't-shirt', 'pants', 'hoodies', 'shoes', 'footwear'].includes(pCat) || pTags.includes('men');
+                } else if (sel === 'women') {
+                    matches = pGender === 'women' || ['women', 'saree', 'kurti', 'dress', 'ethnic'].includes(pCat) || pTags.includes('women');
+                } else {
+                    matches = pCat === sel || pSub.includes(sel) || pCat.includes(sel) || pTags.includes(sel);
                 }
+
+                if (!matches) return false;
             }
+
             // Local search query inside category
             if (searchLocalQuery.trim()) {
                 const q = searchLocalQuery.toLowerCase().trim();
-                if (!p.title?.toLowerCase().includes(q) && !p.brand?.toLowerCase().includes(q)) {
+                const titleMatch = p.title?.toLowerCase().includes(q);
+                const brandMatch = p.brand?.toLowerCase().includes(q);
+                const tagMatch = p.tags?.some(t => t.toLowerCase().includes(q));
+                if (!titleMatch && !brandMatch && !tagMatch) {
                     return false;
                 }
             }
+
             // Price range check
-            if (p.price > priceRange) return false;
+            const maxPriceEffective = quickPriceMax || priceRange;
+            if (p.price > maxPriceEffective) return false;
 
             // Brand check
             if (selectedBrands.length > 0) {
@@ -64,12 +114,6 @@ export default function CategoryPage({
             if (selectedSizes.length > 0) {
                 const hasSize = p.sizes?.some(s => selectedSizes.includes(s));
                 if (!hasSize) return false;
-            }
-
-            // Color check
-            if (selectedColors.length > 0) {
-                const hasColor = p.colors?.some(c => selectedColors.some(sc => c.toLowerCase().includes(sc.toLowerCase())));
-                if (!hasColor) return false;
             }
 
             // Rating check
@@ -86,7 +130,14 @@ export default function CategoryPage({
             if (sortMethod === 'newest') return (b.id || 0) - (a.id || 0);
             return (b.rating || 0) - (a.rating || 0);
         });
-    }, [products, selectedCategory, searchLocalQuery, priceRange, selectedBrands, selectedSizes, selectedColors, minRating, onlyDiscounted, sortMethod]);
+    }, [products, selectedCategory, searchLocalQuery, priceRange, quickPriceMax, selectedBrands, selectedSizes, minRating, onlyDiscounted, sortMethod]);
+
+    const handleCategorySelect = (slug) => {
+        setSelectedCategory(slug);
+        if (onNavigate) {
+            onNavigate('category', { category: slug });
+        }
+    };
 
     const handleBrandToggle = (brand) => {
         setSelectedBrands(prev => 
@@ -101,21 +152,24 @@ export default function CategoryPage({
     };
 
     const clearAllFilters = () => {
-        setPriceRange(5000);
+        setPriceRange(6000);
+        setQuickPriceMax(null);
         setSelectedBrands([]);
         setSelectedSizes([]);
-        setSelectedColors([]);
         setMinRating(0);
         setOnlyDiscounted(false);
+        setSearchLocalQuery('');
         setIsFilterSheetOpen(false);
     };
 
     const currentCategoryTitle = useMemo(() => {
         if (!selectedCategory || selectedCategory === 'all') return 'All Collections';
-        const found = categories.find(c => c.slug === selectedCategory);
+        const found = navCategories.find(c => c.slug === selectedCategory);
         if (found) return found.name;
         return selectedCategory.charAt(0).toUpperCase() + selectedCategory.slice(1);
-    }, [selectedCategory, categories]);
+    }, [selectedCategory, navCategories]);
+
+    const activeFilterCount = selectedBrands.length + selectedSizes.length + (onlyDiscounted ? 1 : 0) + (quickPriceMax ? 1 : 0) + (priceRange < 6000 ? 1 : 0);
 
     return (
         <div className="netrave-page-wrapper category-mobile-page">
@@ -141,14 +195,34 @@ export default function CategoryPage({
                 <div className="category-breadcrumb-row">
                     <button type="button" className="cat-bc-link" onClick={() => onNavigate && onNavigate('home')}>Home</button>
                     <span className="cat-bc-sep">&gt;</span>
+                    <button type="button" className="cat-bc-link" onClick={() => handleCategorySelect('all')}>Collections</button>
+                    <span className="cat-bc-sep">&gt;</span>
                     <span className="cat-bc-current">{currentCategoryTitle}</span>
                 </div>
 
-                {/* Title & Sort Row: Footwear (36 Products) + [Sort] button */}
+                {/* Horizontal Category Navigation Chips */}
+                <div className="category-nav-chips-row">
+                    {navCategories.map(cat => {
+                        const isSelected = selectedCategory === cat.slug;
+                        return (
+                            <button
+                                key={cat.slug}
+                                type="button"
+                                className={`cat-nav-chip ${isSelected ? 'active' : ''}`}
+                                onClick={() => handleCategorySelect(cat.slug)}
+                            >
+                                {cat.icon && <span className="cat-nav-chip-icon">{cat.icon}</span>}
+                                <span>{cat.name}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Title & Sort Row: Category Name (X Products) + [Sort] button */}
                 <div className="category-header-mobile-row">
                     <div className="cat-title-meta">
                         <h1 className="category-main-title">{currentCategoryTitle}</h1>
-                        <span className="category-items-count">{filteredProducts.length} Products</span>
+                        <span className="category-items-count">{filteredProducts.length} Products Available</span>
                     </div>
 
                     <button 
@@ -159,23 +233,23 @@ export default function CategoryPage({
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
                             <path d="M3 18h6v-2H3v2zM3 6v2h18V6H3zm0 7h12v-2H3v2z"/>
                         </svg>
-                        <span>Sort</span>
+                        <span>Sort: {sortMethod === 'price-low' ? 'Low to High' : sortMethod === 'price-high' ? 'High to Low' : sortMethod === 'rating' ? 'Rating' : sortMethod === 'newest' ? 'Newest' : 'Featured'}</span>
                     </button>
                 </div>
 
-                {/* Quick Filter Buttons Pill Row: [Filters], [Brand v], [Size v] */}
+                {/* Quick Filter Buttons Pill Row: [Filters], [Brand], [Size], [Under 999], [Discounted] */}
                 <div className="category-filter-pills-row">
                     <button 
                         type="button" 
-                        className={`pill-filter-btn main ${selectedBrands.length > 0 || selectedSizes.length > 0 || onlyDiscounted ? 'active' : ''}`}
+                        className={`pill-filter-btn main ${activeFilterCount > 0 ? 'active' : ''}`}
                         onClick={() => setIsFilterSheetOpen(true)}
                     >
                         <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor">
                             <path d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/>
                         </svg>
-                        <span>Filters</span>
-                        {(selectedBrands.length > 0 || selectedSizes.length > 0) && (
-                            <span className="filter-pill-count">●</span>
+                        <span>All Filters</span>
+                        {activeFilterCount > 0 && (
+                            <span className="filter-pill-count">({activeFilterCount})</span>
                         )}
                     </button>
 
@@ -184,7 +258,7 @@ export default function CategoryPage({
                         className={`pill-filter-btn ${selectedBrands.length > 0 ? 'active' : ''}`}
                         onClick={() => setIsFilterSheetOpen(true)}
                     >
-                        <span>Brand</span>
+                        <span>Brand {selectedBrands.length > 0 ? `(${selectedBrands.length})` : ''}</span>
                         <span className="pill-arrow">▾</span>
                     </button>
 
@@ -193,19 +267,53 @@ export default function CategoryPage({
                         className={`pill-filter-btn ${selectedSizes.length > 0 ? 'active' : ''}`}
                         onClick={() => setIsFilterSheetOpen(true)}
                     >
-                        <span>Size</span>
+                        <span>Size {selectedSizes.length > 0 ? `(${selectedSizes.length})` : ''}</span>
                         <span className="pill-arrow">▾</span>
                     </button>
+
+                    <button 
+                        type="button" 
+                        className={`pill-filter-btn ${quickPriceMax === 999 ? 'active' : ''}`}
+                        onClick={() => setQuickPriceMax(quickPriceMax === 999 ? null : 999)}
+                    >
+                        <span>Under ₹999</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`pill-filter-btn ${quickPriceMax === 1999 ? 'active' : ''}`}
+                        onClick={() => setQuickPriceMax(quickPriceMax === 1999 ? null : 1999)}
+                    >
+                        <span>Under ₹1,999</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`pill-filter-btn ${onlyDiscounted ? 'active' : ''}`}
+                        onClick={() => setOnlyDiscounted(!onlyDiscounted)}
+                    >
+                        <span>🏷️ On Sale</span>
+                    </button>
+
+                    {activeFilterCount > 0 && (
+                        <button 
+                            type="button" 
+                            className="pill-filter-btn clear-pills-btn"
+                            onClick={clearAllFilters}
+                        >
+                            <span>Clear All</span>
+                        </button>
+                    )}
                 </div>
 
-                {/* 2-Column Mobile Product Grid */}
+                {/* 2-Column Mobile & Multi-Column Desktop Product Grid */}
                 {filteredProducts.length === 0 ? (
                     <div className="category-empty-state">
                         <div className="empty-icon-art">🔍</div>
                         <h3>No Products Found</h3>
-                        <p>Try clearing your active filters to see all available products.</p>
+                        <p>No products match your current filters in {currentCategoryTitle}.</p>
                         <button type="button" className="btn-primary-yellow" onClick={clearAllFilters}>
-                            Clear Filters
+                            Clear Filters & View All
                         </button>
                     </div>
                 ) : (
@@ -226,24 +334,23 @@ export default function CategoryPage({
 
             {/* TOUCH-FRIENDLY BOTTOM SHEET FILTER MODAL */}
             {isFilterSheetOpen && (
-                <div className="bottom-sheet-backdrop" onClick={() => setIsFilterSheetOpen(false)}>
-                    <div className="bottom-sheet-card" onClick={(e) => e.stopPropagation()}>
-                        <div className="sheet-drag-handle"></div>
-                        <div className="sheet-header-row">
+                <div className="bottom-sheet-overlay" onClick={() => setIsFilterSheetOpen(false)}>
+                    <div className="bottom-sheet-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="bottom-sheet-header">
                             <h3>Filter Products</h3>
-                            <button type="button" className="sheet-close-btn" onClick={() => setIsFilterSheetOpen(false)}>✕</button>
+                            <button type="button" className="bottom-sheet-close-btn" onClick={() => setIsFilterSheetOpen(false)}>✕</button>
                         </div>
 
-                        <div className="sheet-content-scroll">
+                        <div className="bottom-sheet-body">
                             {/* Brand Filters */}
-                            <div className="sheet-filter-group">
+                            <div className="filter-sheet-section">
                                 <h4>Brand</h4>
-                                <div className="sheet-chips-row">
+                                <div className="chip-group-wrap">
                                     {allBrands.map(b => (
                                         <button
                                             key={b}
                                             type="button"
-                                            className={`sheet-chip ${selectedBrands.includes(b) ? 'active' : ''}`}
+                                            className={`sheet-filter-chip ${selectedBrands.includes(b) ? 'active' : ''}`}
                                             onClick={() => handleBrandToggle(b)}
                                         >
                                             {b}
@@ -253,14 +360,14 @@ export default function CategoryPage({
                             </div>
 
                             {/* Size Filters */}
-                            <div className="sheet-filter-group">
+                            <div className="filter-sheet-section">
                                 <h4>Size</h4>
-                                <div className="sheet-chips-row">
+                                <div className="chip-group-wrap">
                                     {allSizes.map(s => (
                                         <button
                                             key={s}
                                             type="button"
-                                            className={`sheet-chip ${selectedSizes.includes(s) ? 'active' : ''}`}
+                                            className={`sheet-filter-chip ${selectedSizes.includes(s) ? 'active' : ''}`}
                                             onClick={() => handleSizeToggle(s)}
                                         >
                                             {s}
@@ -270,33 +377,37 @@ export default function CategoryPage({
                             </div>
 
                             {/* Max Price Slider */}
-                            <div className="sheet-filter-group">
-                                <div className="sheet-filter-header-flex">
-                                    <h4>Max Price</h4>
-                                    <span className="price-tag">₹{priceRange}</span>
+                            <div className="filter-sheet-section">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                                    <h4 style={{ margin: 0 }}>Max Price</h4>
+                                    <span style={{ fontWeight: 800, color: '#f59e0b' }}>₹{priceRange}</span>
                                 </div>
                                 <input 
                                     type="range" 
                                     min="499" 
                                     max="6000" 
-                                    step="100"
+                                    step="100" 
                                     value={priceRange} 
-                                    onChange={(e) => setPriceRange(Number(e.target.value))}
-                                    className="sheet-range-slider"
+                                    onChange={(e) => {
+                                        setPriceRange(Number(e.target.value));
+                                        setQuickPriceMax(null);
+                                    }}
+                                    style={{ width: '100%', accentColor: '#f59e0b' }}
                                 />
-                                <div className="slider-limits">
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#888' }}>
                                     <span>₹499</span>
                                     <span>₹6,000</span>
                                 </div>
                             </div>
 
                             {/* Discount Toggle */}
-                            <div className="sheet-filter-group">
-                                <label className="sheet-checkbox-label">
+                            <div className="filter-sheet-section">
+                                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontWeight: 600 }}>
                                     <input 
                                         type="checkbox" 
-                                        checked={onlyDiscounted}
+                                        checked={onlyDiscounted} 
                                         onChange={(e) => setOnlyDiscounted(e.target.checked)}
+                                        style={{ accentColor: '#f59e0b', width: '18px', height: '18px' }}
                                     />
                                     <span>Discounted Items Only</span>
                                 </label>
@@ -304,13 +415,13 @@ export default function CategoryPage({
                         </div>
 
                         {/* Sheet Footer Action Buttons */}
-                        <div className="sheet-footer-actions">
-                            <button type="button" className="sheet-btn-clear" onClick={clearAllFilters}>
+                        <div className="bottom-sheet-footer">
+                            <button type="button" className="btn-sheet-clear" onClick={clearAllFilters}>
                                 Clear All
                             </button>
                             <button 
                                 type="button" 
-                                className="sheet-btn-apply"
+                                className="btn-sheet-apply"
                                 onClick={() => setIsFilterSheetOpen(false)}
                             >
                                 Apply Filters ({filteredProducts.length})
@@ -322,35 +433,49 @@ export default function CategoryPage({
 
             {/* TOUCH-FRIENDLY BOTTOM SHEET SORT MODAL */}
             {isSortSheetOpen && (
-                <div className="bottom-sheet-backdrop" onClick={() => setIsSortSheetOpen(false)}>
-                    <div className="bottom-sheet-card sort-sheet" onClick={(e) => e.stopPropagation()}>
-                        <div className="sheet-drag-handle"></div>
-                        <div className="sheet-header-row">
+                <div className="bottom-sheet-overlay" onClick={() => setIsSortSheetOpen(false)}>
+                    <div className="bottom-sheet-modal" onClick={(e) => e.stopPropagation()}>
+                        <div className="bottom-sheet-header">
                             <h3>Sort Products</h3>
-                            <button type="button" className="sheet-close-btn" onClick={() => setIsSortSheetOpen(false)}>✕</button>
+                            <button type="button" className="bottom-sheet-close-btn" onClick={() => setIsSortSheetOpen(false)}>✕</button>
                         </div>
 
-                        <div className="sort-options-list">
-                            {[
-                                { key: 'recommended', label: 'Recommended' },
-                                { key: 'price-low', label: 'Price: Low to High' },
-                                { key: 'price-high', label: 'Price: High to Low' },
-                                { key: 'rating', label: 'Customer Rating' },
-                                { key: 'newest', label: 'Newest Arrivals' }
-                            ].map(opt => (
-                                <button
-                                    key={opt.key}
-                                    type="button"
-                                    className={`sort-option-item ${sortMethod === opt.key ? 'selected' : ''}`}
-                                    onClick={() => {
-                                        setSortMethod(opt.key);
-                                        setIsSortSheetOpen(false);
-                                    }}
-                                >
-                                    <span>{opt.label}</span>
-                                    {sortMethod === opt.key && <span className="sort-check">✓</span>}
-                                </button>
-                            ))}
+                        <div className="bottom-sheet-body">
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                {[
+                                    { key: 'recommended', label: 'Featured & Recommended' },
+                                    { key: 'price-low', label: 'Price: Low to High' },
+                                    { key: 'price-high', label: 'Price: High to Low' },
+                                    { key: 'rating', label: 'Highest Customer Rating' },
+                                    { key: 'newest', label: 'Newest Arrivals' }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.key}
+                                        type="button"
+                                        style={{
+                                            display: 'flex',
+                                            justifyContent: 'space-between',
+                                            alignItems: 'center',
+                                            padding: '12px 16px',
+                                            background: sortMethod === opt.key ? '#fffbeb' : '#f9fafb',
+                                            border: `1.5px solid ${sortMethod === opt.key ? '#f59e0b' : '#e5e7eb'}`,
+                                            borderRadius: '8px',
+                                            fontSize: '14px',
+                                            fontWeight: sortMethod === opt.key ? 700 : 500,
+                                            color: '#111',
+                                            cursor: 'pointer',
+                                            textAlign: 'left'
+                                        }}
+                                        onClick={() => {
+                                            setSortMethod(opt.key);
+                                            setIsSortSheetOpen(false);
+                                        }}
+                                    >
+                                        <span>{opt.label}</span>
+                                        {sortMethod === opt.key && <span style={{ color: '#f59e0b', fontWeight: 900 }}>✓</span>}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>

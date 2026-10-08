@@ -3,7 +3,7 @@ import ProductCard from './ProductCard';
 
 const CIRCULAR_CATEGORIES = [
     { id: 'men', name: 'Men Fashion', slug: 'shirt', image: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?w=300&auto=format&fit=crop&q=80' },
-    { id: 'women', name: 'Women Fashion', slug: 'saree', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=300&auto=format&fit=crop&q=80' },
+    { id: 'women', name: 'Women Fashion', slug: 'saree', image: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=300&auto=format&fit=crop&q=80' },
     { id: 'watches', name: 'Watches', slug: 'watches', image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=300&auto=format&fit=crop&q=80' },
     { id: 'footwear', name: 'Footwear', slug: 'footwear', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&auto=format&fit=crop&q=80' },
     { id: 't-shirts', name: 'T-Shirts', slug: 't-shirt', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&auto=format&fit=crop&q=80' },
@@ -138,7 +138,7 @@ export default function HomeSections({
                                 <span className="promo-cta-link">Shop Now →</span>
                             </div>
                             <img 
-                                src="https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400&auto=format&fit=crop&q=80" 
+                                src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=400&auto=format&fit=crop&q=80" 
                                 alt="Premium Watches" 
                                 className="promo-card-image" 
                             />
@@ -201,11 +201,11 @@ export default function HomeSections({
                             </button>
                         </div>
 
-                        {/* Center Sneaker Visual */}
+                        {/* Center Sneaker Visual - Full Sneaker Pair Uncropped */}
                         <div className="footwear-banner-center">
                             <img 
-                                src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700&auto=format&fit=crop&q=80" 
-                                alt="Netrave Footwear Collection" 
+                                src="/assets/netrave_footwear_pair.jpg" 
+                                alt="Netrave Footwear Collection - Sneaker Pair" 
                                 className="footwear-sneaker-img" 
                             />
                         </div>

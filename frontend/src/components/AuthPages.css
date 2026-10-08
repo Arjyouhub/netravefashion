@@ -1,0 +1,813 @@
+/* ==========================================================================
+   NETRAVE AUTHENTICATION PAGES (LOGIN / SIGNUP / FORGOT PASSWORD)
+   Exact match to Netrave Mobile & Desktop Design Reference
+   ========================================================================== */
+
+:root {
+  --netrave-yellow: #FFB800;
+  --netrave-yellow-hover: #E6A500;
+  --netrave-yellow-light: rgba(255, 184, 0, 0.12);
+  --netrave-dark: #0A0B0E;
+  --netrave-dark-surface: #12141A;
+  --netrave-gray-border: #E2E8F0;
+  --netrave-text-main: #0F172A;
+  --netrave-text-muted: #64748B;
+  --netrave-radius: 14px;
+}
+
+/* Page Outer Wrapper */
+.auth-page-root {
+  min-height: 100vh;
+  width: 100%;
+  background: #0e0f14;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  box-sizing: border-box;
+  font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Floating Return to Store / Back Button on Desktop */
+.auth-desktop-back-btn {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 30px;
+  padding: 8px 18px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 0.2s ease;
+}
+
+.auth-desktop-back-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 184, 0, 0.5);
+  color: var(--netrave-yellow);
+  transform: translateX(-2px);
+}
+
+/* Master Auth Card (Split Desktop Layout) */
+.auth-master-card {
+  width: 100%;
+  max-width: 1120px;
+  min-height: 680px;
+  background: #ffffff;
+  border-radius: 24px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 25px 65px -12px rgba(0, 0, 0, 0.65), 0 0 1px 1px rgba(255, 255, 255, 0.05);
+  position: relative;
+  animation: authCardFadeIn 0.35s ease-out;
+}
+
+@keyframes authCardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* --------------------------------------------------------------------------
+   LEFT BANNER COLUMN (Editorial Hero Banner)
+   -------------------------------------------------------------------------- */
+.auth-banner-column {
+  width: 50%;
+  position: relative;
+  background-color: #0b0c10;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 44px 44px 36px;
+  box-sizing: border-box;
+  color: #ffffff;
+}
+
+/* Dark Gradient Overlays for Banner Contrast */
+.auth-banner-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(10, 11, 15, 0.65) 0%,
+    rgba(10, 11, 15, 0.2) 32%,
+    rgba(10, 11, 15, 0.75) 68%,
+    rgba(10, 11, 15, 0.98) 100%
+  );
+  z-index: 1;
+  pointer-events: none;
+}
+
+.auth-banner-content-top,
+.auth-banner-content-middle,
+.auth-banner-content-bottom {
+  position: relative;
+  z-index: 2;
+}
+
+/* Mobile Header Bar hidden on desktop */
+.auth-mobile-header-bar {
+  display: none;
+}
+.auth-brand-badge {
+  display: inline-flex;
+  flex-direction: column;
+  cursor: pointer;
+  user-select: none;
+}
+
+.auth-brand-badge .brand-name {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
+}
+
+.brand-name .brand-yellow {
+  color: var(--netrave-yellow);
+}
+
+.brand-name .brand-white {
+  color: #ffffff;
+}
+
+.brand-name .brand-black {
+  color: #0f172a;
+}
+
+.auth-brand-badge .brand-tagline {
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.auth-brand-badge .brand-tagline.tagline-light {
+  color: #cbd5e1;
+}
+
+.auth-brand-badge .brand-tagline.tagline-dark {
+  color: #64748b;
+}
+
+.auth-brand-badge .brand-dash {
+  width: 22px;
+  height: 2px;
+  background: var(--netrave-yellow);
+  margin-top: 4px;
+  border-radius: 2px;
+}
+
+/* Banner Middle Hero Typography */
+.auth-banner-hero-title {
+  font-size: 42px;
+  font-weight: 900;
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+  text-transform: uppercase;
+  margin: 0 0 14px;
+}
+
+.auth-banner-hero-title span.hl-yellow {
+  color: var(--netrave-yellow);
+  display: block;
+}
+
+.mobile-only-text {
+  display: none;
+}
+
+.desktop-only-text {
+  display: block;
+}
+
+.auth-banner-hero-desc {
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: #e2e8f0;
+  max-width: 380px;
+  margin: 0;
+  font-weight: 400;
+}
+
+/* Banner Bottom Features */
+.auth-banner-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.auth-feature-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.auth-feature-icon-wrap {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  color: var(--netrave-yellow);
+}
+
+.auth-feature-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.auth-feature-sub {
+  font-size: 10.5px;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+
+/* Banner Carousel Dots */
+.auth-banner-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.auth-dot-pill {
+  width: 22px;
+  height: 4px;
+  background: var(--netrave-yellow);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.auth-dot-circle {
+  width: 6px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.auth-dot-circle:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+/* --------------------------------------------------------------------------
+   RIGHT FORM COLUMN (Clean Crisp White Area)
+   -------------------------------------------------------------------------- */
+.auth-form-column {
+  width: 50%;
+  background: #ffffff;
+  padding: 44px 56px 40px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+}
+
+/* Top Switch Link (Desktop) */
+.auth-top-switch-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 8px;
+}
+
+.auth-switch-btn {
+  background: none;
+  border: none;
+  color: var(--netrave-yellow);
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0 0 0 6px;
+  font-family: inherit;
+  font-size: 13px;
+  transition: color 0.15s ease;
+}
+
+.auth-switch-btn:hover {
+  color: var(--netrave-yellow-hover);
+  text-decoration: underline;
+}
+
+/* Form Inner Container */
+.auth-form-inner {
+  width: 100%;
+  max-width: 410px;
+  margin: 0 auto;
+}
+
+/* Form Netrave Logo */
+.auth-form-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 22px;
+  cursor: pointer;
+}
+
+.auth-form-titles {
+  text-align: left;
+  margin-bottom: 24px;
+}
+
+.auth-form-titles.text-center {
+  text-align: center;
+}
+
+.auth-form-heading {
+  font-size: 28px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0 0 6px;
+  letter-spacing: -0.5px;
+}
+
+.auth-form-subheading {
+  font-size: 13.5px;
+  color: #64748b;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.4;
+}
+
+/* Input Fields with Icons */
+.auth-inputs-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.auth-input-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1.5px solid var(--netrave-gray-border);
+  border-radius: var(--netrave-radius);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.auth-input-field:focus-within {
+  border-color: var(--netrave-yellow);
+  box-shadow: 0 0 0 4px rgba(255, 184, 0, 0.18);
+}
+
+.auth-input-icon-left {
+  width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+  flex-shrink: 0;
+  pointer-events: none;
+}
+
+.auth-input-field:focus-within .auth-input-icon-left {
+  color: #0f172a;
+}
+
+.auth-input-native {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 14px 14px 14px 0;
+  font-size: 14px;
+  font-family: inherit;
+  color: #0f172a;
+  outline: none;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.auth-input-native::placeholder {
+  color: #94a3b8;
+  font-weight: 400;
+}
+
+.auth-password-toggle {
+  background: none;
+  border: none;
+  padding: 0 14px;
+  color: #94a3b8;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+
+.auth-password-toggle:hover {
+  color: #0f172a;
+}
+
+/* Remember Me & Forgot Password Row */
+.auth-remember-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 22px;
+  font-size: 13px;
+}
+
+.auth-checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: #1e293b;
+  font-weight: 500;
+  user-select: none;
+}
+
+.auth-checkbox-label input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 5px;
+  outline: none;
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  transition: all 0.15s ease;
+  margin: 0;
+}
+
+.auth-checkbox-label input[type="checkbox"]:checked {
+  background-color: #0f172a;
+  border-color: #0f172a;
+}
+
+.auth-checkbox-label input[type="checkbox"]:checked::before {
+  content: "";
+  width: 10px;
+  height: 6px;
+  border-left: 2px solid #ffffff;
+  border-bottom: 2px solid #ffffff;
+  transform: rotate(-45deg) translateY(-1px);
+}
+
+.auth-link-forgot {
+  background: none;
+  border: none;
+  color: var(--netrave-yellow);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.auth-link-forgot:hover {
+  color: var(--netrave-yellow-hover);
+  text-decoration: underline;
+}
+
+/* Terms Checkbox Row for Signup */
+.auth-terms-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: #475569;
+}
+
+.auth-terms-row a {
+  color: var(--netrave-yellow);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.auth-terms-row a:hover {
+  text-decoration: underline;
+}
+
+/* Primary Yellow CTA Button */
+.btn-auth-primary-action {
+  width: 100%;
+  height: 50px;
+  background: var(--netrave-yellow);
+  color: #000000;
+  border: none;
+  border-radius: var(--netrave-radius);
+  font-size: 15px;
+  font-weight: 800;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 4px 16px rgba(255, 184, 0, 0.35);
+}
+
+.btn-auth-primary-action:hover:not(:disabled) {
+  background: #ffc425;
+  transform: translateY(-1.5px);
+  box-shadow: 0 6px 22px rgba(255, 184, 0, 0.45);
+}
+
+.btn-auth-primary-action:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-auth-primary-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* OR Divider */
+.auth-or-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  margin: 20px 0;
+  color: #94a3b8;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.auth-or-separator::before,
+.auth-or-separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1.5px solid #e2e8f0;
+}
+
+.auth-or-separator span {
+  padding: 0 12px;
+}
+
+/* Google Sign-in Button */
+.btn-auth-google-action {
+  width: 100%;
+  height: 50px;
+  background: #ffffff;
+  color: #1e293b;
+  border: 1.5px solid var(--netrave-gray-border);
+  border-radius: var(--netrave-radius);
+  font-size: 14.5px;
+  font-weight: 700;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.btn-auth-google-action:hover:not(:disabled) {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+.btn-auth-google-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Error Alert Box */
+.auth-error-alert {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 10px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+/* Bottom mobile switch paragraph (visible on mobile) */
+.auth-mobile-switch-text {
+  display: none;
+  text-align: center;
+  margin-top: 24px;
+  font-size: 13.5px;
+  color: #64748b;
+}
+
+/* OTP 6 Digits Boxes */
+.auth-otp-grid {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 24px 0 16px;
+}
+
+.auth-otp-box {
+  width: 48px;
+  height: 54px;
+  font-size: 22px;
+  font-weight: 800;
+  text-align: center;
+  border: 1.5px solid var(--netrave-gray-border);
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.auth-otp-box:focus {
+  border-color: var(--netrave-yellow);
+  box-shadow: 0 0 0 3px rgba(255, 184, 0, 0.2);
+}
+
+.auth-otp-timer-row {
+  text-align: center;
+  font-size: 13px;
+  color: #64748b;
+  margin-bottom: 22px;
+}
+
+/* --------------------------------------------------------------------------
+   MOBILE SCREENS & RESPONSIVE BEHAVIOR
+   Matches the 2 phone screens on the right side of the image
+   -------------------------------------------------------------------------- */
+@media (max-width: 900px) {
+  .auth-page-root {
+    padding: 0;
+    background: #0f1015;
+    align-items: flex-start;
+  }
+
+  .auth-desktop-back-btn {
+    display: none;
+  }
+
+  .auth-master-card {
+    border-radius: 0;
+    min-height: 100vh;
+    flex-direction: column;
+    box-shadow: none;
+    background: transparent;
+  }
+
+  /* Top Banner on Mobile with Model & Header */
+  .auth-banner-column {
+    width: 100%;
+    min-height: 290px;
+    height: 38vh;
+    padding: 20px 20px 36px;
+    border-radius: 0;
+    justify-content: space-between;
+  }
+
+  .auth-banner-features-grid,
+  .auth-banner-dots {
+    display: none;
+  }
+
+  /* Mobile Top App Bar (Back Arrow & Netrave Logo) */
+  .auth-mobile-header-bar {
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 5;
+    width: 100%;
+    margin-bottom: auto;
+  }
+
+  .auth-mobile-back-icon-btn {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .auth-mobile-logo-header {
+    margin: 0 auto;
+    padding-right: 28px; /* Offset back button to center logo */
+  }
+
+  .auth-banner-content-top {
+    display: none !important;
+  }
+
+  .desktop-only-text {
+    display: none !important;
+  }
+
+  .mobile-only-text {
+    display: block !important;
+  }
+
+  .auth-banner-content-middle {
+    margin-bottom: 20px;
+  }
+
+  .auth-banner-hero-title {
+    font-size: 26px;
+    font-weight: 800;
+    text-transform: none;
+    margin: 0 0 4px;
+    color: #ffffff;
+  }
+
+  .auth-banner-hero-desc {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  /* Bottom White Sheet */
+  .auth-form-column {
+    width: 100%;
+    background: #ffffff;
+    border-radius: 28px 28px 0 0;
+    margin-top: -24px;
+    position: relative;
+    z-index: 10;
+    padding: 30px 24px 44px;
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.2);
+    min-height: calc(62vh + 24px);
+    overflow: visible;
+  }
+
+  .auth-top-switch-bar {
+    display: none;
+  }
+
+  .auth-form-logo-wrap {
+    display: none; /* Logo is in the top mobile header */
+  }
+
+  .auth-form-titles {
+    display: none; /* Hero title is displayed on the banner on mobile */
+  }
+
+  .auth-mobile-switch-text {
+    display: block;
+  }
+}
+
+@media (max-width: 480px) {
+  .auth-banner-column {
+    min-height: 260px;
+    height: 35vh;
+    padding: 16px 16px 30px;
+  }
+
+  .auth-form-column {
+    padding: 26px 18px 40px;
+  }
+
+  .btn-auth-primary-action,
+  .btn-auth-google-action {
+    height: 48px;
+    font-size: 14px;
+  }
+
+  .auth-otp-box {
+    width: 42px;
+    height: 48px;
+    font-size: 19px;
+    gap: 6px;
+  }
+}

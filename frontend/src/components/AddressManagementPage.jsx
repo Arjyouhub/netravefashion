@@ -18,6 +18,7 @@ export default function AddressManagementPage({
                 street: "Door No 4B, Emerald Green Residency, High School Road",
                 city: "Perambra, Kozhikode",
                 state: "Kerala",
+                landmark: "Near Federal Bank ATM",
                 type: "Home",
                 isDefault: true
             },
@@ -29,6 +30,7 @@ export default function AddressManagementPage({
                 street: "Netrave Studio, 2nd Floor, Cyberpark Calicut, Nellikode",
                 city: "Kozhikode",
                 state: "Kerala",
+                landmark: "Opposite UL Cyberpark Gate 2",
                 type: "Work",
                 isDefault: false
             }
@@ -54,8 +56,10 @@ export default function AddressManagementPage({
     };
 
     const handleDelete = (id) => {
-        const updated = addresses.filter(a => a.id !== id);
-        saveAddressesToStorage(updated);
+        if (window.confirm && window.confirm('Are you sure you want to delete this address?')) {
+            const updated = addresses.filter(a => a.id !== id);
+            saveAddressesToStorage(updated);
+        }
     };
 
     const handleStartAdd = () => {
@@ -67,6 +71,7 @@ export default function AddressManagementPage({
             street: '',
             city: '',
             state: 'Kerala',
+            landmark: '',
             type: 'Home',
             isDefault: addresses.length === 0
         });
@@ -85,7 +90,11 @@ export default function AddressManagementPage({
         if (exists) {
             updated = addresses.map(a => a.id === editingAddress.id ? editingAddress : a);
         } else {
-            updated = [...addresses, editingAddress];
+            if (editingAddress.isDefault) {
+                updated = [...addresses.map(a => ({ ...a, isDefault: false })), editingAddress];
+            } else {
+                updated = [...addresses, editingAddress];
+            }
         }
         saveAddressesToStorage(updated);
         setIsEditing(false);
@@ -94,145 +103,228 @@ export default function AddressManagementPage({
 
     return (
         <div className="netrave-page-wrapper address-page-root">
-            <div className="netrave-container">
-                <div className="breadcrumb-nav" style={{ padding: '16px 0 8px' }}>
-                    <button type="button" className="breadcrumb-link" onClick={() => onNavigate && onNavigate('home')}>Home</button>
-                    <span className="breadcrumb-sep">/</span>
-                    <button type="button" className="breadcrumb-link" onClick={() => onNavigate && onNavigate('account')}>My Account</button>
-                    <span className="breadcrumb-sep">/</span>
-                    <span className="breadcrumb-current">Address Management</span>
+            <div className="netrave-container address-container-responsive">
+                {/* Desktop Breadcrumb Navigation */}
+                <div className="netrave-desktop-breadcrumb">
+                    <button type="button" onClick={() => onNavigate && onNavigate('home')}>Home</button>
+                    <span>/</span>
+                    <button type="button" onClick={() => onNavigate && onNavigate('account')}>My Account</button>
+                    <span>/</span>
+                    <span className="current">Address Management</span>
                 </div>
 
-                <div className="address-header-row">
-                    <div>
-                        <h1 className="page-title-heading">Saved Addresses</h1>
-                        <p className="page-subtitle">Manage delivery locations for quick checkout</p>
+                {/* Page Title & Add New Address Header */}
+                <div className="address-page-header-row">
+                    <div className="address-header-titles">
+                        <h1 className="address-page-title">Address Management</h1>
+                        <p className="address-page-subtitle">Manage delivery locations for quick, one-click checkout.</p>
                     </div>
                     {!isEditing && (
-                        <button type="button" className="btn-primary-yellow" onClick={handleStartAdd}>
-                            + Add New Address
+                        <button type="button" className="btn-primary-yellow add-address-main-btn" onClick={handleStartAdd}>
+                            <span>+</span> Add New Address
                         </button>
                     )}
                 </div>
 
-                {/* Edit / Add Modal Form */}
+                {/* Edit / Add Modal Form (Desktop 2-Column, Mobile 1-Column) */}
                 {isEditing && (
-                    <div className="address-form-card">
-                        <h2 className="address-form-title">
-                            {addresses.find(a => a.id === editingAddress.id) ? 'Edit Address' : 'Add New Address'}
-                        </h2>
-                        <form onSubmit={handleFormSubmit} className="account-form-grid">
-                            <div className="form-group">
-                                <label>Recipient Full Name *</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={editingAddress.name}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, name: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>10-Digit Mobile Number *</label>
-                                <input 
-                                    type="tel" 
-                                    required 
-                                    value={editingAddress.phone}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, phone: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group form-span-2">
-                                <label>Street Address / Flat / Building *</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={editingAddress.street}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, street: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>City / District *</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={editingAddress.city}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, city: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>State *</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={editingAddress.state}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, state: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Pincode *</label>
-                                <input 
-                                    type="text" 
-                                    required 
-                                    value={editingAddress.pincode}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, pincode: e.target.value })}
-                                />
-                            </div>
-                            <div className="form-group">
-                                <label>Address Type</label>
-                                <select 
-                                    value={editingAddress.type}
-                                    onChange={(e) => setEditingAddress({ ...editingAddress, type: e.target.value })}
-                                >
-                                    <option value="Home">Home (All Day Delivery)</option>
-                                    <option value="Work">Work (10 AM - 6 PM)</option>
-                                    <option value="Other">Other</option>
-                                </select>
+                    <div className="address-modal-overlay" onClick={() => setIsEditing(false)}>
+                        <div className="address-form-modal-card" onClick={(e) => e.stopPropagation()}>
+                            <div className="address-modal-header">
+                                <h2 className="address-modal-title">
+                                    {addresses.find(a => a.id === editingAddress.id) ? 'Edit Address' : 'Add New Delivery Address'}
+                                </h2>
+                                <button type="button" className="address-modal-close" onClick={() => setIsEditing(false)}>
+                                    ✕
+                                </button>
                             </div>
 
-                            <div className="form-actions-full" style={{ display: 'flex', gap: '12px' }}>
-                                <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)}>
-                                    Cancel
-                                </button>
-                                <button type="submit" className="btn-primary-yellow">
-                                    Save Address
-                                </button>
-                            </div>
-                        </form>
+                            <form onSubmit={handleFormSubmit} className="address-form-2col-grid">
+                                <div className="addr-field-group">
+                                    <label>Recipient Full Name *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        placeholder="e.g. Arjun K K"
+                                        value={editingAddress.name}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, name: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group">
+                                    <label>10-Digit Mobile Number *</label>
+                                    <input 
+                                        type="tel" 
+                                        required 
+                                        placeholder="e.g. 98954 45210"
+                                        value={editingAddress.phone}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, phone: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group form-col-full">
+                                    <label>Flat, House no., Building, Company, Apartment *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        placeholder="Door number, Building name, Street"
+                                        value={editingAddress.street}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, street: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group">
+                                    <label>City / District *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        placeholder="e.g. Kozhikode"
+                                        value={editingAddress.city}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, city: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group">
+                                    <label>State *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        placeholder="e.g. Kerala"
+                                        value={editingAddress.state}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, state: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group">
+                                    <label>6-Digit Pincode *</label>
+                                    <input 
+                                        type="text" 
+                                        required 
+                                        placeholder="e.g. 673016"
+                                        value={editingAddress.pincode}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, pincode: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group">
+                                    <label>Landmark (Optional)</label>
+                                    <input 
+                                        type="text" 
+                                        placeholder="e.g. Near Federal Bank"
+                                        value={editingAddress.landmark || ''}
+                                        onChange={(e) => setEditingAddress({ ...editingAddress, landmark: e.target.value })}
+                                    />
+                                </div>
+
+                                <div className="addr-field-group form-col-full">
+                                    <label>Address Type</label>
+                                    <div className="addr-type-selector-row">
+                                        {['Home', 'Work', 'Other'].map(typeOption => (
+                                            <button
+                                                key={typeOption}
+                                                type="button"
+                                                className={`addr-type-btn ${editingAddress.type === typeOption ? 'selected' : ''}`}
+                                                onClick={() => setEditingAddress({ ...editingAddress, type: typeOption })}
+                                            >
+                                                {typeOption === 'Home' ? '🏠 Home' : typeOption === 'Work' ? '💼 Work' : '📍 Other'}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="addr-field-group form-col-full">
+                                    <label className="addr-checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={editingAddress.isDefault}
+                                            onChange={(e) => setEditingAddress({ ...editingAddress, isDefault: e.target.checked })}
+                                        />
+                                        <span>Set as default shipping address</span>
+                                    </label>
+                                </div>
+
+                                <div className="addr-modal-actions-row form-col-full">
+                                    <button type="button" className="btn-secondary" onClick={() => setIsEditing(false)}>
+                                        Cancel
+                                    </button>
+                                    <button type="submit" className="btn-primary-yellow">
+                                        Save Address
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 )}
 
-                {/* Addresses Grid Display */}
+                {/* Addresses Grid Display (2-3 cards per row on desktop) */}
                 <div className="saved-addresses-cards-grid">
                     {addresses.map(addr => (
                         <div key={addr.id} className={`address-manage-card ${addr.isDefault ? 'is-default' : ''}`}>
-                            <div className="address-manage-top">
-                                <span className="address-type-badge">{addr.type}</span>
+                            <div className="address-card-top-badge-row">
+                                <span className={`address-type-pill ${addr.type?.toLowerCase()}`}>
+                                    {addr.type === 'Home' ? '🏠 Home' : addr.type === 'Work' ? '💼 Work' : '📍 ' + addr.type}
+                                </span>
                                 {addr.isDefault && (
-                                    <span className="address-default-badge">✓ Default Address</span>
+                                    <span className="address-default-gold-badge">
+                                        ★ Default Address
+                                    </span>
                                 )}
                             </div>
 
-                            <strong className="address-recipient-name">{addr.name}</strong>
-                            <p className="address-street-text">{addr.street}</p>
-                            <p className="address-city-text">{addr.city}, {addr.state} - <strong>{addr.pincode}</strong></p>
-                            <p className="address-phone-text">📞 {addr.phone}</p>
+                            <div className="address-card-body-content">
+                                <h3 className="address-recipient-name">{addr.name}</h3>
+                                <p className="address-street-text">{addr.street}</p>
+                                {addr.landmark && (
+                                    <p className="address-landmark-text">Landmark: {addr.landmark}</p>
+                                )}
+                                <p className="address-city-state-text">
+                                    {addr.city}, {addr.state} – <span className="address-pin-bold">{addr.pincode}</span>
+                                </p>
+                                <p className="address-phone-text">
+                                    📞 <span>{addr.phone}</span>
+                                </p>
+                            </div>
 
-                            <div className="address-manage-actions">
-                                <button type="button" className="addr-action-btn" onClick={() => handleStartEdit(addr)}>
+                            <div className="address-manage-actions-row">
+                                <button 
+                                    type="button" 
+                                    className="btn-addr-action btn-addr-edit" 
+                                    onClick={() => handleStartEdit(addr)}
+                                >
                                     Edit
                                 </button>
-                                {!addr.isDefault && (
+                                {!addr.isDefault ? (
                                     <>
-                                        <button type="button" className="addr-action-btn" onClick={() => handleSetDefault(addr.id)}>
+                                        <button 
+                                            type="button" 
+                                            className="btn-addr-action btn-addr-default" 
+                                            onClick={() => handleSetDefault(addr.id)}
+                                        >
                                             Set as Default
                                         </button>
-                                        <button type="button" className="addr-action-btn text-danger" onClick={() => handleDelete(addr.id)}>
+                                        <button 
+                                            type="button" 
+                                            className="btn-addr-action btn-addr-delete" 
+                                            onClick={() => handleDelete(addr.id)}
+                                        >
                                             Delete
                                         </button>
                                     </>
+                                ) : (
+                                    <span className="default-indicator-text">Primary Address</span>
                                 )}
                             </div>
                         </div>
                     ))}
+
+                    {/* "+ Add New Address" Quick Card in the Grid */}
+                    <div className="address-add-new-dashed-card" onClick={handleStartAdd}>
+                        <div className="add-card-inner">
+                            <span className="add-plus-circle">+</span>
+                            <strong>Add New Address</strong>
+                            <p>Add a new delivery location for your orders</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

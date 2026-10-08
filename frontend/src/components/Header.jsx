@@ -329,24 +329,7 @@ export default function Header({
                     </div>
                 </div>
 
-                {/* Sub-Header Mobile Search Bar Pill (Shown on Home and Category as in reference) */}
-                {(currentPage === 'home' || currentPage === 'category') && (
-                    <div className="mobile-search-pill-container">
-                        <div 
-                            className="mobile-search-pill" 
-                            onClick={() => handleNav('search')}
-                            role="button"
-                            tabIndex={0}
-                        >
-                            <svg viewBox="0 0 24 24" width="16" height="16" fill="#9ca3af">
-                                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-                            </svg>
-                            <span className="search-pill-placeholder">
-                                {currentPage === 'category' ? `Search in ${activeCategory === 'all' ? 'All Collections' : activeCategory}...` : 'Search for products, brands...'}
-                            </span>
-                        </div>
-                    </div>
-                )}
+
             </div>
 
             {/* 3. Category Navigation Bar (Desktop & Tablet) */}
@@ -365,8 +348,8 @@ export default function Header({
 
                         {isCategoryDropdownOpen && (
                             <div className="all-categories-dropdown-menu">
-                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('all')}>
-                                    🛍️ All Products
+                                <button type="button" className="cat-drop-item" onClick={() => handleNav('home')}>
+                                    🏠 Home
                                 </button>
                                 <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('t-shirt')}>
                                     👕 Streetwear T-Shirts
@@ -403,7 +386,16 @@ export default function Header({
                         <li>
                             <button 
                                 type="button" 
-                                className={`cat-link-item ${activeCategory === 'shirt' ? 'active' : ''}`}
+                                className={`cat-link-item ${currentPage === 'home' ? 'active' : ''}`}
+                                onClick={() => handleNav('home')}
+                            >
+                                Home
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className={`cat-link-item ${currentPage === 'category' && activeCategory === 'shirt' ? 'active' : ''}`}
                                 onClick={() => handleCategoryClick('shirt')}
                             >
                                 Men
@@ -515,9 +507,9 @@ export default function Header({
                         </div>
 
                         <div className="mobile-drawer-nav-section">
-                            <h4 className="mobile-drawer-section-title">Categories</h4>
+                            <h4 className="mobile-drawer-section-title">Navigation</h4>
                             <ul className="mobile-drawer-list">
-                                <li><button type="button" onClick={() => handleCategoryClick('all')}>🛍️ All Products</button></li>
+                                <li><button type="button" onClick={() => handleNav('home')}>🏠 Home</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('shirt')}>👔 Men's Collection</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('saree')}>🥻 Women's Fashion</button></li>
                                 <li><button type="button" onClick={() => handleCategoryClick('watches')}>⌚ Premium Watches</button></li>
