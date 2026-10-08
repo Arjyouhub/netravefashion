@@ -15,7 +15,8 @@ export default function ProductGrid({
     activeTag,
     onTagChange,
     wishlist = [],
-    onToggleWishlist
+    onToggleWishlist,
+    onAddToCart
 }) {
     // Dynamic Filter States
     const [selectedSubcategory, setSelectedSubcategory] = useState('all');
@@ -538,6 +539,7 @@ export default function ProductGrid({
                             onQuickView={onQuickView}
                             isWishlisted={wishlist.includes(product.id)}
                             onToggleWishlist={onToggleWishlist}
+                            onAddToCart={onAddToCart}
                         />
                     ))}
                 </div>

@@ -399,5 +399,254 @@
     "costPrice": 580,
     "profitMargin": 719,
     "supplierName": "Guangzhou Tactical Apparel"
+  },
+  {
+    "id": 8,
+    "title": "Minimalist Analog Chronograph Watch",
+    "category": "watches",
+    "subcategory": "analog-watches",
+    "price": 1999,
+    "originalPrice": 3499,
+    "rating": 4.9,
+    "reviews": 98,
+    "image": "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Sleek matte stainless steel case with genuine leather strap and Japanese quartz movement.",
+    "description": "<p>Engineered with precision Japanese quartz movement, scratch-resistant sapphire-coated glass, and water-resistant up to 50 meters.</p>",
+    "sizes": ["Standard (40mm)"],
+    "colors": ["Midnight Black", "Rose Gold", "Silver Mesh"],
+    "colorVariants": [
+      {
+        "color": "Midnight Black",
+        "hex": "#090b10",
+        "image": "https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=600&auto=format&fit=crop&q=80"
+      },
+      {
+        "color": "Rose Gold",
+        "hex": "#b76e79",
+        "image": "https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Watches", "Accessories", "Premium", "Best Seller"],
+    "stock": 35,
+    "inStock": true,
+    "isFeatured": true,
+    "isNewArrival": true,
+    "isBestSeller": true,
+    "sku": "NET-WTC-008",
+    "brand": "NETRAVE Timepieces"
+  },
+  {
+    "id": 9,
+    "title": "Structured Vegan Leather Handbag",
+    "category": "accessories",
+    "subcategory": "bags",
+    "price": 1799,
+    "originalPrice": 2999,
+    "rating": 4.8,
+    "reviews": 64,
+    "image": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Top-handle structured silhouette with detachable crossbody strap and gold-tone hardware.",
+    "description": "<p>Crafted from premium water-resistant cruelty-free vegan leather. Features spacious interior compartments with zip dividers.</p>",
+    "sizes": ["Medium (32x24x12 cm)"],
+    "colors": ["Ivory White", "Camel Tan", "Matte Black"],
+    "colorVariants": [
+      {
+        "color": "Ivory White",
+        "hex": "#f8fafc",
+        "image": "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=600&auto=format&fit=crop&q=80"
+      },
+      {
+        "color": "Camel Tan",
+        "hex": "#a8896c",
+        "image": "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Bags", "Accessories", "Women", "Trending"],
+    "stock": 28,
+    "inStock": true,
+    "isFeatured": true,
+    "isNewArrival": true,
+    "isBestSeller": false,
+    "sku": "NET-BAG-009",
+    "brand": "NETRAVE Accessories"
+  },
+  {
+    "id": 10,
+    "title": "AeroPro Sprint Responsive Running Shoes",
+    "category": "footwear",
+    "subcategory": "running",
+    "price": 1599,
+    "originalPrice": 2999,
+    "rating": 4.8,
+    "reviews": 102,
+    "image": "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&auto=format&fit=crop&q=80",
+      "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Ultra-lightweight high-rebound cushioned foam running sneakers with breathable engineered knit.",
+    "description": "<p>Built for performance running and daily training. Features nitrogen-infused energy return midsole and non-slip rubber tread.</p>",
+    "sizes": ["UK 7", "UK 8", "UK 9", "UK 10", "UK 11"],
+    "colors": ["White Gold", "Triple Black", "Crimson Red"],
+    "colorVariants": [
+      {
+        "color": "White Gold",
+        "hex": "#fbbf24",
+        "image": "https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=600&auto=format&fit=crop&q=80"
+      },
+      {
+        "color": "Crimson Red",
+        "hex": "#dc2626",
+        "image": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Footwear", "Running", "Sneakers", "Best Seller"],
+    "stock": 42,
+    "inStock": true,
+    "isFeatured": true,
+    "isNewArrival": true,
+    "isBestSeller": true,
+    "sku": "NET-SHOE-010",
+    "brand": "NETRAVE Kicks"
+  },
+  {
+    "id": 11,
+    "title": "Sunshine Yellow Cotton Fit & Flare Dress",
+    "category": "women",
+    "subcategory": "dresses",
+    "price": 1299,
+    "originalPrice": 2199,
+    "rating": 4.7,
+    "reviews": 67,
+    "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Breathable 100% pure organic cotton summer dress with flattering flared silhouette.",
+    "description": "<p>Flattering sleeveless A-line silhouette tailored with soft inner lining, concealed side zipper, and a playful flared hemline.</p>",
+    "sizes": ["S", "M", "L", "XL"],
+    "colors": ["Sunshine Yellow", "Dusty Rose Pink"],
+    "colorVariants": [
+      {
+        "color": "Sunshine Yellow",
+        "hex": "#eab308",
+        "image": "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Women", "Dress", "Summer", "Casual"],
+    "stock": 30,
+    "inStock": true,
+    "isFeatured": false,
+    "isNewArrival": true,
+    "isBestSeller": false,
+    "sku": "NET-DRS-011",
+    "brand": "NETRAVE Women"
+  },
+  {
+    "id": 12,
+    "title": "Retro Matte Black Polarized Sunglasses",
+    "category": "accessories",
+    "subcategory": "eyewear",
+    "price": 1199,
+    "originalPrice": 1899,
+    "rating": 4.9,
+    "reviews": 89,
+    "image": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "UV400 glare-reducing polarized lenses in a lightweight durable acetate frame.",
+    "description": "<p>Provides 100% UVA/UVB protection with crystal-clear contrast enhancement and reinforced stainless steel barrel hinges.</p>",
+    "sizes": ["Standard Fit"],
+    "colors": ["Matte Black", "Tortoise Shell"],
+    "colorVariants": [
+      {
+        "color": "Matte Black",
+        "hex": "#090b10",
+        "image": "https://images.unsplash.com/photo-1511499767150-a48a237f0083?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Accessories", "Sunglasses", "Eyewear", "Trending"],
+    "stock": 60,
+    "inStock": true,
+    "isFeatured": false,
+    "isNewArrival": true,
+    "isBestSeller": true,
+    "sku": "NET-ACC-012",
+    "brand": "NETRAVE Accessories"
+  },
+  {
+    "id": 13,
+    "title": "Streetwear Contrast Peak Baseball Cap",
+    "category": "accessories",
+    "subcategory": "caps",
+    "price": 689,
+    "originalPrice": 1199,
+    "rating": 4.6,
+    "reviews": 92,
+    "image": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "100% heavy cotton twill 6-panel cap with custom metallic rear buckle clasp.",
+    "description": "<p>Structured mid-crown profile featuring pre-curved visor, embroidered eyelets for breathability, and premium brass buckle closure.</p>",
+    "sizes": ["Adjustable Free Size"],
+    "colors": ["Black & Yellow", "Solid Charcoal"],
+    "colorVariants": [
+      {
+        "color": "Black & Yellow",
+        "hex": "#f59e0b",
+        "image": "https://images.unsplash.com/photo-1588850561407-ed78c282e89b?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Accessories", "Cap", "Streetwear"],
+    "stock": 45,
+    "inStock": true,
+    "isFeatured": false,
+    "isNewArrival": true,
+    "isBestSeller": false,
+    "sku": "NET-CAP-013",
+    "brand": "NETRAVE Studio"
+  },
+  {
+    "id": 14,
+    "title": "Vintage Wash Straight-Leg Selvedge Denim Jeans",
+    "category": "pants",
+    "subcategory": "jeans",
+    "price": 1499,
+    "originalPrice": 2499,
+    "rating": 4.8,
+    "reviews": 61,
+    "image": "https://images.unsplash.com/photo-1542272604-780c96856592?w=600&auto=format&fit=crop&q=80",
+    "images": [
+      "https://images.unsplash.com/photo-1542272604-780c96856592?w=600&auto=format&fit=crop&q=80"
+    ],
+    "shortDescription": "Heavyweight 14oz ring-spun cotton denim with authentic vintage whiskers wash.",
+    "description": "<p>Tailored with classic 5-pocket styling, heavy-duty copper rivets, and a comfortable mid-rise straight-leg cut.</p>",
+    "sizes": ["30", "32", "34", "36"],
+    "colors": ["Light Vintage Wash", "Dark Indigo"],
+    "colorVariants": [
+      {
+        "color": "Light Vintage Wash",
+        "hex": "#60a5fa",
+        "image": "https://images.unsplash.com/photo-1542272604-780c96856592?w=600&auto=format&fit=crop&q=80"
+      }
+    ],
+    "tags": ["Jeans", "Denim", "Pants", "Men", "New"],
+    "stock": 38,
+    "inStock": true,
+    "isFeatured": false,
+    "isNewArrival": true,
+    "isBestSeller": false,
+    "sku": "NET-JNS-014",
+    "brand": "NETRAVE Denim"
   }
 ]

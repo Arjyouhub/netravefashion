@@ -5,730 +5,542 @@ export default function Header({
     wishlistCount = 0,
     onCartOpen,
     onWishlistOpen,
-    onBookingsOpen,
-    onProfileOpen,
+    onTrackingOpen,
     activeCategory = 'all',
     onCategoryChange,
     searchQuery = '',
     onSearchChange,
-    mobileDrawerOpen: propMobileDrawerOpen,
-    setMobileDrawerOpen: propSetMobileDrawerOpen,
-    activeTag,
-    onTagChange,
-    setIsAdminView,
-    onSortChange,
     user,
     onLogout,
     onLoginClick,
-    onTrackingOpen,
+    onNavigate,
     categories = [],
-    products = []
+    products = [],
+    currentPage = 'home'
 }) {
-    const [mobileSearchVisible, setMobileSearchVisible] = useState(false);
-    const [localDrawerOpen, setLocalDrawerOpen] = useState(false);
-    const [categoriesExpanded, setCategoriesExpanded] = useState(false);
+    const [isCategoryDropdownOpen, setIsCategoryDropdownOpen] = useState(false);
+    const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
+    const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
     const [isSearchFocused, setIsSearchFocused] = useState(false);
-    const [recentSearches, setRecentSearches] = useState(() => {
-        try {
-            return JSON.parse(localStorage.getItem('netrave_recent_searches')) || ['Oversized', 'Linen', 'Cargo'];
-        } catch {
-            return ['Oversized', 'Linen', 'Cargo'];
-        }
-    });
 
-    const searchRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const searchContainerRef = useRef(null);
+    const categoryDropdownRef = useRef(null);
+    const userMenuRef = useRef(null);
 
-    const mobileDrawerOpen = propMobileDrawerOpen !== undefined ? propMobileDrawerOpen : localDrawerOpen;
-    const setMobileDrawerOpen = propSetMobileDrawerOpen !== undefined ? propSetMobileDrawerOpen : setLocalDrawerOpen;
-
-    // Use backend categories or fallback to default categories if still loading
-    const displayCategories = [
-        { id: 'all', slug: 'all', name: 'All Items' },
-        ...(categories.length > 0 ? categories : [
-            { id: 1, slug: 't-shirt', name: 'T-Shirts' },
-            { id: 2, slug: 'shirt', name: 'Shirts' },
-            { id: 3, slug: 'hoodies', name: 'Jackets & Hoodies' },
-            { id: 4, slug: 'pants', name: 'Pants & Cargos' },
-            { id: 5, slug: 'footwear', name: 'Footwear & Shoes' },
-            { id: 6, slug: 'saree', name: 'Sarees' },
-            { id: 7, slug: 'kurti', name: 'Kurtis & Ethnic' }
-        ])
-    ];
-
-    // Filter live search suggestions based on query
-    const searchSuggestions = searchQuery.trim().length >= 1
+    // Live search suggestions
+    const trimmedQuery = searchQuery.trim().toLowerCase();
+    const suggestions = trimmedQuery.length >= 1
         ? products.filter(p => {
-            const q = searchQuery.toLowerCase().trim();
             return (
-                p.title?.toLowerCase().includes(q) ||
-                p.category?.toLowerCase().includes(q) ||
-                p.subcategory?.toLowerCase().includes(q) ||
-                p.sku?.toLowerCase().includes(q) ||
-                p.brand?.toLowerCase().includes(q) ||
-                p.tags?.some(t => t.toLowerCase().includes(q))
+                p.title?.toLowerCase().includes(trimmedQuery) ||
+                p.category?.toLowerCase().includes(trimmedQuery) ||
+                p.brand?.toLowerCase().includes(trimmedQuery) ||
+                p.tags?.some(t => t.toLowerCase().includes(trimmedQuery))
             );
         }).slice(0, 5)
         : [];
 
-    const handleSelectSuggestion = (title) => {
-        onSearchChange(title);
-        setIsSearchFocused(false);
-        setMobileSearchVisible(false);
-        saveRecentSearch(title);
-        scrollToProducts();
-    };
-
-    const saveRecentSearch = (query) => {
-        if (!query || !query.trim()) return;
-        const trimmed = query.trim();
-        const updated = [trimmed, ...recentSearches.filter(s => s.toLowerCase() !== trimmed.toLowerCase())].slice(0, 6);
-        setRecentSearches(updated);
-        try {
-            localStorage.setItem('netrave_recent_searches', JSON.stringify(updated));
-        } catch { }
-    };
-
-    const handleSearchKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            saveRecentSearch(searchQuery);
-            setIsSearchFocused(false);
-            setMobileSearchVisible(false);
-            scrollToProducts();
-        }
-    };
-
-    const scrollToProducts = () => {
-        setTimeout(() => {
-            const prodSec = document.getElementById('products');
-            if (prodSec) prodSec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 120);
-    };
-
-    // Close suggestions dropdown when clicking outside
+    // Close dropdowns on click outside
     useEffect(() => {
         const handleClickOutside = (e) => {
-            if (searchRef.current && !searchRef.current.contains(e.target)) {
+            if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
                 setIsSearchFocused(false);
+            }
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+                setIsCategoryDropdownOpen(false);
+            }
+            if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+                setIsUserMenuOpen(false);
             }
         };
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleCategoryClick = (catSlug, isMobile = false) => {
-        onCategoryChange(catSlug);
-        if (onTagChange) onTagChange(null);
-        if (isMobile) {
-            setMobileDrawerOpen(false);
+    const handleSearchSubmit = (e) => {
+        if (e) e.preventDefault();
+        setIsSearchFocused(false);
+        if (onNavigate) {
+            onNavigate('search', { query: searchQuery });
         }
-        scrollToProducts();
     };
 
-    const triggerHome = () => {
-        setIsAdminView(false);
-        onCategoryChange('all');
-        if (onTagChange) onTagChange(null);
-        onSearchChange('');
-        setMobileDrawerOpen(false);
-        window.history.pushState({}, '', '/');
+    const handleSelectSuggestion = (title) => {
+        onSearchChange(title);
+        setIsSearchFocused(false);
+        if (onNavigate) {
+            onNavigate('search', { query: title });
+        }
+    };
+
+    const handleNav = (page, params = {}) => {
+        setIsMobileDrawerOpen(false);
+        setIsCategoryDropdownOpen(false);
+        setIsUserMenuOpen(false);
+        if (onNavigate) {
+            onNavigate(page, params);
+        }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCategoryClick = (catSlug) => {
+        setIsMobileDrawerOpen(false);
+        setIsCategoryDropdownOpen(false);
+        if (onCategoryChange) {
+            onCategoryChange(catSlug);
+        }
+        if (onNavigate) {
+            onNavigate('category', { category: catSlug });
+        }
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     return (
-        <>
-            <header className="main-header" style={{ position: 'sticky', top: 0, zIndex: 1000, background: 'rgba(9, 11, 17, 0.94)', backdropFilter: 'blur(12px)', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
-                <div className="header-container" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 20px', maxWidth: '1360px', margin: '0 auto', gap: '16px' }}>
-                    {/* 1. LOGO */}
-                    <div className="header-left-group" style={{ display: 'flex', alignItems: 'center', gap: '24px' }}>
-                        <a href="#" className="logo" onClick={(e) => { e.preventDefault(); triggerHome(); }} style={{ display: 'flex', alignItems: 'center', gap: '10px', textDecoration: 'none' }}>
-                            <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" style={{ height: '38px', width: 'auto' }} />
-                            <div className="logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
-                                <div className="logo-accent" style={{ fontSize: '18px', fontWeight: '900', letterSpacing: '-0.3px', lineHeight: '1.1' }}>
-                                    <span className="logo-net" style={{ color: '#ffffff' }}>NET</span>
-                                    <span className="logo-rave" style={{ color: 'var(--primary)' }}>RAVE</span>
-                                </div>
-                                <span className="logo-sub" style={{ fontSize: '7.5px', letterSpacing: '1.6px', color: 'var(--primary)', fontWeight: '800' }}>
-                                    CLOTHING & STYLE
-                                </span>
-                            </div>
-                        </a>
-
-                        {/* 2. DESKTOP CATEGORY NAVIGATION */}
-                        <nav className="desktop-nav" style={{ display: 'flex', alignItems: 'center', overflowX: 'auto', scrollbarWidth: 'none', maxWidth: '550px' }}>
-                            <ul style={{ display: 'flex', gap: '6px', listStyle: 'none', margin: 0, padding: 0 }}>
-                                {displayCategories.map(cat => {
-                                    const slug = cat.slug || cat.id;
-                                    const isActive = activeCategory === slug && !activeTag;
-                                    return (
-                                        <li key={slug}>
-                                            <button
-                                                type="button"
-                                                className={`nav-link ${isActive ? 'active' : ''}`}
-                                                onClick={() => handleCategoryClick(slug)}
-                                                style={{
-                                                    background: isActive ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
-                                                    color: isActive ? 'var(--primary)' : '#cbd5e1',
-                                                    border: 'none',
-                                                    borderRadius: '8px',
-                                                    padding: '8px 12px',
-                                                    fontSize: '13px',
-                                                    fontWeight: '700',
-                                                    cursor: 'pointer',
-                                                    transition: 'all 0.2s ease',
-                                                    whiteSpace: 'nowrap'
-                                                }}
-                                            >
-                                                {cat.name}
-                                            </button>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </nav>
+        <header className="netrave-header-master">
+            {/* 1. Yellow Top Announcement Bar (Desktop & Tablet) */}
+            <div className="netrave-top-bar">
+                <div className="netrave-header-container top-bar-inner">
+                    <div className="top-bar-left">
+                        <span className="top-bar-shipping-icon">🚚</span>
+                        <span className="top-bar-text">Free Shipping on Orders Above ₹999</span>
                     </div>
-
-                    {/* 3. SEARCH BAR (Desktop) WITH SUGGESTIONS & RECENT SEARCHES */}
-                    <div ref={searchRef} className="desktop-search-header" style={{ position: 'relative', flex: 1, maxWidth: '420px' }}>
-                        <div className="search-input-wrapper" style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            background: '#121624',
-                            border: isSearchFocused ? '1px solid var(--primary)' : '1px solid rgba(255, 255, 255, 0.12)',
-                            borderRadius: '12px',
-                            padding: '6px 14px',
-                            transition: 'all 0.2s ease',
-                            width: '100%'
-                        }}>
-                            <span style={{ marginRight: '8px', opacity: 0.6 }}>🔍</span>
-                            <input
-                                type="text"
-                                placeholder="Search products, brands, SKU, tags..."
-                                className="search-input"
-                                value={searchQuery}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                                onFocus={() => setIsSearchFocused(true)}
-                                onKeyDown={handleSearchKeyDown}
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#ffffff',
-                                    outline: 'none',
-                                    width: '100%',
-                                    fontSize: '13px',
-                                    fontFamily: 'inherit'
-                                }}
-                            />
-                            {searchQuery && (
-                                <button
-                                    type="button"
-                                    onClick={() => onSearchChange('')}
-                                    style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '16px', padding: '0 4px' }}
-                                >
-                                    &times;
-                                </button>
-                            )}
-                        </div>
-
-                        {/* Search Suggestions Popover */}
-                        {isSearchFocused && (
-                            <div style={{
-                                position: 'absolute',
-                                top: 'calc(100% + 6px)',
-                                left: 0,
-                                right: 0,
-                                background: '#111422',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                borderRadius: '14px',
-                                boxShadow: '0 16px 36px rgba(0, 0, 0, 0.5)',
-                                padding: '12px',
-                                zIndex: 1100,
-                                maxHeight: '380px',
-                                overflowY: 'auto'
-                            }}>
-                                {/* Matching Products */}
-                                {searchSuggestions.length > 0 ? (
-                                    <div>
-                                        <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--primary)', letterSpacing: '0.8px', marginBottom: '8px', textTransform: 'uppercase' }}>
-                                            ⚡ Matching Products ({searchSuggestions.length})
-                                        </div>
-                                        {searchSuggestions.map(item => (
-                                            <div
-                                                key={`sug-${item.id}`}
-                                                onClick={() => handleSelectSuggestion(item.title)}
-                                                style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '10px',
-                                                    padding: '8px',
-                                                    borderRadius: '8px',
-                                                    cursor: 'pointer',
-                                                    transition: 'background 0.15s ease'
-                                                }}
-                                                className="search-item-hover"
-                                            >
-                                                <img src={item.image} alt={item.title} style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover' }} />
-                                                <div style={{ flex: 1, minWidth: 0 }}>
-                                                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                                        {item.title}
-                                                    </div>
-                                                    <div style={{ fontSize: '11.5px', color: '#94a3b8', display: 'flex', gap: '8px' }}>
-                                                        <span>₹{item.price}</span>
-                                                        <span>•</span>
-                                                        <span>{item.category}</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : searchQuery.trim().length >= 1 ? (
-                                    <div style={{ padding: '10px', textAlign: 'center', color: '#94a3b8', fontSize: '12.5px' }}>
-                                        No direct matches for "{searchQuery}". Press Enter to search all.
-                                    </div>
-                                ) : null}
-
-                                {/* Recent Searches */}
-                                {recentSearches.length > 0 && (
-                                    <div style={{ marginTop: searchSuggestions.length > 0 ? '12px' : '0', paddingTop: searchSuggestions.length > 0 ? '10px' : '0', borderTop: searchSuggestions.length > 0 ? '1px solid rgba(255,255,255,0.06)' : 'none' }}>
-                                        <div style={{ fontSize: '11px', fontWeight: '700', color: '#94a3b8', marginBottom: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                                            <span>🕒 Recent Searches</span>
-                                            <span
-                                                onClick={() => { setRecentSearches([]); localStorage.removeItem('netrave_recent_searches'); }}
-                                                style={{ cursor: 'pointer', color: '#ef4444' }}
-                                            >
-                                                Clear
-                                            </span>
-                                        </div>
-                                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                                            {recentSearches.map((term, i) => (
-                                                <button
-                                                    key={i}
-                                                    type="button"
-                                                    onClick={() => handleSelectSuggestion(term)}
-                                                    style={{
-                                                        background: '#191e30',
-                                                        border: '1px solid rgba(255,255,255,0.08)',
-                                                        color: '#cbd5e1',
-                                                        borderRadius: '20px',
-                                                        padding: '4px 10px',
-                                                        fontSize: '11.5px',
-                                                        fontWeight: '600',
-                                                        cursor: 'pointer'
-                                                    }}
-                                                >
-                                                    {term}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-
-                    {/* 4. ACTIONS (Account, Wishlist, Cart) */}
-                    <div className="header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {/* Mobile Search Toggle */}
-                        <button
-                            type="button"
-                            className="action-btn mobile-search-trigger"
-                            onClick={() => setMobileSearchVisible(!mobileSearchVisible)}
-                            aria-label="Search"
-                            style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', padding: '6px' }}
-                        >
-                            <span style={{ fontSize: '18px' }}>🔍</span>
+                    <div className="top-bar-right">
+                        <button type="button" className="top-bar-link" onClick={() => handleNav('tracking')}>
+                            Track Order
                         </button>
-
-                        {/* Customer Account / Login (Desktop) */}
-                        {user ? (
-                            <button
-                                type="button"
-                                className="header-profile-chip desktop-only-action"
-                                onClick={onProfileOpen}
-                                title={`Account (${user.name})`}
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    background: '#141828',
-                                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                                    borderRadius: '24px',
-                                    padding: '5px 12px 5px 6px',
-                                    color: '#fff',
-                                    fontSize: '13px',
-                                    fontWeight: '700',
-                                    cursor: 'pointer'
-                                }}
-                            >
-                                <div style={{
-                                    width: '26px',
-                                    height: '26px',
-                                    borderRadius: '50%',
-                                    background: 'var(--primary)',
-                                    color: '#0a0b0e',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontWeight: '900',
-                                    fontSize: '12px'
-                                }}>
-                                    {(user.name || 'U').charAt(0).toUpperCase()}
-                                </div>
-                                <span>{user.name?.split(' ')[0] || 'Account'}</span>
-                            </button>
-                        ) : (
-                            <button
-                                type="button"
-                                className="action-btn header-login-chip desktop-only-action"
-                                onClick={onLoginClick}
-                                style={{
-                                    background: 'transparent',
-                                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                                    borderRadius: '10px',
-                                    padding: '7px 14px',
-                                    color: '#fff',
-                                    fontSize: '13px',
-                                    fontWeight: '700',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px'
-                                }}
-                            >
-                                <span>👤</span>
-                                <span>Login</span>
-                            </button>
-                        )}
-
-                        {/* Live Courier Tracking Chip */}
-                        <button
-                            type="button"
-                            className="action-btn header-track-chip desktop-only-action"
-                            onClick={onTrackingOpen}
-                            title="Track Order Live"
-                            style={{
-                                background: 'transparent',
-                                border: '1px solid rgba(255, 255, 255, 0.12)',
-                                borderRadius: '10px',
-                                padding: '7px 12px',
-                                color: '#cbd5e1',
-                                fontSize: '13px',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}
-                        >
-                            <span>🚚</span>
-                            <span>Track</span>
+                        <span className="top-bar-divider">|</span>
+                        <button type="button" className="top-bar-link" onClick={() => handleNav('account', { tab: 'support' })}>
+                            Help
                         </button>
-
-                        {/* Wishlist Button (Responsive: visible on both Mobile and Desktop) */}
-                        <button
-                            type="button"
-                            className="action-btn header-wishlist-chip"
-                            onClick={onWishlistOpen}
-                            title="My Wishlist"
-                            style={{
-                                position: 'relative',
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#fff',
-                                padding: '6px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}
-                        >
-                            <span style={{ fontSize: '19px' }}>❤️</span>
-                            {wishlistCount > 0 && (
-                                <span className="cart-badge" style={{
-                                    position: 'absolute',
-                                    top: '-2px',
-                                    right: '-2px',
-                                    background: '#ef4444',
-                                    color: '#fff',
-                                    borderRadius: '50%',
-                                    fontSize: '10px',
-                                    fontWeight: '800',
-                                    padding: '2px 5px',
-                                    lineHeight: 1
-                                }}>
-                                    {wishlistCount}
-                                </span>
-                            )}
-                        </button>
-
-                        {/* Shopping Bag / Cart */}
-                        <button
-                            type="button"
-                            className="action-btn header-cart-chip"
-                            onClick={onCartOpen}
-                            title="Shopping Bag"
-                            style={{
-                                position: 'relative',
-                                background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-                                border: 'none',
-                                borderRadius: '12px',
-                                color: '#0a0b0e',
-                                padding: '8px 14px',
-                                fontWeight: '800',
-                                fontSize: '13px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                            }}
-                        >
-                            <span>🛒</span>
-                            <span className="cart-badge" style={{
-                                background: '#0a0b0e',
-                                color: '#fff',
-                                borderRadius: '20px',
-                                fontSize: '11px',
-                                padding: '2px 6px',
-                                fontWeight: '800'
-                            }}>
-                                {cartCount}
-                            </span>
-                        </button>
-
-                        {/* Mobile Hamburger Drawer Button */}
-                        <button
-                            type="button"
-                            className="action-btn mobile-menu-btn"
-                            onClick={() => setMobileDrawerOpen(true)}
-                            aria-label="Navigation Menu"
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: '#fff',
-                                padding: '6px',
-                                cursor: 'pointer'
-                            }}
-                        >
-                            <span style={{ fontSize: '22px' }}>☰</span>
-                        </button>
-                    </div>
-                </div>
-
-                {/* Mobile Search Input Overlay */}
-                {mobileSearchVisible && (
-                    <div style={{ padding: '8px 16px 12px', background: '#090a10', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                        <div className="search-input-wrapper" style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            background: '#131826',
-                            border: '1px solid rgba(255,255,255,0.15)',
-                            borderRadius: '10px',
-                            padding: '6px 12px'
-                        }}>
-                            <span style={{ marginRight: '8px' }}>🔍</span>
-                            <input
-                                type="text"
-                                placeholder="Search products, brands, SKU..."
-                                value={searchQuery}
-                                onChange={(e) => onSearchChange(e.target.value)}
-                                onKeyDown={handleSearchKeyDown}
-                                autoFocus
-                                style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    color: '#fff',
-                                    outline: 'none',
-                                    width: '100%',
-                                    fontSize: '13px',
-                                    fontFamily: 'inherit'
-                                }}
-                            />
-                            {searchQuery && (
-                                <button type="button" onClick={() => onSearchChange('')} style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '16px' }}>
-                                    &times;
-                                </button>
-                            )}
-                        </div>
-                    </div>
-                )}
-            </header>
-
-            {/* RESPONSIVE MOBILE NAVIGATION DRAWER */}
-            <div className={`mobile-nav-drawer ${mobileDrawerOpen ? 'open' : ''}`} style={{
-                position: 'fixed',
-                top: 0,
-                bottom: 0,
-                left: 0,
-                width: '300px',
-                maxWidth: '85vw',
-                background: '#0d101a',
-                borderRight: '1px solid rgba(255, 255, 255, 0.1)',
-                zIndex: 2000,
-                transform: mobileDrawerOpen ? 'translateX(0)' : 'translateX(-100%)',
-                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '10px 0 30px rgba(0,0,0,0.7)'
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <img src="/assets/logo.png" alt="NETRAVE" style={{ height: '28px' }} />
-                        <span style={{ fontWeight: '900', color: '#fff', fontSize: '15px' }}>NETRAVE STORE</span>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => setMobileDrawerOpen(false)}
-                        style={{ background: 'transparent', border: 'none', color: '#94a3b8', fontSize: '24px', cursor: 'pointer' }}
-                    >
-                        &times;
-                    </button>
-                </div>
-
-                <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px' }}>
-                    {/* User profile state */}
-                    <div style={{ marginBottom: '20px', padding: '12px', background: '#141828', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        {user ? (
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'var(--primary)', color: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '900' }}>
-                                        {(user.name || 'U').charAt(0).toUpperCase()}
-                                    </div>
-                                    <div>
-                                        <div style={{ fontWeight: '800', color: '#fff', fontSize: '14px' }}>{user.name}</div>
-                                        <div style={{ fontSize: '11px', color: '#94a3b8' }}>{user.phone || user.email}</div>
-                                    </div>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => { setMobileDrawerOpen(false); onProfileOpen(); }}
-                                    style={{ background: 'transparent', border: 'none', color: 'var(--primary)', fontWeight: '700', fontSize: '12px', cursor: 'pointer' }}
-                                >
-                                    Edit
-                                </button>
-                            </div>
-                        ) : (
-                            <div style={{ textAlign: 'center' }}>
-                                <div style={{ fontSize: '13px', color: '#cbd5e1', marginBottom: '8px' }}>Sign in to track orders & save wishlist</div>
-                                <button
-                                    type="button"
-                                    onClick={() => { setMobileDrawerOpen(false); onLoginClick(); }}
-                                    className="cta-btn primary-cta"
-                                    style={{ width: '100%', padding: '8px', fontSize: '13px', borderRadius: '8px' }}
-                                >
-                                    Login / Register
-                                </button>
-                            </div>
-                        )}
-                    </div>
-
-                    {/* Navigation Items */}
-                    <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--primary)', letterSpacing: '1px', marginBottom: '10px', textTransform: 'uppercase' }}>
-                        Browse Categories
-                    </div>
-
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '24px' }}>
-                        {displayCategories.map(cat => {
-                            const slug = cat.slug || cat.id;
-                            const isActive = activeCategory === slug;
-                            return (
-                                <button
-                                    key={`mob-${slug}`}
-                                    type="button"
-                                    onClick={() => handleCategoryClick(slug, true)}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        padding: '10px 14px',
-                                        background: isActive ? 'rgba(245, 158, 11, 0.12)' : 'transparent',
-                                        color: isActive ? 'var(--primary)' : '#cbd5e1',
-                                        border: 'none',
-                                        borderRadius: '10px',
-                                        fontWeight: '700',
-                                        fontSize: '14px',
-                                        textAlign: 'left',
-                                        cursor: 'pointer'
-                                    }}
-                                >
-                                    <span>{cat.name}</span>
-                                    {cat.subcategories?.length > 0 && (
-                                        <span style={{ fontSize: '11px', color: '#64748b' }}>({cat.subcategories.length})</span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </div>
-
-                    {/* Quick Tools */}
-                    <div style={{ fontSize: '11px', fontWeight: '800', color: 'var(--primary)', letterSpacing: '1px', marginBottom: '10px', textTransform: 'uppercase' }}>
-                        Quick Shortcuts
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <button
-                            type="button"
-                            onClick={() => { setMobileDrawerOpen(false); onTrackingOpen(); }}
-                            style={drawerToolBtnStyle}
-                        >
-                            <span>🚚</span> Track Shipment
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setMobileDrawerOpen(false); onWishlistOpen(); }}
-                            style={drawerToolBtnStyle}
-                        >
-                            <span>❤️</span> Saved Wishlist ({wishlistCount})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => { setMobileDrawerOpen(false); onCartOpen(); }}
-                            style={drawerToolBtnStyle}
-                        >
-                            <span>🛒</span> Shopping Bag ({cartCount})
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                setMobileDrawerOpen(false);
-                                setTimeout(() => {
-                                    const footer = document.querySelector('.main-footer');
-                                    if (footer) footer.scrollIntoView({ behavior: 'smooth' });
-                                }, 120);
-                            }}
-                            style={drawerToolBtnStyle}
-                        >
-                            <span>💬</span> WhatsApp Support
+                        <span className="top-bar-divider">|</span>
+                        <button type="button" className="top-bar-link" onClick={() => handleNav('account', { tab: 'support' })}>
+                            Contact
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Mobile Drawer Backdrop */}
-            {mobileDrawerOpen && (
-                <div
-                    onClick={() => setMobileDrawerOpen(false)}
-                    style={{
-                        position: 'fixed',
-                        inset: 0,
-                        background: 'rgba(0, 0, 0, 0.7)',
-                        backdropFilter: 'blur(4px)',
-                        zIndex: 1999
-                    }}
-                />
+            {/* 2. Main Deep Black Header */}
+            <div className="netrave-main-header">
+                <div className="netrave-header-container main-header-inner">
+                    {/* Left: Mobile Hamburger & Exact Netrave Logo */}
+                    <div className="header-left-cluster">
+                        <button 
+                            type="button" 
+                            className="mobile-hamburger-btn" 
+                            onClick={() => setIsMobileDrawerOpen(prev => !prev)}
+                            aria-label="Toggle navigation menu"
+                        >
+                            <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                                <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                            </svg>
+                        </button>
+
+                        {/* EXACT PRESERVED NETRAVE BRAND LOGO */}
+                        <div 
+                            className="header-brand-link" 
+                            onClick={() => handleNav('home')} 
+                            role="button" 
+                            tabIndex={0}
+                            style={{ cursor: 'pointer' }}
+                        >
+                            <img 
+                                src="/assets/logo.png" 
+                                alt="NETRAVE Logo" 
+                                className="header-logo-image" 
+                            />
+                            <div className="header-brand-text">
+                                <div className="header-brand-title">
+                                    <span className="logo-net">Net</span>
+                                    <span className="logo-rave" style={{ color: 'var(--netrave-yellow, #FFD400)' }}>rave</span>
+                                </div>
+                                <span className="header-brand-sub" style={{ color: 'var(--netrave-yellow, #FFD400)' }}>
+                                    CLOTHING & STYLE
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Center: Desktop Search Input Box */}
+                    <div className="header-search-container" ref={searchContainerRef}>
+                        <form className="header-search-form" onSubmit={handleSearchSubmit}>
+                            <input 
+                                ref={searchInputRef}
+                                type="text" 
+                                className="header-search-input" 
+                                placeholder="Search for products, brands and more..."
+                                value={searchQuery}
+                                onChange={(e) => onSearchChange(e.target.value)}
+                                onFocus={() => setIsSearchFocused(true)}
+                            />
+                            {searchQuery && (
+                                <button 
+                                    type="button" 
+                                    className="search-clear-btn" 
+                                    onClick={() => onSearchChange('')}
+                                    aria-label="Clear search"
+                                >
+                                    ✕
+                                </button>
+                            )}
+                            <button type="submit" className="header-search-submit-btn" aria-label="Search">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                    <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                                </svg>
+                            </button>
+                        </form>
+
+                        {/* Search Dropdown Suggestions */}
+                        {isSearchFocused && suggestions.length > 0 && (
+                            <div className="search-dropdown-menu">
+                                <div className="search-dropdown-label">Suggested Products</div>
+                                {suggestions.map(item => (
+                                    <div 
+                                        key={item.id} 
+                                        className="search-suggestion-item"
+                                        onClick={() => handleSelectSuggestion(item.title)}
+                                    >
+                                        <img src={item.image} alt={item.title} className="suggestion-img" />
+                                        <div className="suggestion-info">
+                                            <span className="suggestion-title">{item.title}</span>
+                                            <span className="suggestion-price">₹{item.price}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right: Actions Cluster (Search, Wishlist, Cart, Account) */}
+                    <div className="header-actions-cluster">
+                        {/* Mobile Search Icon Button */}
+                        <button 
+                            type="button" 
+                            className="mobile-search-toggle-btn"
+                            onClick={() => handleNav('search')}
+                            aria-label="Search"
+                        >
+                            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                            </svg>
+                        </button>
+
+                        {/* Wishlist Button with Badge */}
+                        <button 
+                            type="button" 
+                            className="header-action-btn header-wishlist-action-btn"
+                            onClick={() => handleNav('wishlist')}
+                            title="Saved to Wishlist"
+                            aria-label="Wishlist"
+                        >
+                            <div className="action-icon-badge-wrap">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="header-action-icon">
+                                    <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+                                </svg>
+                                {wishlistCount > 0 && (
+                                    <span className="action-badge-count">{wishlistCount}</span>
+                                )}
+                            </div>
+                            <span className="header-action-label desktop-only-text">Wishlist</span>
+                        </button>
+
+                        {/* Cart Button with Yellow Badge */}
+                        <button 
+                            type="button" 
+                            className="header-action-btn cart-action-btn"
+                            onClick={() => handleNav('cart')}
+                            title="View Shopping Cart"
+                            aria-label="Cart"
+                        >
+                            <div className="action-icon-badge-wrap">
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="header-action-icon">
+                                    <path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/>
+                                </svg>
+                                <span className="cart-badge-yellow">{cartCount}</span>
+                            </div>
+                            <span className="header-action-label desktop-only-text">Cart</span>
+                        </button>
+
+                        {/* Desktop Account Dropdown Button */}
+                        <div className="account-dropdown-wrapper desktop-only-flex" ref={userMenuRef}>
+                            <button 
+                                type="button" 
+                                className="header-action-btn"
+                                onClick={() => {
+                                    if (!user) {
+                                        if (onLoginClick) onLoginClick();
+                                        else handleNav('login');
+                                    } else {
+                                        setIsUserMenuOpen(prev => !prev);
+                                    }
+                                }}
+                            >
+                                <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" className="header-action-icon">
+                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                                </svg>
+                                <span className="header-action-label">
+                                    {user ? (user.name ? user.name.split(' ')[0] : 'Account') : 'Account'}
+                                </span>
+                            </button>
+
+                            {/* User Menu Dropdown */}
+                            {user && isUserMenuOpen && (
+                                <div className="user-dropdown-popover">
+                                    <div className="user-dropdown-header">
+                                        <div className="user-dropdown-avatar">
+                                            {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                                        </div>
+                                        <div className="user-dropdown-meta">
+                                            <strong>{user.name || 'Member'}</strong>
+                                            <span>{user.phone || user.email || 'Netrave Customer'}</span>
+                                        </div>
+                                    </div>
+                                    <hr className="dropdown-divider" />
+                                    <button type="button" className="dropdown-menu-link" onClick={() => handleNav('account', { tab: 'profile' })}>
+                                        👤 My Profile
+                                    </button>
+                                    <button type="button" className="dropdown-menu-link" onClick={() => handleNav('orders')}>
+                                        📦 My Orders
+                                    </button>
+                                    <button type="button" className="dropdown-menu-link" onClick={() => handleNav('wishlist')}>
+                                        ❤️ My Wishlist
+                                    </button>
+                                    <button type="button" className="dropdown-menu-link" onClick={() => handleNav('addresses')}>
+                                        📍 Saved Addresses
+                                    </button>
+                                    <button type="button" className="dropdown-menu-link" onClick={() => handleNav('tracking')}>
+                                        🚚 Track Orders
+                                    </button>
+                                    <hr className="dropdown-divider" />
+                                    <button 
+                                        type="button" 
+                                        className="dropdown-menu-link text-danger" 
+                                        onClick={() => {
+                                            setIsUserMenuOpen(false);
+                                            if (onLogout) onLogout();
+                                        }}
+                                    >
+                                        🚪 Log Out
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Sub-Header Mobile Search Bar Pill (Shown on Home and Category as in reference) */}
+                {(currentPage === 'home' || currentPage === 'category') && (
+                    <div className="mobile-search-pill-container">
+                        <div 
+                            className="mobile-search-pill" 
+                            onClick={() => handleNav('search')}
+                            role="button"
+                            tabIndex={0}
+                        >
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="#9ca3af">
+                                <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                            </svg>
+                            <span className="search-pill-placeholder">
+                                {currentPage === 'category' ? `Search in ${activeCategory === 'all' ? 'All Collections' : activeCategory}...` : 'Search for products, brands...'}
+                            </span>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* 3. Category Navigation Bar (Desktop & Tablet) */}
+            <nav className="netrave-category-bar desktop-only-flex">
+                <div className="netrave-header-container category-bar-inner">
+                    <div className="all-categories-btn-wrapper" ref={categoryDropdownRef}>
+                        <button 
+                            type="button" 
+                            className="all-categories-btn"
+                            onClick={() => setIsCategoryDropdownOpen(prev => !prev)}
+                        >
+                            <span className="categories-hamburger-icon">☰</span>
+                            <span className="categories-btn-label">All Categories</span>
+                            <span className="categories-chevron">▼</span>
+                        </button>
+
+                        {isCategoryDropdownOpen && (
+                            <div className="all-categories-dropdown-menu">
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('all')}>
+                                    🛍️ All Products
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('t-shirt')}>
+                                    👕 Streetwear T-Shirts
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('shirt')}>
+                                    👔 Casual & Linen Shirts
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('hoodies')}>
+                                    🧥 Jackets & Hoodies
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('pants')}>
+                                    👖 Jeans & Cargos
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('footwear')}>
+                                    👟 Footwear & Sneakers
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('watches')}>
+                                    ⌚ Premium Watches
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('saree')}>
+                                    🥻 Sarees & Ethnic Wear
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('kurti')}>
+                                    👗 Designer Kurtis
+                                </button>
+                                <button type="button" className="cat-drop-item" onClick={() => handleCategoryClick('accessories')}>
+                                    🕶️ Accessories & Bags
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    <ul className="category-links-list">
+                        <li>
+                            <button 
+                                type="button" 
+                                className={`cat-link-item ${activeCategory === 'shirt' ? 'active' : ''}`}
+                                onClick={() => handleCategoryClick('shirt')}
+                            >
+                                Men
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className={`cat-link-item ${activeCategory === 'saree' ? 'active' : ''}`}
+                                onClick={() => handleCategoryClick('saree')}
+                            >
+                                Women
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className={`cat-link-item ${activeCategory === 'watches' ? 'active' : ''}`}
+                                onClick={() => handleCategoryClick('watches')}
+                            >
+                                Watches
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className={`cat-link-item ${activeCategory === 'footwear' ? 'active' : ''}`}
+                                onClick={() => handleCategoryClick('footwear')}
+                            >
+                                Footwear
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className={`cat-link-item ${activeCategory === 'accessories' ? 'active' : ''}`}
+                                onClick={() => handleCategoryClick('accessories')}
+                            >
+                                Accessories
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className="cat-link-item highlight-new"
+                                onClick={() => handleCategoryClick('all')}
+                            >
+                                New Arrivals
+                            </button>
+                        </li>
+                        <li>
+                            <button 
+                                type="button" 
+                                className="cat-link-item highlight-offers"
+                                onClick={() => handleNav('offers')}
+                            >
+                                Offers 🔥
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            {/* 4. Mobile Slide-out Drawer */}
+            {isMobileDrawerOpen && (
+                <div className="mobile-drawer-overlay" onClick={() => setIsMobileDrawerOpen(false)}>
+                    <div className="mobile-drawer-panel" onClick={(e) => e.stopPropagation()}>
+                        <div className="mobile-drawer-header">
+                            <div className="header-brand-link">
+                                <img src="/assets/logo.png" alt="NETRAVE Logo" className="header-logo-image" style={{ height: '30px' }} />
+                                <div className="header-brand-title">
+                                    <span className="logo-net">Net</span>
+                                    <span className="logo-rave" style={{ color: 'var(--netrave-yellow, #FFD400)' }}>rave</span>
+                                </div>
+                            </div>
+                            <button 
+                                type="button" 
+                                className="mobile-drawer-close-btn"
+                                onClick={() => setIsMobileDrawerOpen(false)}
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="mobile-drawer-user-card">
+                            {user ? (
+                                <div className="mobile-user-row">
+                                    <div className="user-avatar-circle">
+                                        {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+                                    </div>
+                                    <div>
+                                        <strong>Hello, {user.name || 'Member'}</strong>
+                                        <p style={{ fontSize: '12px', color: '#9ca3af', margin: 0 }}>{user.phone || user.email}</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <button 
+                                    type="button" 
+                                    className="mobile-login-trigger-btn"
+                                    onClick={() => {
+                                        setIsMobileDrawerOpen(false);
+                                        if (onLoginClick) onLoginClick();
+                                        else handleNav('login');
+                                    }}
+                                >
+                                    Login / Sign Up →
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="mobile-drawer-nav-section">
+                            <h4 className="mobile-drawer-section-title">Categories</h4>
+                            <ul className="mobile-drawer-list">
+                                <li><button type="button" onClick={() => handleCategoryClick('all')}>🛍️ All Products</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('shirt')}>👔 Men's Collection</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('saree')}>🥻 Women's Fashion</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('watches')}>⌚ Premium Watches</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('footwear')}>👟 Footwear & Sneakers</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('t-shirt')}>👕 Streetwear T-Shirts</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('pants')}>👖 Jeans & Cargos</button></li>
+                                <li><button type="button" onClick={() => handleCategoryClick('accessories')}>🕶️ Accessories</button></li>
+                                <li><button type="button" onClick={() => handleNav('offers')}>🔥 Special Offers</button></li>
+                            </ul>
+
+                            <h4 className="mobile-drawer-section-title">Account & Orders</h4>
+                            <ul className="mobile-drawer-list">
+                                <li><button type="button" onClick={() => handleNav('orders')}>📦 My Orders</button></li>
+                                <li><button type="button" onClick={() => handleNav('tracking')}>🚚 Track Order</button></li>
+                                <li><button type="button" onClick={() => handleNav('wishlist')}>❤️ Wishlist ({wishlistCount})</button></li>
+                                <li><button type="button" onClick={() => handleNav('cart')}>🛒 Shopping Cart ({cartCount})</button></li>
+                                <li><button type="button" onClick={() => handleNav('addresses')}>📍 Manage Addresses</button></li>
+                                <li><button type="button" onClick={() => handleNav('account', { tab: 'support' })}>💬 24/7 Support</button></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
             )}
-        </>
+        </header>
     );
 }
-
-const drawerToolBtnStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '10px',
-    padding: '10px 14px',
-    background: '#131828',
-    color: '#e2e8f0',
-    border: '1px solid rgba(255, 255, 255, 0.06)',
-    borderRadius: '10px',
-    fontWeight: '700',
-    fontSize: '13.5px',
-    textAlign: 'left',
-    cursor: 'pointer'
-};

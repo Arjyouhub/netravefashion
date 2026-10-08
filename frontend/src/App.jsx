@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
+import Footer from './components/Footer';
 import Hero from './components/Hero';
 import HomeSections from './components/HomeSections';
 import ProductGrid from './components/ProductGrid';
@@ -14,6 +15,19 @@ import DeveloperModal from './components/DeveloperModal';
 import ProfileModal from './components/ProfileModal';
 import TrackingModal from './components/TrackingModal';
 import WishlistModal from './components/WishlistModal';
+import CategoryPage from './components/CategoryPage';
+import ProductDetailPage from './components/ProductDetailPage';
+import CartPage from './components/CartPage';
+import CheckoutPage from './components/CheckoutPage';
+import AuthPages from './components/AuthPages';
+import OrderTrackingPage from './components/OrderTrackingPage';
+import MyOrdersPage from './components/MyOrdersPage';
+import MyAccountPage from './components/MyAccountPage';
+import WishlistPage from './components/WishlistPage';
+import OffersPage from './components/OffersPage';
+import SearchPage from './components/SearchPage';
+import AddressManagementPage from './components/AddressManagementPage';
+import BottomNav from './components/BottomNav';
 import { getCookie, setCookie, eraseCookie } from './utils/cookies';
 
 // Backup fallback database to ensure frontend works gracefully even if backend is offline
@@ -102,12 +116,13 @@ const FALLBACK_PRODUCTS = [
         image: "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
         images: [
             "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80",
-            "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"
+            "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"
         ],
         shortDescription: "Traditional lustrous pure art silk saree with intricate golden zari floral pallu.",
         description: "Exclusively handwoven with rich golden zari borders and intricate floral peacock motifs across the regal pallu.",
         sizes: ["Free Size (5.5m + 0.8m)"],
-        colors: ["Royal Maroon", "Emerald Green"],
+        colors: ["Royal Maroon", "Emerald Green", "Peacock Blue"],
         colorVariants: [
             {
                 color: "Royal Maroon",
@@ -120,6 +135,12 @@ const FALLBACK_PRODUCTS = [
                 hex: "#065f46",
                 image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
                 images: ["https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Peacock Blue",
+                hex: "#0284c7",
+                image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"]
             }
         ],
         tags: ["Ethnic", "Saree", "Wedding"],
@@ -136,17 +157,32 @@ const FALLBACK_PRODUCTS = [
         rating: 4.7,
         reviews: 96,
         image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
-        images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"],
+        images: [
+            "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
+            "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=600&auto=format&fit=crop&q=80"
+        ],
         shortDescription: "Full-flair georgette Anarkali kurti with intricate sequin yoke and organza dupatta.",
         description: "Elevate your ethnic fashion with this graceful Anarkali suit set with hand-worked sequin neckline.",
-        sizes: ["M", "L", "XL", "XXL"],
-        colors: ["Dusty Rose Pink"],
+        sizes: ["S", "M", "L", "XL", "XXL"],
+        colors: ["Dusty Rose Pink", "Mustard Gold", "Sky Blue"],
         colorVariants: [
             {
                 color: "Dusty Rose Pink",
                 hex: "#f472b6",
                 image: "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80",
                 images: ["https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Mustard Gold",
+                hex: "#eab308",
+                image: "https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1617627143750-d86bc21e42bb?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Sky Blue",
+                hex: "#38bdf8",
+                image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80"]
             }
         ],
         tags: ["Ethnic", "Kurti", "Festive"],
@@ -167,13 +203,19 @@ const FALLBACK_PRODUCTS = [
         shortDescription: "Thermal insulated water-resistant streetwear flight bomber jacket with arm utility zip.",
         description: "Engineered for all-season versatility with water-repellent matte polyester shell.",
         sizes: ["M", "L", "XL"],
-        colors: ["Matte Black"],
+        colors: ["Matte Black", "Army Olive"],
         colorVariants: [
             {
                 color: "Matte Black",
                 hex: "#111827",
                 image: "https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80",
                 images: ["https://images.unsplash.com/photo-1556905055-8f358a7a47b2?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Army Olive",
+                hex: "#4b5320",
+                image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80"]
             }
         ],
         tags: ["Jackets", "Winter", "Bomber"],
@@ -194,13 +236,19 @@ const FALLBACK_PRODUCTS = [
         shortDescription: "Tailored from ultra-breathable pure linen blend with classic spread collar.",
         description: "Tailored from ultra-breathable French linen blend fabric. Designed with a structured spread collar.",
         sizes: ["M", "L", "XL", "XXL"],
-        colors: ["Sage Green"],
+        colors: ["Sage Green", "Sky Blue"],
         colorVariants: [
             {
                 color: "Sage Green",
                 hex: "#4d7c0f",
                 image: "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80",
                 images: ["https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Sky Blue",
+                hex: "#38bdf8",
+                image: "https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1554568218-0f1715e72254?w=600&auto=format&fit=crop&q=80"]
             }
         ],
         tags: ["Breathable", "Premium", "Linen"],
@@ -221,13 +269,19 @@ const FALLBACK_PRODUCTS = [
         shortDescription: "Heavy cotton twill cargo pants with 6 utility pockets and drawstring ankle cuffs.",
         description: "Crafted from heavy 320 GSM cotton ripstop twill. Features 6 deep utility bellows pockets.",
         sizes: ["30", "32", "34", "36"],
-        colors: ["Matte Black"],
+        colors: ["Matte Black", "Desert Khaki"],
         colorVariants: [
             {
                 color: "Matte Black",
                 hex: "#111827",
                 image: "https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80",
                 images: ["https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=600&auto=format&fit=crop&q=80"]
+            },
+            {
+                color: "Desert Khaki",
+                hex: "#a8896c",
+                image: "https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80",
+                images: ["https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=600&auto=format&fit=crop&q=80"]
             }
         ],
         tags: ["Rugged", "Cargo", "Utility"],
@@ -327,6 +381,50 @@ export default function App() {
     const [isTrackingOpen, setIsTrackingOpen] = useState(false);
     const [trackingQuery, setTrackingQuery] = useState('');
     const [isWishlistOpen, setIsWishlistOpen] = useState(false);
+
+    // F. Modern Dedicated View Navigation State
+    const [currentPage, setCurrentPage] = useState('home');
+    const [pageParams, setPageParams] = useState({});
+
+    const navigate = (page, params = {}) => {
+        setCurrentPage(page);
+        setPageParams(params);
+        if (page === 'category' && params.category) {
+            setActiveCategory(params.category);
+        }
+        if (page === 'product' && params.id) {
+            setSelectedProductId(params.id);
+        }
+        if (page === 'search' && params.query) {
+            setSearchQuery(params.query);
+        }
+        const hash = page === 'home' ? '' : `#/${page}${params.id ? '/' + params.id : ''}`;
+        window.history.pushState({}, '', hash || '/');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    useEffect(() => {
+        const handleHash = () => {
+            const raw = window.location.hash.replace(/^#\/?/, '');
+            if (!raw) {
+                setCurrentPage('home');
+                setPageParams({});
+            } else {
+                const parts = raw.split('/');
+                const p = parts[0];
+                const id = parts[1];
+                setCurrentPage(p);
+                if (p === 'product' && id) {
+                    setSelectedProductId(Number(id));
+                } else if (p === 'category' && id) {
+                    setActiveCategory(id);
+                }
+            }
+        };
+        handleHash();
+        window.addEventListener('hashchange', handleHash);
+        return () => window.removeEventListener('hashchange', handleHash);
+    }, []);
 
     useEffect(() => {
         localStorage.setItem('netrave_wishlist', JSON.stringify(wishlist));
@@ -816,7 +914,8 @@ export default function App() {
         }
     };
 
-    const activeProduct = products.find(p => p.id === selectedProductId);
+    const allAvailableProds = products.length > 0 ? products : FALLBACK_PRODUCTS;
+    const activeProduct = allAvailableProds.find(p => String(p.id) === String(selectedProductId)) || allAvailableProds[0];
     const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
     // Conditional Admin Dashboard Rendering
@@ -893,15 +992,16 @@ export default function App() {
             <Header
                 cartCount={cartCount}
                 wishlistCount={wishlist.length}
-                onWishlistOpen={() => setIsWishlistOpen(true)}
-                onTrackingOpen={() => handleOpenTracking()}
-                onCartOpen={() => setIsCartOpen(true)}
-                onBookingsOpen={() => setIsBookingsOpen(true)}
-                onProfileOpen={() => setIsProfileOpen(true)}
+                onWishlistOpen={() => navigate('wishlist')}
+                onTrackingOpen={() => navigate('tracking')}
+                onCartOpen={() => navigate('cart')}
+                onBookingsOpen={() => navigate('orders')}
+                onProfileOpen={() => navigate('account')}
                 activeCategory={activeCategory}
                 onCategoryChange={(catId) => {
                     setActiveCategory(catId);
-                    setActiveTag(null); // clear tag when category changes
+                    setActiveTag(null);
+                    navigate('category', { category: catId });
                 }}
                 searchQuery={searchQuery}
                 onSearchChange={setSearchQuery}
@@ -910,127 +1010,239 @@ export default function App() {
                 activeTag={activeTag}
                 onTagChange={(tag) => {
                     setActiveTag(tag);
-                    setActiveCategory('all'); // reset category to all when filtering by tag
+                    setActiveCategory('all');
                 }}
                 setIsAdminView={setIsAdminView}
                 onSortChange={setSortMethod}
                 user={user}
                 onLogout={handleLogout}
-                onLoginClick={() => setIsAuthOpen(true)}
+                onLoginClick={() => navigate('login')}
+                onNavigate={navigate}
                 categories={categories}
                 products={products.length > 0 ? products : FALLBACK_PRODUCTS}
             />
 
-            {/* Main Area */}
-            <main>
-                <Hero
-                    onShopClick={scrollToProducts}
-                    onSummerClick={handleSummerCtaClick}
-                />
-                <HomeSections
-                    categories={categories}
-                    products={products.length > 0 ? products : FALLBACK_PRODUCTS}
-                    onSelectCategory={(catSlug) => {
-                        setActiveCategory(catSlug);
-                        scrollToProducts();
-                    }}
-                    onQuickView={setSelectedProductId}
-                    wishlist={wishlist}
-                    onToggleWishlist={handleToggleWishlist}
-                    onShopClick={scrollToProducts}
-                />
-                <ProductGrid
-                    products={products}
-                    categories={categories}
-                    loading={loadingProducts}
-                    activeCategory={activeCategory}
-                    onCategoryChange={(catId) => {
-                        setActiveCategory(catId);
-                        setActiveTag(null);
-                    }}
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    sortMethod={sortMethod}
-                    onSortChange={setSortMethod}
-                    onQuickView={setSelectedProductId}
-                    activeTag={activeTag}
-                    onTagChange={setActiveTag}
-                    wishlist={wishlist}
-                    onToggleWishlist={handleToggleWishlist}
-                />
+            {/* Main Area: 15 Dedicated Page Views */}
+            <main className="netrave-main-viewport">
+                {currentPage === 'home' && (
+                    <>
+                        <Hero
+                            onShopClick={scrollToProducts}
+                            onNavigateCategory={(cat) => navigate('category', { category: cat })}
+                        />
+                        <HomeSections
+                            categories={categories}
+                            products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                            onSelectCategory={(catSlug) => {
+                                setActiveCategory(catSlug);
+                                navigate('category', { category: catSlug });
+                            }}
+                            onQuickView={(id) => navigate('product', { id })}
+                            wishlist={wishlist}
+                            onToggleWishlist={handleToggleWishlist}
+                            onAddToCart={handleAddToCart}
+                            onShopClick={scrollToProducts}
+                            onNavigate={navigate}
+                        />
+                        <div id="products">
+                            <ProductGrid
+                                products={products}
+                                categories={categories}
+                                loading={loadingProducts}
+                                activeCategory={activeCategory}
+                                onCategoryChange={(catId) => {
+                                    setActiveCategory(catId);
+                                    setActiveTag(null);
+                                }}
+                                searchQuery={searchQuery}
+                                onSearchChange={setSearchQuery}
+                                sortMethod={sortMethod}
+                                onSortChange={setSortMethod}
+                                onQuickView={(id) => navigate('product', { id })}
+                                activeTag={activeTag}
+                                onTagChange={setActiveTag}
+                                wishlist={wishlist}
+                                onToggleWishlist={handleToggleWishlist}
+                                onAddToCart={handleAddToCart}
+                            />
+                        </div>
+                    </>
+                )}
+
+                {currentPage === 'category' && (
+                    <CategoryPage
+                        products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                        categories={categories}
+                        initialCategory={activeCategory}
+                        onQuickView={(id) => navigate('product', { id })}
+                        wishlist={wishlist}
+                        onToggleWishlist={handleToggleWishlist}
+                        onAddToCart={handleAddToCart}
+                        onNavigate={navigate}
+                    />
+                )}
+
+                {currentPage === 'product' && (
+                    <ProductDetailPage
+                        product={activeProduct || (products.length > 0 ? products[0] : FALLBACK_PRODUCTS[0])}
+                        allProducts={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                        onAddToCart={handleAddToCart}
+                        onBuyNow={(prod, size, q, col) => {
+                            handleAddToCart(prod, size, q, col);
+                            if (!user) {
+                                showToast('Please login to complete your checkout.', 'info');
+                                navigate('login');
+                            } else {
+                                navigate('checkout');
+                            }
+                        }}
+                        isWishlisted={wishlist.includes(selectedProductId || activeProduct?.id)}
+                        onToggleWishlist={handleToggleWishlist}
+                        onNavigate={navigate}
+                        onQuickView={(id) => navigate('product', { id })}
+                    />
+                )}
+
+                {currentPage === 'cart' && (
+                    <CartPage
+                        cart={cart}
+                        onUpdateQuantity={handleUpdateCartQuantity}
+                        onRemoveItem={handleRemoveCartItem}
+                        onProceedToCheckout={() => {
+                            if (settings.maintenanceMode) {
+                                showToast('Shop is currently undergoing maintenance. Checkout is disabled.', 'error');
+                                return;
+                            }
+                            if (!user) {
+                                showToast('Please login to place your order.', 'info');
+                                navigate('login');
+                            } else {
+                                navigate('checkout');
+                            }
+                        }}
+                        onMoveToWishlist={(id) => {
+                            if (!wishlist.includes(id)) {
+                                setWishlist(prev => [...prev, id]);
+                                showToast('Moved to Wishlist', 'success');
+                            }
+                        }}
+                        onNavigate={navigate}
+                    />
+                )}
+
+                {currentPage === 'checkout' && (
+                    <CheckoutPage
+                        cart={cart}
+                        user={user}
+                        onSubmitBooking={handlePlaceBooking}
+                        onNavigate={navigate}
+                        settings={settings}
+                    />
+                )}
+
+                {currentPage === 'login' && (
+                    <AuthPages
+                        initialMode="login"
+                        onAuthSuccess={handleAuthSuccess}
+                        onNavigate={navigate}
+                        API_BASE_URL={API_BASE_URL}
+                    />
+                )}
+
+                {currentPage === 'signup' && (
+                    <AuthPages
+                        initialMode="signup"
+                        onAuthSuccess={handleAuthSuccess}
+                        onNavigate={navigate}
+                        API_BASE_URL={API_BASE_URL}
+                    />
+                )}
+
+                {currentPage === 'forgot-password' && (
+                    <AuthPages
+                        initialMode="forgot"
+                        onAuthSuccess={handleAuthSuccess}
+                        onNavigate={navigate}
+                        API_BASE_URL={API_BASE_URL}
+                    />
+                )}
+
+                {currentPage === 'tracking' && (
+                    <OrderTrackingPage
+                        initialQuery={trackingQuery}
+                        bookings={bookings}
+                        onNavigate={navigate}
+                    />
+                )}
+
+                {currentPage === 'orders' && (
+                    <MyOrdersPage
+                        bookings={bookings}
+                        user={user}
+                        onNavigate={navigate}
+                        onAddToCart={handleAddToCart}
+                    />
+                )}
+
+                {currentPage === 'account' && (
+                    <MyAccountPage
+                        user={user}
+                        bookings={bookings}
+                        wishlist={wishlist}
+                        onLogout={handleLogout}
+                        onNavigate={navigate}
+                        initialTab={pageParams.tab || 'profile'}
+                    />
+                )}
+
+                {currentPage === 'wishlist' && (
+                    <WishlistPage
+                        wishlist={wishlist}
+                        products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                        onQuickView={(id) => navigate('product', { id })}
+                        onToggleWishlist={handleToggleWishlist}
+                        onAddToCart={handleAddToCart}
+                        onNavigate={navigate}
+                    />
+                )}
+
+                {currentPage === 'offers' && (
+                    <OffersPage
+                        products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                        onQuickView={(id) => navigate('product', { id })}
+                        wishlist={wishlist}
+                        onToggleWishlist={handleToggleWishlist}
+                        onAddToCart={handleAddToCart}
+                        onNavigate={navigate}
+                    />
+                )}
+
+                {currentPage === 'search' && (
+                    <SearchPage
+                        products={products.length > 0 ? products : FALLBACK_PRODUCTS}
+                        initialQuery={pageParams.query || searchQuery}
+                        onQuickView={(id) => navigate('product', { id })}
+                        wishlist={wishlist}
+                        onToggleWishlist={handleToggleWishlist}
+                        onAddToCart={handleAddToCart}
+                        onNavigate={navigate}
+                    />
+                )}
+
+                {currentPage === 'addresses' && (
+                    <AddressManagementPage
+                        user={user}
+                        onNavigate={navigate}
+                    />
+                )}
             </main>
 
-            {/* Footer */}
-            <footer className="main-footer">
-                <div className="footer-container">
-                    <div className="footer-info">
-                        <div className="logo" style={{ marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <img src="/assets/logo.png" alt="NETRAVE Logo" className="logo-img" style={{ height: '42px' }} />
-                            <div className="logo-text" style={{ display: 'flex', flexDirection: 'column' }}>
-                                <div className="logo-accent" style={{ fontSize: '20px', display: 'flex' }}>
-                                    <span className="logo-net">NET</span>
-                                    <span className="logo-rave" style={{ color: 'var(--primary)' }}>RAVE</span>
-                                </div>
-                                <span className="logo-sub" style={{ fontSize: '8px', letterSpacing: '1.5px', color: 'var(--primary)' }}>CLOTHING & STYLE</span>
-                            </div>
-                        </div>
-                        <p>We supply high quality men's shirts, custom streetwear t-shirts, and stylish summer apparel.</p>
-                        <div className="social-links">
-                            <a href="#" aria-label="Instagram" className="social-icon-card">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.051C.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z" /></svg>
-                            </a>
-                            <a href="#" aria-label="WhatsApp" className="social-icon-card">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.06 5.348 5.397.01 12.008.01c3.202.001 6.212 1.248 8.477 3.517 2.266 2.268 3.507 5.28 3.505 8.484-.004 6.657-5.34 11.997-11.953 11.997-2.005-.001-3.973-.502-5.724-1.458L0 24zm6.59-4.846c1.6.95 3.197 1.45 4.817 1.453 5.461 0 9.903-4.44 9.907-9.902.002-2.646-1.02-5.133-2.873-6.988C16.591 1.862 14.103.839 11.45.839c-5.463 0-9.904 4.44-9.908 9.9.001 2.072.547 4.093 1.59 5.891L2.162 21.8l5.588-1.464-.103-.182zM17.06 14.382c-.272-.136-1.61-.794-1.86-.885-.25-.092-.432-.136-.613.136-.18.273-.704.885-.863 1.067-.159.182-.318.204-.59.068-.272-.136-1.15-.424-2.19-1.353-.81-.722-1.357-1.615-1.516-1.888-.159-.272-.017-.42.12-.556.122-.123.272-.318.408-.477.136-.159.182-.272.272-.454.09-.182.046-.341-.023-.477-.068-.136-.613-1.477-.84-2.022-.222-.533-.487-.463-.66-.463-.17 0-.363-.01-.556-.01-.193 0-.51.072-.777.363-.267.292-1.02 1.002-1.02 2.445 0 1.442 1.049 2.836 1.196 3.033.147.197 2.062 3.148 4.996 4.413.698.302 1.243.482 1.668.617.7.223 1.338.192 1.843.117.562-.083 1.61-.659 1.838-1.295.228-.636.228-1.182.159-1.295-.068-.114-.25-.205-.523-.341z" /></svg>
-                            </a>
-                            <a href="#" aria-label="Facebook" className="social-icon-card">
-                                <svg viewBox="0 0 24 24" className="icon"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" /></svg>
-                            </a>
-                        </div>
-                    </div>
-
-                    <div className="footer-links">
-                        <h4>Shop Categories</h4>
-                        <ul>
-                            <li>
-                                <button className="footer-cat-link" onClick={() => { setActiveCategory('summer-t-shirt'); scrollToProducts(); }}>
-                                    Summer T-Shirts
-                                </button>
-                            </li>
-                            <li>
-                                <button className="footer-cat-link" onClick={() => { setActiveCategory('t-shirt'); scrollToProducts(); }}>
-                                    T-Shirts Collection
-                                </button>
-                            </li>
-                            <li>
-                                <button className="footer-cat-link" onClick={() => { setActiveCategory('shirt'); scrollToProducts(); }}>
-                                    Casual & Formal Shirts
-                                </button>
-                            </li>
-                            <li>
-                                <button className="footer-cat-link" onClick={() => { setActiveCategory('pants'); scrollToProducts(); }}>
-                                    Cargoes & Chinos
-                                </button>
-                            </li>
-                        </ul>
-                    </div>
-
-                    <div className="footer-contact">
-                        <h4>Contact Us</h4>
-                        <p>📍 Kozhikode, Kerala, 673001</p>
-                        <p>📞 Phone: +91 99465 50713</p>
-                        <p>💬 WhatsApp Support: +91 99465 50713</p>
-                        <p>✉️ Email: netrave@zohomail.com</p>
-                    </div>
-                </div>
-
-                <div className="footer-bottom">
-                    <p>&copy; 2026 NETRAVE Store. All rights reserved. Designed for fashion enthusiasts in Kerala.</p>
-                </div>
-            </footer>
+            {/* Dedicated Modern Footer with Preserved Logo */}
+            <Footer onNavigate={navigate} categories={categories} />
 
             {/* Intermediary Modals & Drawers */}
             <ProductModal
-                isOpen={selectedProductId !== null}
+                isOpen={selectedProductId !== null && currentPage !== 'product'}
                 product={activeProduct}
                 allProducts={products.length > 0 ? products : FALLBACK_PRODUCTS}
                 onClose={() => setSelectedProductId(null)}
@@ -1050,6 +1262,8 @@ export default function App() {
                 onToggleWishlist={handleToggleWishlist}
                 onQuickView={setSelectedProductId}
                 API_BASE_URL={API_BASE_URL}
+                cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
+                onOpenCart={() => setIsCartOpen(true)}
             />
 
             <CartDrawer
@@ -1177,7 +1391,18 @@ export default function App() {
                 showToast={showToast}
             />
 
-            {/* Mobile Bottom Navigation Bar completely removed */}
+            {/* Mobile Bottom Navigation Bar Matching Reference */}
+            {currentPage !== 'product' && currentPage !== 'checkout' && (
+                <BottomNav
+                    currentPage={currentPage}
+                    cartCount={cart.reduce((sum, item) => sum + (item.quantity || 1), 0)}
+                    wishlistCount={wishlist.length}
+                    user={user}
+                    onNavigate={navigate}
+                    onLoginClick={() => navigate('login')}
+                />
+            )}
+
             {toast.visible && (
                 <div className={`toast-container visible toast-${toast.type}`}>
                     <span>{toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : 'ℹ️'}</span>

@@ -1,5 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ProductCard from './ProductCard';
+
+const CIRCULAR_CATEGORIES = [
+    { id: 'men', name: 'Men Fashion', slug: 'shirt', image: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?w=300&auto=format&fit=crop&q=80' },
+    { id: 'women', name: 'Women Fashion', slug: 'saree', image: 'https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=300&auto=format&fit=crop&q=80' },
+    { id: 'watches', name: 'Watches', slug: 'watches', image: 'https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=300&auto=format&fit=crop&q=80' },
+    { id: 'footwear', name: 'Footwear', slug: 'footwear', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=300&auto=format&fit=crop&q=80' },
+    { id: 't-shirts', name: 'T-Shirts', slug: 't-shirt', image: 'https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=300&auto=format&fit=crop&q=80' },
+    { id: 'shirts', name: 'Shirts', slug: 'shirt', image: 'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=300&auto=format&fit=crop&q=80' },
+    { id: 'jeans', name: 'Jeans', slug: 'pants', image: 'https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=300&auto=format&fit=crop&q=80' },
+    { id: 'accessories', name: 'Accessories', slug: 'accessories', image: 'https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=300&auto=format&fit=crop&q=80' },
+    { id: 'offers', name: 'Offers', slug: 'offers', isOfferBadge: true }
+];
 
 export default function HomeSections({
     categories = [],
@@ -8,408 +20,366 @@ export default function HomeSections({
     onQuickView,
     wishlist = [],
     onToggleWishlist,
-    onShopClick
+    onAddToCart,
+    onShopClick,
+    onNavigate
 }) {
+    const [activeFeaturedTab, setActiveFeaturedTab] = useState('All');
     const [newsletterEmail, setNewsletterEmail] = useState('');
-    const [newsletterSuccess, setNewsletterSuccess] = useState(false);
-    const [activeCuratedTab, setActiveCuratedTab] = useState('featured'); // 'featured', 'new', 'bestseller'
+    const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
-    // Flash Deals Countdown Timer (24h recurring timer)
-    const [dealTimeLeft, setDealTimeLeft] = useState({ hours: 14, minutes: 32, seconds: 45 });
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setDealTimeLeft(prev => {
-                let { hours, minutes, seconds } = prev;
-                if (seconds > 0) {
-                    seconds--;
-                } else if (minutes > 0) {
-                    minutes--;
-                    seconds = 59;
-                } else if (hours > 0) {
-                    hours--;
-                    minutes = 59;
-                    seconds = 59;
-                } else {
-                    hours = 23;
-                    minutes = 59;
-                    seconds = 59;
-                }
-                return { hours, minutes, seconds };
-            });
-        }, 1000);
-        return () => clearInterval(timer);
-    }, []);
+    // Tab filter for Featured Products
+    const filterFeaturedProducts = () => {
+        if (activeFeaturedTab === 'All') return products.slice(0, 5);
+        if (activeFeaturedTab === 'Men') {
+            return products.filter(p => p.category === 'shirt' || p.category === 't-shirt' || p.category === 'pants' || p.category === 'hoodies').slice(0, 5);
+        }
+        if (activeFeaturedTab === 'Women') {
+            return products.filter(p => p.category === 'saree' || p.category === 'kurti' || p.title?.toLowerCase().includes('women')).slice(0, 5);
+        }
+        if (activeFeaturedTab === 'Watches') {
+            return products.filter(p => p.category === 'watches' || p.title?.toLowerCase().includes('watch')).slice(0, 5);
+        }
+        if (activeFeaturedTab === 'Footwear') {
+            return products.filter(p => p.category === 'footwear' || p.title?.toLowerCase().includes('shoe')).slice(0, 5);
+        }
+        if (activeFeaturedTab === 'Accessories') {
+            return products.filter(p => p.category === 'accessories' || p.title?.toLowerCase().includes('sunglasses') || p.title?.toLowerCase().includes('bag')).slice(0, 5);
+        }
+        return products.slice(0, 5);
+    };
 
-    // Filter products for curated tabs
-    const featuredProducts = products.filter(p => p.isFeatured || p.tags?.includes('Featured')).slice(0, 4);
-    const newArrivals = products.filter(p => p.isNewArrival || p.tags?.includes('New')).slice(0, 4);
-    const bestSellers = products.filter(p => p.isBestSeller || (p.rating >= 4.7)).slice(0, 4);
-
-    // Flash deals products (products with biggest discount)
-    const dealProducts = products
-        .filter(p => p.originalPrice && p.originalPrice > p.price)
-        .sort((a, b) => ((b.originalPrice - b.price) / b.originalPrice) - ((a.originalPrice - a.price) / a.originalPrice))
-        .slice(0, 4);
+    const featuredList = filterFeaturedProducts();
+    const newArrivalsList = products.filter(p => p.isNewArrival || p.tags?.includes('New')).slice(0, 5);
+    const displayNewArrivals = newArrivalsList.length >= 3 ? newArrivalsList : products.slice(3, 8);
 
     const handleNewsletterSubmit = (e) => {
         e.preventDefault();
-        if (!newsletterEmail || !newsletterEmail.includes('@')) return;
-        setNewsletterSuccess(true);
-        setTimeout(() => setNewsletterSuccess(false), 5000);
-        setNewsletterEmail('');
+        if (newsletterEmail && newsletterEmail.includes('@')) {
+            setNewsletterSubscribed(true);
+            setTimeout(() => setNewsletterSubscribed(false), 5000);
+            setNewsletterEmail('');
+        }
+    };
+
+    const handleCategoryClick = (slug) => {
+        if (slug === 'offers') {
+            if (onNavigate) onNavigate('offers');
+        } else {
+            if (onSelectCategory) onSelectCategory(slug);
+            if (onNavigate) onNavigate('category', { category: slug });
+        }
     };
 
     return (
-        <div className="home-sections-container">
-            {/* 1. FEATURED CATEGORIES SHOWCASE */}
-            {categories.length > 0 && (
-                <section className="featured-categories-section" style={{ padding: '40px 16px', maxWidth: '1240px', margin: '0 auto' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-                        <div>
-                            <span style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--primary)' }}>
-                                📁 Curated Collections
-                            </span>
-                            <h2 style={{ fontSize: 'clamp(20px, 3.5vw, 28px)', fontWeight: '800', margin: '4px 0 0', color: '#fff' }}>
-                                Explore By Category
-                            </h2>
-                        </div>
-                        <button
-                            type="button"
-                            onClick={() => { onSelectCategory('all'); onShopClick(); }}
-                            style={{
-                                background: 'transparent',
-                                border: 'none',
-                                color: 'var(--primary)',
-                                fontWeight: '700',
-                                fontSize: '13px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                            }}
-                        >
-                            View All Categories →
-                        </button>
-                    </div>
-
-                    <div className="category-cards-grid" style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                        gap: '16px'
-                    }}>
-                        {categories.map(cat => (
-                            <div
-                                key={cat.id || cat.slug}
-                                onClick={() => { onSelectCategory(cat.slug); onShopClick(); }}
-                                style={{
-                                    position: 'relative',
-                                    borderRadius: '16px',
-                                    overflow: 'hidden',
-                                    background: '#111422',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s ease',
-                                    height: '220px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'flex-end',
-                                    padding: '16px'
-                                }}
-                                className="cat-card-hover"
+        <div className="home-sections-flow">
+            {/* 1. Circular Categories Icon Row */}
+            <section className="categories-circle-section">
+                <div className="netrave-container">
+                    <div className="categories-circle-scroll">
+                        {CIRCULAR_CATEGORIES.map(cat => (
+                            <button
+                                key={cat.id}
+                                type="button"
+                                className="cat-circle-card"
+                                onClick={() => handleCategoryClick(cat.slug)}
                             >
-                                <img
-                                    src={cat.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600&auto=format&fit=crop&q=80'}
-                                    alt={cat.name}
-                                    style={{
-                                        position: 'absolute',
-                                        inset: 0,
-                                        width: '100%',
-                                        height: '100%',
-                                        objectFit: 'cover',
-                                        transition: 'transform 0.4s ease'
-                                    }}
-                                />
-                                <div style={{
-                                    position: 'absolute',
-                                    inset: 0,
-                                    background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(9,11,18,0.92) 100%)'
-                                }} />
-                                <div style={{ position: 'relative', zIndex: 2 }}>
-                                    <div style={{
-                                        width: '8px',
-                                        height: '8px',
-                                        borderRadius: '50%',
-                                        background: cat.color || '#f59e0b',
-                                        marginBottom: '6px',
-                                        display: 'inline-block'
-                                    }} />
-                                    <h4 style={{ margin: '0 0 4px', fontSize: '16px', fontWeight: '800', color: '#fff' }}>
-                                        {cat.name}
-                                    </h4>
-                                    <p style={{ margin: 0, fontSize: '11px', color: '#cbd5e1', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                        {cat.description || 'Premium curated clothing'}
-                                    </p>
+                                <div className={`cat-circle-avatar ${cat.isOfferBadge ? 'offer-badge-avatar' : ''}`}>
+                                    {cat.isOfferBadge ? (
+                                        <span className="offer-percent-symbol">%</span>
+                                    ) : (
+                                        <img src={cat.image} alt={cat.name} className="cat-circle-img" loading="lazy" />
+                                    )}
                                 </div>
-                            </div>
+                                <span className="cat-circle-title">{cat.name}</span>
+                            </button>
                         ))}
                     </div>
-                </section>
-            )}
-
-            {/* 2. FLASH DEALS & LIMITED-TIME OFFERS */}
-            {dealProducts.length > 0 && (
-                <section className="flash-deals-section" style={{
-                    background: 'linear-gradient(180deg, rgba(245, 158, 11, 0.05) 0%, rgba(10, 12, 18, 0.8) 100%)',
-                    borderTop: '1px solid rgba(245, 158, 11, 0.15)',
-                    borderBottom: '1px solid rgba(245, 158, 11, 0.15)',
-                    padding: '40px 16px',
-                    margin: '20px 0'
-                }}>
-                    <div style={{ maxWidth: '1240px', margin: '0 auto' }}>
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            marginBottom: '24px',
-                            flexWrap: 'wrap',
-                            gap: '14px'
-                        }}>
-                            <div>
-                                <span style={{
-                                    background: '#ef4444',
-                                    color: '#fff',
-                                    fontSize: '10px',
-                                    fontWeight: '900',
-                                    padding: '4px 8px',
-                                    borderRadius: '4px',
-                                    letterSpacing: '1px',
-                                    textTransform: 'uppercase'
-                                }}>
-                                    ⚡ FLASH SALE
-                                </span>
-                                <h2 style={{ fontSize: 'clamp(20px, 3.5vw, 28px)', fontWeight: '800', margin: '8px 0 0', color: '#fff' }}>
-                                    Deals Of The Day
-                                </h2>
-                            </div>
-
-                            {/* Countdown Box */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                background: '#111420',
-                                padding: '8px 14px',
-                                borderRadius: '12px',
-                                border: '1px solid rgba(255, 255, 255, 0.1)'
-                            }}>
-                                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Ends in:</span>
-                                <div style={{ display: 'flex', gap: '4px', fontFamily: 'monospace', fontWeight: '800', fontSize: '14px' }}>
-                                    <span style={timerBadgeStyle}>{String(dealTimeLeft.hours).padStart(2, '0')}</span>:
-                                    <span style={timerBadgeStyle}>{String(dealTimeLeft.minutes).padStart(2, '0')}</span>:
-                                    <span style={timerBadgeStyle}>{String(dealTimeLeft.seconds).padStart(2, '0')}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="products-grid">
-                            {dealProducts.map(product => (
-                                <ProductCard
-                                    key={`deal-${product.id}`}
-                                    product={product}
-                                    onQuickView={onQuickView}
-                                    isWishlisted={wishlist.includes(product.id)}
-                                    onToggleWishlist={onToggleWishlist}
-                                />
-                            ))}
-                        </div>
-                    </div>
-                </section>
-            )}
-
-            {/* 3. CURATED SECTIONS (Featured, New Arrivals, Best Sellers) */}
-            <section className="curated-showcase-section" style={{ padding: '40px 16px', maxWidth: '1240px', margin: '0 auto' }}>
-                <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-                    <span style={{ fontSize: '11px', fontWeight: '800', letterSpacing: '1px', textTransform: 'uppercase', color: 'var(--primary)' }}>
-                        ✨ Hand-Picked Collections
-                    </span>
-                    <h2 style={{ fontSize: 'clamp(22px, 4vw, 30px)', fontWeight: '800', margin: '6px 0 16px', color: '#fff' }}>
-                        Trending In Kerala Streetwear
-                    </h2>
-
-                    {/* Tab Navigation Chips */}
-                    <div style={{ display: 'inline-flex', gap: '8px', background: '#0e111a', padding: '6px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.08)' }}>
-                        <button
-                            type="button"
-                            onClick={() => setActiveCuratedTab('featured')}
-                            style={activeCuratedTab === 'featured' ? activeTabChipStyle : inactiveTabChipStyle}
-                        >
-                            ⭐ Featured
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveCuratedTab('new')}
-                            style={activeCuratedTab === 'new' ? activeTabChipStyle : inactiveTabChipStyle}
-                        >
-                            🆕 New Arrivals
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => setActiveCuratedTab('bestseller')}
-                            style={activeCuratedTab === 'bestseller' ? activeTabChipStyle : inactiveTabChipStyle}
-                        >
-                            🔥 Best Sellers
-                        </button>
-                    </div>
-                </div>
-
-                <div className="products-grid">
-                    {activeCuratedTab === 'featured' && (
-                        (featuredProducts.length > 0 ? featuredProducts : products.slice(0, 4)).map(p => (
-                            <ProductCard
-                                key={`feat-${p.id}`}
-                                product={p}
-                                onQuickView={onQuickView}
-                                isWishlisted={wishlist.includes(p.id)}
-                                onToggleWishlist={onToggleWishlist}
-                            />
-                        ))
-                    )}
-                    {activeCuratedTab === 'new' && (
-                        (newArrivals.length > 0 ? newArrivals : products.slice(0, 4)).map(p => (
-                            <ProductCard
-                                key={`new-${p.id}`}
-                                product={p}
-                                onQuickView={onQuickView}
-                                isWishlisted={wishlist.includes(p.id)}
-                                onToggleWishlist={onToggleWishlist}
-                            />
-                        ))
-                    )}
-                    {activeCuratedTab === 'bestseller' && (
-                        (bestSellers.length > 0 ? bestSellers : products.slice(0, 4)).map(p => (
-                            <ProductCard
-                                key={`best-${p.id}`}
-                                product={p}
-                                onQuickView={onQuickView}
-                                isWishlisted={wishlist.includes(p.id)}
-                                onToggleWishlist={onToggleWishlist}
-                            />
-                        ))
-                    )}
                 </div>
             </section>
 
-            {/* 4. NEWSLETTER & VIP PROMOTIONS */}
-            <section className="newsletter-section" style={{
-                background: 'linear-gradient(135deg, #121624 0%, #0a0b10 100%)',
-                border: '1px solid rgba(245, 158, 11, 0.2)',
-                borderRadius: '24px',
-                padding: '40px 24px',
-                maxWidth: '1240px',
-                margin: '40px auto',
-                textAlign: 'center',
-                position: 'relative',
-                overflow: 'hidden'
-            }}>
-                <div style={{ maxWidth: '580px', margin: '0 auto', position: 'relative', zIndex: 2 }}>
-                    <span style={{
-                        display: 'inline-block',
-                        background: 'rgba(245, 158, 11, 0.15)',
-                        color: 'var(--primary)',
-                        fontSize: '11px',
-                        fontWeight: '800',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        marginBottom: '12px'
-                    }}>
-                        💌 EXCLUSIVE DROPS & DISCOUNTS
-                    </span>
-                    <h3 style={{ fontSize: 'clamp(22px, 4vw, 32px)', fontWeight: '900', margin: '0 0 10px', color: '#fff' }}>
-                        Unlock 15% OFF Your First Order
-                    </h3>
-                    <p style={{ color: '#94a3b8', fontSize: '14px', lineHeight: '1.6', margin: '0 0 24px' }}>
-                        Be the first to hear about new limited streetwear drops, secret flash deals, and courier express dispatch updates.
-                    </p>
-
-                    {newsletterSuccess ? (
-                        <div style={{
-                            background: 'rgba(16, 185, 129, 0.15)',
-                            border: '1px solid #10b981',
-                            color: '#10b981',
-                            padding: '14px 20px',
-                            borderRadius: '12px',
-                            fontWeight: '700',
-                            fontSize: '14px'
-                        }}>
-                            🎉 Thank you for subscribing! Your 15% OFF code <strong>NETRAVE15</strong> has been unlocked.
+            {/* 2. 3-Card Promotional Banners */}
+            <section className="promo-banners-section">
+                <div className="netrave-container">
+                    <div className="promo-banners-grid">
+                        {/* Banner 1: Men's Collection */}
+                        <div className="promo-card promo-card-yellow" onClick={() => handleCategoryClick('shirt')}>
+                            <div className="promo-card-text">
+                                <h3 className="promo-card-title">MEN'S<br />COLLECTION</h3>
+                                <p className="promo-card-badge">Flat 40% OFF</p>
+                                <span className="promo-cta-link">Shop Now →</span>
+                            </div>
+                            <img 
+                                src="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400&auto=format&fit=crop&q=80" 
+                                alt="Men's Fashion" 
+                                className="promo-card-image" 
+                            />
                         </div>
-                    ) : (
-                        <form onSubmit={handleNewsletterSubmit} style={{ display: 'flex', gap: '8px', maxWidth: '460px', margin: '0 auto', flexWrap: 'wrap' }}>
-                            <input
-                                type="email"
-                                required
-                                placeholder="Enter your email address..."
+
+                        {/* Banner 2: Women's Fashion */}
+                        <div className="promo-card promo-card-dark" onClick={() => handleCategoryClick('saree')}>
+                            <div className="promo-card-text">
+                                <h3 className="promo-card-title">WOMEN'S<br />FASHION</h3>
+                                <p className="promo-card-badge text-yellow">Up to 50% OFF</p>
+                                <span className="promo-cta-link text-yellow">Shop Now →</span>
+                            </div>
+                            <img 
+                                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80" 
+                                alt="Women's Fashion" 
+                                className="promo-card-image" 
+                            />
+                        </div>
+
+                        {/* Banner 3: Premium Watches */}
+                        <div className="promo-card promo-card-light" onClick={() => handleCategoryClick('watches')}>
+                            <div className="promo-card-text">
+                                <h3 className="promo-card-title">PREMIUM<br />WATCHES</h3>
+                                <p className="promo-card-badge">Starting at ₹999</p>
+                                <span className="promo-cta-link">Shop Now →</span>
+                            </div>
+                            <img 
+                                src="https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400&auto=format&fit=crop&q=80" 
+                                alt="Premium Watches" 
+                                className="promo-card-image" 
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 3. Featured Products Section with Category Tabs */}
+            <section className="section-featured-products">
+                <div className="netrave-container">
+                    <div className="section-header-row">
+                        <h2 className="section-main-heading">Featured Products</h2>
+                        <div className="section-tabs-row">
+                            {['All', 'Men', 'Women', 'Watches', 'Footwear', 'Accessories'].map(tab => (
+                                <button
+                                    key={tab}
+                                    type="button"
+                                    className={`section-tab-btn ${activeFeaturedTab === tab ? 'active' : ''}`}
+                                    onClick={() => setActiveFeaturedTab(tab)}
+                                >
+                                    {tab}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="netrave-products-grid">
+                        {featuredList.map(prod => (
+                            <ProductCard
+                                key={prod.id}
+                                product={prod}
+                                onQuickView={onQuickView}
+                                isWishlisted={wishlist.includes(prod.id)}
+                                onToggleWishlist={onToggleWishlist}
+                                onAddToCart={onAddToCart}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* 4. Footwear Collection Wide Promotional Banner */}
+            <section className="footwear-promo-wide-section">
+                <div className="netrave-container">
+                    <div className="footwear-banner-card">
+                        {/* Left Footwear Info */}
+                        <div className="footwear-banner-left">
+                            <span className="footwear-badge-tag">NEW DROP</span>
+                            <h2 className="footwear-banner-title">
+                                FOOTWEAR<br /><span style={{ color: 'var(--primary, #f59e0b)' }}>COLLECTION</span>
+                            </h2>
+                            <p className="footwear-banner-subtitle">Step Into Comfort & Style</p>
+                            <button 
+                                type="button" 
+                                className="footwear-banner-cta" 
+                                onClick={() => handleCategoryClick('footwear')}
+                            >
+                                Shop Now →
+                            </button>
+                        </div>
+
+                        {/* Center Sneaker Visual */}
+                        <div className="footwear-banner-center">
+                            <img 
+                                src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=700&auto=format&fit=crop&q=80" 
+                                alt="Netrave Footwear Collection" 
+                                className="footwear-sneaker-img" 
+                            />
+                        </div>
+
+                        {/* Right Special Offer Card */}
+                        <div className="footwear-banner-right-box">
+                            <span className="special-offer-pill">SPECIAL OFFER</span>
+                            <h3 className="special-offer-discount">Flat 50% OFF</h3>
+                            <p className="special-offer-sub">On Selected Items</p>
+                            <div className="special-offer-bag-icon">🛍️</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 5. New Arrivals Section */}
+            <section className="section-new-arrivals">
+                <div className="netrave-container">
+                    <div className="section-header-row">
+                        <h2 className="section-main-heading">New Arrivals</h2>
+                        <button 
+                            type="button" 
+                            className="view-all-link-btn" 
+                            onClick={() => {
+                                if (onNavigate) onNavigate('category', { category: 'all' });
+                                else if (onShopClick) onShopClick();
+                            }}
+                        >
+                            View All →
+                        </button>
+                    </div>
+
+                    <div className="netrave-products-grid">
+                        {displayNewArrivals.map(prod => (
+                            <ProductCard
+                                key={prod.id}
+                                product={prod}
+                                onQuickView={onQuickView}
+                                isWishlisted={wishlist.includes(prod.id)}
+                                onToggleWishlist={onToggleWishlist}
+                                onAddToCart={onAddToCart}
+                            />
+                        ))}
+                    </div>
+                </div>
+            </section>
+
+            {/* 6. Benefits Section (4 Columns) */}
+            <section className="benefits-four-bar">
+                <div className="netrave-container">
+                    <div className="benefits-grid">
+                        <div className="benefit-item-card">
+                            <div className="benefit-icon-circle">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                    <path d="M20 8h-3V4H3c-1.1 0-2 .9-2 2v11h2c0 1.66 1.34 3 3 3s3-1.34 3-3h6c0 1.66 1.34 3 3 3s3-1.34 3-3h2v-5l-3-4zM6 18.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm12 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM19 12.5h-2.5V10H19v2.5z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 className="benefit-title">Free Shipping</h4>
+                                <p className="benefit-sub">On orders above ₹999</p>
+                            </div>
+                        </div>
+
+                        <div className="benefit-item-card">
+                            <div className="benefit-icon-circle">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                    <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 className="benefit-title">Secure Payment</h4>
+                                <p className="benefit-sub">100% Safe & Secure</p>
+                            </div>
+                        </div>
+
+                        <div className="benefit-item-card">
+                            <div className="benefit-icon-circle">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                    <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.93V18a1 1 0 0 1-2 0v-1.07A7 7 0 0 1 5.07 11H6a1 1 0 0 1 0-2h-.93A7 7 0 0 1 11 5.07V6a1 1 0 0 1 2 0v-.93A7 7 0 0 1 18.93 11H18a1 1 0 0 1 0 2h.93A7 7 0 0 1 13 16.93z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 className="benefit-title">Easy Returns</h4>
+                                <p className="benefit-sub">7 Days Return Policy</p>
+                            </div>
+                        </div>
+
+                        <div className="benefit-item-card">
+                            <div className="benefit-icon-circle">
+                                <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+                                    <path d="M20 15.5c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm-16 0c-.8 0-1.5-.7-1.5-1.5S3.2 12.5 4 12.5s1.5.7 1.5 1.5-.7 1.5-1.5 1.5zM12 2C6.5 2 2 6.5 2 12v3c0 2.2 1.8 4 4 4h1v-6H5v-1c0-3.9 3.1-7 7-7s7 3.1 7 7v1h-2v6h1c2.2 0 4-1.8 4-4v-3c0-5.5-4.5-10-10-10z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 className="benefit-title">24/7 Support</h4>
+                                <p className="benefit-sub">We're here to help</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 7. Trendy Fashion Wide Banner */}
+            <section className="trendy-fashion-wide-banner">
+                <div className="netrave-container">
+                    <div className="trendy-fashion-card">
+                        <div className="trendy-fashion-content">
+                            <h2 className="trendy-fashion-title">
+                                TRENDY FASHION<br />
+                                <span className="trendy-fashion-sub">FOR A BETTER YOU</span>
+                            </h2>
+                            <button 
+                                type="button" 
+                                className="trendy-explore-btn"
+                                onClick={() => handleCategoryClick('all')}
+                            >
+                                Explore Now →
+                            </button>
+                        </div>
+                        <div className="trendy-fashion-images">
+                            <img 
+                                src="https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=400&auto=format&fit=crop&q=80" 
+                                alt="Trendy Fashion Model" 
+                                className="trendy-img-1" 
+                            />
+                            <img 
+                                src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80" 
+                                alt="Trendy Fashion Woman" 
+                                className="trendy-img-2" 
+                            />
+                            <img 
+                                src="https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&auto=format&fit=crop&q=80" 
+                                alt="Sneakers" 
+                                className="trendy-img-3" 
+                            />
+                            <img 
+                                src="https://images.unsplash.com/photo-1524805444758-089113d48a6d?w=400&auto=format&fit=crop&q=80" 
+                                alt="Watch" 
+                                className="trendy-img-4" 
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            {/* 8. Stay Updated Newsletter Box */}
+            <section className="newsletter-stay-updated">
+                <div className="netrave-container">
+                    <div className="newsletter-box">
+                        <div className="newsletter-heading-col">
+                            <h3 className="newsletter-title">Stay Updated</h3>
+                            <p className="newsletter-desc">Get exclusive offers, new arrivals and more!</p>
+                        </div>
+                        <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
+                            <input 
+                                type="email" 
+                                className="newsletter-input" 
+                                placeholder="Enter your email address" 
                                 value={newsletterEmail}
                                 onChange={(e) => setNewsletterEmail(e.target.value)}
-                                style={{
-                                    flex: 1,
-                                    minWidth: '220px',
-                                    background: '#161b2b',
-                                    border: '1px solid rgba(255, 255, 255, 0.12)',
-                                    borderRadius: '10px',
-                                    padding: '12px 16px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    outline: 'none'
-                                }}
+                                required 
                             />
-                            <button
-                                type="submit"
-                                className="cta-btn primary-cta"
-                                style={{
-                                    padding: '12px 24px',
-                                    borderRadius: '10px',
-                                    fontWeight: '800',
-                                    whiteSpace: 'nowrap'
-                                }}
-                            >
+                            <button type="submit" className="newsletter-submit-btn">
                                 Subscribe
                             </button>
                         </form>
-                    )}
+                        {newsletterSubscribed && (
+                            <p className="newsletter-success-note">
+                                ✓ Thank you for subscribing! Check your inbox for exclusive discounts.
+                            </p>
+                        )}
+                    </div>
                 </div>
             </section>
         </div>
     );
 }
-
-const timerBadgeStyle = {
-    background: '#1e2438',
-    color: 'var(--primary)',
-    padding: '3px 6px',
-    borderRadius: '6px'
-};
-
-const activeTabChipStyle = {
-    background: 'linear-gradient(135deg, #f59e0b, #d97706)',
-    color: '#0a0b0e',
-    border: 'none',
-    borderRadius: '10px',
-    padding: '8px 18px',
-    fontSize: '13px',
-    fontWeight: '800',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease'
-};
-
-const inactiveTabChipStyle = {
-    background: 'transparent',
-    color: '#94a3b8',
-    border: 'none',
-    borderRadius: '10px',
-    padding: '8px 18px',
-    fontSize: '13px',
-    fontWeight: '600',
-    cursor: 'pointer',
-    transition: 'all 0.2s ease'
-};
