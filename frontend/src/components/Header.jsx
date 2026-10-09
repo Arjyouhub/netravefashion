@@ -247,10 +247,10 @@ export default function Header({
                             <span className="header-action-label desktop-only-text">Wishlist</span>
                         </button>
 
-                        {/* Cart Button with Yellow Badge */}
+                        {/* Cart Button with Yellow Badge (Desktop & Tablet only; Mobile uses bottom navigation) */}
                         <button 
                             type="button" 
-                            className="header-action-btn cart-action-btn"
+                            className="header-action-btn cart-action-btn desktop-only-flex"
                             onClick={() => handleNav('cart')}
                             title="View Shopping Cart"
                             aria-label="Cart"
@@ -264,8 +264,8 @@ export default function Header({
                             <span className="header-action-label desktop-only-text">Cart</span>
                         </button>
 
-                        {/* Desktop & Mobile Account Dropdown Button */}
-                        <div className="account-dropdown-wrapper" ref={userMenuRef}>
+                        {/* Desktop Account Dropdown Button (Mobile uses bottom navigation) */}
+                        <div className="account-dropdown-wrapper desktop-only-flex" ref={userMenuRef}>
                             <button 
                                 type="button" 
                                 className={`header-action-btn ${user ? 'header-user-btn-active' : ''}`}
