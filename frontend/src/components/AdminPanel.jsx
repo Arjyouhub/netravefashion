@@ -168,6 +168,8 @@ export default function AdminPanel({
 
     // 3. Margin & Analytics States
     const [analyticsTimeframe, setAnalyticsTimeframe] = useState('all'); // 'all', 'today', '7d', '30d'
+    const [profitSearchQuery, setProfitSearchQuery] = useState('');
+    const [profitCategoryFilter, setProfitCategoryFilter] = useState('all');
 
     // 4. Settings Tab States
     const [bookingsList, setBookingsList] = useState([]);
@@ -1438,15 +1440,20 @@ export default function AdminPanel({
     // Track product sales and margins
     const productStatsMap = {};
     products.forEach(p => {
+        const prodPrice = Number(p.price) || 0;
+        const prodCost = (p.costPrice !== undefined && p.costPrice !== null && Number(p.costPrice) > 0)
+            ? Number(p.costPrice)
+            : (prodPrice > 10 ? Math.round(prodPrice * 0.52) : (prodPrice > 0 ? Math.round(prodPrice * 0.5) : 0));
+
         productStatsMap[p.id] = {
             id: p.id,
-            title: p.title,
-            category: p.category,
-            price: Number(p.price) || 0,
-            costPrice: Number(p.costPrice) || 0,
+            title: p.title || 'Product',
+            category: p.category || 'Apparel',
+            price: prodPrice,
+            costPrice: prodCost,
             stock: p.stock !== undefined ? p.stock : 50,
             inStock: p.inStock,
-            image: p.image,
+            image: p.image || p.images?.[0] || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
             unitsSold: 0,
             totalRevenue: 0,
             totalCost: 0,
@@ -1500,10 +1507,13 @@ export default function AdminPanel({
             const qty = parseInt(item.quantity) || 1;
             totalUnitsSold += qty;
             const refProd = products.find(p => p.id === item.id);
-            const unitCost = item.costPrice !== undefined 
+            const itemP = Number(item.price) || (refProd ? Number(refProd.price) : 0);
+            const unitCost = (item.costPrice !== undefined && item.costPrice !== null && Number(item.costPrice) > 0)
                 ? Number(item.costPrice) 
-                : (refProd?.costPrice !== undefined ? Number(refProd.costPrice) : Math.round((item.price || 0) * 0.5));
-            const itemRev = (Number(item.price) || 0) * qty;
+                : ((refProd?.costPrice !== undefined && refProd.costPrice !== null && Number(refProd.costPrice) > 0) 
+                    ? Number(refProd.costPrice) 
+                    : (itemP > 10 ? Math.round(itemP * 0.52) : Math.round(itemP * 0.5)));
+            const itemRev = itemP * qty;
             const itemCost = unitCost * qty;
             const itemProfit = itemRev - itemCost;
 
@@ -1511,15 +1521,29 @@ export default function AdminPanel({
             totalCOGS += itemCost;
 
             // Product stats
-            if (productStatsMap[item.id]) {
-                productStatsMap[item.id].unitsSold += qty;
-                productStatsMap[item.id].totalRevenue += itemRev;
-                productStatsMap[item.id].totalCost += itemCost;
-                productStatsMap[item.id].totalProfit += itemProfit;
+            if (!productStatsMap[item.id]) {
+                productStatsMap[item.id] = {
+                    id: item.id,
+                    title: item.title || item.name || 'Product',
+                    category: item.category || refProd?.category || 'Apparel',
+                    price: itemP,
+                    costPrice: unitCost,
+                    stock: 0,
+                    inStock: true,
+                    image: item.image || refProd?.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
+                    unitsSold: 0,
+                    totalRevenue: 0,
+                    totalCost: 0,
+                    totalProfit: 0
+                };
             }
+            productStatsMap[item.id].unitsSold += qty;
+            productStatsMap[item.id].totalRevenue += itemRev;
+            productStatsMap[item.id].totalCost += itemCost;
+            productStatsMap[item.id].totalProfit += itemProfit;
 
             // Category stats
-            const cat = item.category || refProd?.category || 't-shirt';
+            const cat = (item.category || refProd?.category || 't-shirt').toLowerCase();
             if (!categoryStatsMap[cat]) {
                 categoryStatsMap[cat] = { name: cat, revenue: 0, cost: 0, profit: 0, units: 0 };
             }
@@ -1548,7 +1572,19 @@ export default function AdminPanel({
         : 0;
 
     // Leaderboard sorted by profit descending
-    const productLeaderboard = Object.values(productStatsMap).sort((a, b) => b.totalProfit - a.totalProfit);
+    const productLeaderboard = Object.values(productStatsMap).sort((a, b) => b.totalProfit - a.totalProfit || b.totalRevenue - a.totalRevenue);
+
+    // Leaderboard filters
+    const profitCategories = ['all', ...Array.from(new Set(productLeaderboard.map(p => p.category).filter(Boolean)))];
+    const filteredLeaderboard = productLeaderboard.filter(item => {
+        const matchesQuery = !profitSearchQuery || 
+            (item.title && item.title.toLowerCase().includes(profitSearchQuery.toLowerCase())) || 
+            (item.category && item.category.toLowerCase().includes(profitSearchQuery.toLowerCase())) ||
+            String(item.id).includes(profitSearchQuery);
+        const matchesCat = profitCategoryFilter === 'all' || 
+            (item.category && item.category.toLowerCase() === profitCategoryFilter.toLowerCase());
+        return matchesQuery && matchesCat;
+    });
 
     // =========================================================================
     // NETRAVE ADMIN DASHBOARD SPECIFIC DATA HELPERS (100% REAL MONGODB DATA)
@@ -5731,69 +5767,344 @@ export default function AdminPanel({
             {/* TAB CONTENT: PROFIT & MARGIN */}
             {activeTab === 'profit' && (
                 <div className="admin-tab-content">
+                    {/* Header with Title and Actions */}
                     <div className="admin-page-header-row">
                         <div>
                             <h2 className="admin-page-title">Profit &amp; Margin Analysis</h2>
-                            <p className="admin-page-subtitle">Real-time breakdown of gross margin, COGS, and bottom-line profit</p>
+                            <p className="admin-page-subtitle">Real-time breakdown of gross margin, COGS, and bottom-line profit across all customer orders</p>
                         </div>
-                        <button type="button" className="admin-btn-secondary" onClick={handleExportCSV}>
-                            📥 Export Margin CSV
-                        </button>
+                        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                            <div className="timeframe-pill-group">
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === 'all' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('all')}
+                                >
+                                    All Time
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === 'today' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('today')}
+                                >
+                                    Today
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === '7d' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('7d')}
+                                >
+                                    7 Days
+                                </button>
+                                <button 
+                                    type="button"
+                                    className={`timeframe-btn ${analyticsTimeframe === '30d' ? 'active' : ''}`}
+                                    onClick={() => setAnalyticsTimeframe('30d')}
+                                >
+                                    30 Days
+                                </button>
+                            </div>
+                            <button type="button" className="admin-btn-secondary" onClick={handleExportCSV}>
+                                📥 Export Margin CSV
+                            </button>
+                        </div>
                     </div>
 
+                    {/* 4 Premium Metric Stat Cards */}
                     <div className="admin-stat-cards-grid">
                         <div className="admin-stat-card">
-                            <div className="admin-stat-label">Total Revenue</div>
-                            <div className="admin-stat-value">₹{totalGrossRevenue.toLocaleString('en-IN')}</div>
+                            <div className="admin-stat-icon-wrapper revenue">
+                                💰
+                            </div>
+                            <div className="admin-stat-info">
+                                <div className="admin-stat-label">Total Revenue</div>
+                                <div className="admin-stat-value">₹{totalGrossRevenue.toLocaleString('en-IN')}</div>
+                                <div className="admin-stat-subtext">Across {validBookings.length} completed orders</div>
+                            </div>
                         </div>
+
                         <div className="admin-stat-card">
-                            <div className="admin-stat-label">Cost of Goods (COGS)</div>
-                            <div className="admin-stat-value">₹{totalCOGS.toLocaleString('en-IN')}</div>
+                            <div className="admin-stat-icon-wrapper cogs">
+                                📦
+                            </div>
+                            <div className="admin-stat-info">
+                                <div className="admin-stat-label">Cost of Goods (COGS)</div>
+                                <div className="admin-stat-value" style={{ color: '#475569' }}>₹{totalCOGS.toLocaleString('en-IN')}</div>
+                                <div className="admin-stat-subtext">
+                                    {totalGrossRevenue > 0 ? ((totalCOGS / totalGrossRevenue) * 100).toFixed(1) : '0.0'}% of revenue
+                                </div>
+                            </div>
                         </div>
+
                         <div className="admin-stat-card">
-                            <div className="admin-stat-label">Gross Profit</div>
-                            <div className="admin-stat-value" style={{ color: '#16a34a' }}>₹{(totalGrossRevenue - totalCOGS).toLocaleString('en-IN')}</div>
+                            <div className="admin-stat-icon-wrapper profit">
+                                📈
+                            </div>
+                            <div className="admin-stat-info">
+                                <div className="admin-stat-label">Gross Profit</div>
+                                <div className="admin-stat-value" style={{ color: '#16a34a' }}>
+                                    ₹{totalNetProfit.toLocaleString('en-IN')}
+                                </div>
+                                <div className="admin-stat-subtext" style={{ color: '#16a34a', fontWeight: '600' }}>
+                                    Direct gross earnings
+                                </div>
+                            </div>
                         </div>
+
                         <div className="admin-stat-card">
-                            <div className="admin-stat-label">Gross Margin %</div>
-                            <div className="admin-stat-value" style={{ color: '#d97706' }}>{grossMarginPercent}%</div>
+                            <div className="admin-stat-icon-wrapper margin">
+                                🎯
+                            </div>
+                            <div className="admin-stat-info">
+                                <div className="admin-stat-label">Gross Margin %</div>
+                                <div className="admin-stat-value" style={{ color: '#d97706' }}>
+                                    {grossMarginPercent}%
+                                </div>
+                                <div className="admin-stat-subtext">
+                                    Profit-to-revenue ratio
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div className="admin-table-container" style={{ marginTop: '20px' }}>
-                        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', fontWeight: '800', fontSize: '15px' }}>
-                            Product Margins Leaderboard
+                    {/* Financial Health & Ratio Breakdown Panel */}
+                    <div className="admin-margin-health-panel">
+                        <div className="admin-margin-health-header">
+                            <div>
+                                <h3 className="admin-margin-health-title">Financial Health &amp; Unit Economics</h3>
+                                <p className="admin-margin-health-subtitle">Margin efficiency and average order yield</p>
+                            </div>
+                            <span className="admin-margin-grade-badge">
+                                {Number(grossMarginPercent) >= 40 ? '🌟 Healthy Margin' : '⚡ Moderate Margin'}
+                            </span>
                         </div>
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Product</th>
-                                    <th>Category</th>
-                                    <th>Selling Price</th>
-                                    <th>Cost Price</th>
-                                    <th>Units Sold</th>
-                                    <th>Total Revenue</th>
-                                    <th>Total Profit</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {productLeaderboard.map(item => (
-                                    <tr key={item.id}>
-                                        <td style={{ fontWeight: '700' }}>{item.title}</td>
-                                        <td><span className="admin-category-pill">{item.category}</span></td>
-                                        <td>₹{item.price}</td>
-                                        <td style={{ color: '#64748b' }}>₹{item.costPrice}</td>
-                                        <td><strong>{item.unitsSold}</strong></td>
-                                        <td>₹{item.totalRevenue.toLocaleString('en-IN')}</td>
-                                        <td>
-                                            <strong style={{ color: item.totalProfit >= 0 ? '#16a34a' : '#dc2626' }}>
-                                                ₹{item.totalProfit.toLocaleString('en-IN')}
-                                            </strong>
-                                        </td>
+
+                        {/* Revenue Split Bar */}
+                        <div className="admin-margin-split-bar-wrap">
+                            <div className="admin-margin-split-bar-labels">
+                                <span style={{ color: '#16a34a', fontWeight: '700' }}>
+                                    Gross Profit: {grossMarginPercent}% (₹{totalNetProfit.toLocaleString('en-IN')})
+                                </span>
+                                <span style={{ color: '#64748b', fontWeight: '700' }}>
+                                    COGS: {totalGrossRevenue > 0 ? ((totalCOGS / totalGrossRevenue) * 100).toFixed(1) : 0}% (₹{totalCOGS.toLocaleString('en-IN')})
+                                </span>
+                            </div>
+                            <div className="admin-margin-split-track">
+                                <div 
+                                    className="admin-margin-split-fill-profit" 
+                                    style={{ width: `${Math.min(100, Math.max(0, Number(grossMarginPercent)))}%` }} 
+                                    title={`Gross Profit: ${grossMarginPercent}%`}
+                                />
+                                <div 
+                                    className="admin-margin-split-fill-cogs" 
+                                    style={{ width: `${Math.min(100, Math.max(0, 100 - Number(grossMarginPercent)))}%` }} 
+                                    title={`COGS: ${totalGrossRevenue > 0 ? ((totalCOGS / totalGrossRevenue) * 100).toFixed(1) : 0}%`}
+                                />
+                            </div>
+                        </div>
+
+                        {/* 4 Mini Metrics */}
+                        <div className="admin-margin-metrics-row">
+                            <div className="admin-margin-metric-item">
+                                <span className="admin-margin-metric-label">Avg Order Value (AOV)</span>
+                                <span className="admin-margin-metric-val">₹{averageOrderValue.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="admin-margin-metric-item">
+                                <span className="admin-margin-metric-label">Avg Profit / Order</span>
+                                <span className="admin-margin-metric-val" style={{ color: '#16a34a' }}>
+                                    ₹{validBookings.length > 0 ? Math.round(totalNetProfit / validBookings.length).toLocaleString('en-IN') : 0}
+                                </span>
+                            </div>
+                            <div className="admin-margin-metric-item">
+                                <span className="admin-margin-metric-label">Total Units Sold</span>
+                                <span className="admin-margin-metric-val">{totalUnitsSold} pcs</span>
+                            </div>
+                            <div className="admin-margin-metric-item">
+                                <span className="admin-margin-metric-label">Fulfillment Rate</span>
+                                <span className="admin-margin-metric-val">{fulfillmentRate}%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Product Margins Leaderboard */}
+                    <div className="admin-table-container" style={{ marginTop: '20px' }}>
+                        {/* Leaderboard Toolbar */}
+                        <div className="admin-leaderboard-toolbar">
+                            <div>
+                                <div className="admin-leaderboard-title">Product Margins Leaderboard</div>
+                                <div className="admin-leaderboard-sub">
+                                    Showing {filteredLeaderboard.length} of {productLeaderboard.length} products sorted by profitability
+                                </div>
+                            </div>
+                            <div className="admin-leaderboard-controls">
+                                <div className="admin-search-input-wrap">
+                                    <input
+                                        type="text"
+                                        placeholder="Search product or category..."
+                                        value={profitSearchQuery}
+                                        onChange={(e) => setProfitSearchQuery(e.target.value)}
+                                        className="admin-search-input"
+                                    />
+                                    {profitSearchQuery && (
+                                        <button 
+                                            type="button" 
+                                            className="admin-search-clear-btn"
+                                            onClick={() => setProfitSearchQuery('')}
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                                <select 
+                                    className="admin-filter-select"
+                                    value={profitCategoryFilter}
+                                    onChange={(e) => setProfitCategoryFilter(e.target.value)}
+                                >
+                                    <option value="all">All Categories</option>
+                                    {profitCategories.filter(c => c !== 'all').map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Desktop Table View */}
+                        <div className="admin-leaderboard-desktop-table-wrap">
+                            <table className="admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Category</th>
+                                        <th>Selling Price</th>
+                                        <th>Cost Price</th>
+                                        <th>Unit Margin</th>
+                                        <th>Units Sold</th>
+                                        <th>Total Revenue</th>
+                                        <th>Total Profit</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {filteredLeaderboard.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
+                                                No products found matching your search.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredLeaderboard.map(item => {
+                                            const itemMarginPct = item.totalRevenue > 0 
+                                                ? ((item.totalProfit / item.totalRevenue) * 100).toFixed(1)
+                                                : (item.price > 0 ? (((item.price - item.costPrice) / item.price) * 100).toFixed(1) : '0.0');
+                                            const unitMargin = Math.max(0, item.price - item.costPrice);
+                                            return (
+                                                <tr key={item.id}>
+                                                    <td>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                            <img 
+                                                                src={item.image} 
+                                                                alt={item.title} 
+                                                                style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #e2e8f0', background: '#f8fafc', flexShrink: 0 }}
+                                                                onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'; }}
+                                                            />
+                                                            <div style={{ minWidth: 0 }}>
+                                                                <div style={{ fontWeight: '700', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
+                                                                    {item.title}
+                                                                </div>
+                                                                <div style={{ fontSize: '11px', color: '#94a3b8' }}>ID: #{item.id}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <span className="admin-category-pill">{item.category}</span>
+                                                    </td>
+                                                    <td style={{ fontWeight: '600', color: '#0f172a' }}>
+                                                        ₹{item.price.toLocaleString('en-IN')}
+                                                    </td>
+                                                    <td style={{ color: '#64748b' }}>
+                                                        ₹{item.costPrice.toLocaleString('en-IN')}
+                                                    </td>
+                                                    <td>
+                                                        <span className={`admin-margin-badge ${Number(itemMarginPct) >= 40 ? 'high' : Number(itemMarginPct) >= 20 ? 'med' : 'low'}`}>
+                                                            {itemMarginPct}% (₹{unitMargin.toLocaleString('en-IN')})
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <span className="admin-units-sold-pill">
+                                                            {item.unitsSold}
+                                                        </span>
+                                                    </td>
+                                                    <td style={{ fontWeight: '700', color: '#0f172a' }}>
+                                                        ₹{item.totalRevenue.toLocaleString('en-IN')}
+                                                    </td>
+                                                    <td>
+                                                        <strong style={{ color: item.totalProfit > 0 ? '#16a34a' : item.totalProfit < 0 ? '#dc2626' : '#64748b' }}>
+                                                            {item.totalProfit > 0 ? '+' : ''}₹{item.totalProfit.toLocaleString('en-IN')}
+                                                        </strong>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Mobile Cards View (< 768px) */}
+                        <div className="admin-profit-mobile-cards">
+                            {filteredLeaderboard.length === 0 ? (
+                                <div style={{ textAlign: 'center', padding: '24px', color: '#94a3b8' }}>
+                                    No products found matching your search.
+                                </div>
+                            ) : (
+                                filteredLeaderboard.map(item => {
+                                    const itemMarginPct = item.totalRevenue > 0 
+                                        ? ((item.totalProfit / item.totalRevenue) * 100).toFixed(1)
+                                        : (item.price > 0 ? (((item.price - item.costPrice) / item.price) * 100).toFixed(1) : '0.0');
+                                    return (
+                                        <div key={item.id} className="admin-profit-card-mobile-item">
+                                            <div className="admin-profit-card-mobile-top">
+                                                <img 
+                                                    src={item.image} 
+                                                    alt={item.title} 
+                                                    className="admin-profit-card-mobile-img"
+                                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'; }}
+                                                />
+                                                <div className="admin-profit-card-mobile-title-block">
+                                                    <div className="admin-profit-card-mobile-title">{item.title}</div>
+                                                    <div className="admin-profit-card-mobile-meta">
+                                                        <span className="admin-category-pill">{item.category}</span>
+                                                        <span className={`admin-margin-badge ${Number(itemMarginPct) >= 40 ? 'high' : Number(itemMarginPct) >= 20 ? 'med' : 'low'}`}>
+                                                            {itemMarginPct}% Margin
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="admin-profit-card-mobile-grid">
+                                                <div className="admin-profit-card-mobile-col">
+                                                    <span className="admin-profit-card-col-label">Selling / Cost</span>
+                                                    <span className="admin-profit-card-col-val">₹{item.price} / ₹{item.costPrice}</span>
+                                                </div>
+                                                <div className="admin-profit-card-mobile-col">
+                                                    <span className="admin-profit-card-col-label">Units Sold</span>
+                                                    <span className="admin-profit-card-col-val">{item.unitsSold} pcs</span>
+                                                </div>
+                                                <div className="admin-profit-card-mobile-col">
+                                                    <span className="admin-profit-card-col-label">Revenue</span>
+                                                    <span className="admin-profit-card-col-val">₹{item.totalRevenue.toLocaleString('en-IN')}</span>
+                                                </div>
+                                                <div className="admin-profit-card-mobile-col">
+                                                    <span className="admin-profit-card-col-label">Total Profit</span>
+                                                    <span className="admin-profit-card-col-val" style={{ color: item.totalProfit > 0 ? '#16a34a' : '#64748b', fontWeight: '800' }}>
+                                                        {item.totalProfit > 0 ? '+' : ''}₹{item.totalProfit.toLocaleString('en-IN')}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
+                        </div>
                     </div>
                 </div>
             )}

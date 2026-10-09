@@ -2492,6 +2492,371 @@
     color: #0f172a !important;
 }
 
+/* ==========================================================================
+   PROFIT & MARGIN ANALYSIS COMPONENT STYLES
+   ========================================================================== */
+.admin-stat-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.admin-stat-card {
+    background: #ffffff;
+    border: 1px solid var(--admin-card-border);
+    border-radius: var(--admin-radius-lg);
+    padding: 18px 20px;
+    box-shadow: var(--admin-shadow-sm);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--admin-shadow-md);
+}
+
+.admin-stat-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    flex-shrink: 0;
+}
+
+.admin-stat-icon-wrapper.revenue {
+    background: #fef3c7;
+    border: 1px solid #fde68a;
+}
+
+.admin-stat-icon-wrapper.cogs {
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+}
+
+.admin-stat-icon-wrapper.profit {
+    background: #dcfce7;
+    border: 1px solid #bbf7d0;
+}
+
+.admin-stat-icon-wrapper.margin {
+    background: #f3e8ff;
+    border: 1px solid #e9d5ff;
+}
+
+.admin-stat-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.admin-stat-label {
+    font-size: 12px;
+    font-weight: 700;
+    color: #64748b;
+    margin-bottom: 4px;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.admin-stat-value {
+    font-size: 24px;
+    font-weight: 900;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+.admin-stat-subtext {
+    font-size: 11.5px;
+    color: #94a3b8;
+    margin-top: 4px;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+/* Margin Health & Unit Economics Panel */
+.admin-margin-health-panel {
+    background: #ffffff;
+    border: 1px solid var(--admin-card-border);
+    border-radius: var(--admin-radius-lg);
+    padding: 20px;
+    box-shadow: var(--admin-shadow-sm);
+    margin-bottom: 20px;
+}
+
+.admin-margin-health-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.admin-margin-health-title {
+    font-size: 16px;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+.admin-margin-health-subtitle {
+    font-size: 12.5px;
+    color: #64748b;
+    margin: 3px 0 0;
+}
+
+.admin-margin-grade-badge {
+    padding: 5px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 700;
+    background: #fef3c7;
+    color: #b45309;
+    border: 1px solid #fde68a;
+    display: inline-flex;
+    align-items: center;
+}
+
+.admin-margin-split-bar-wrap {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 16px;
+}
+
+.admin-margin-split-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12.5px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.admin-margin-split-track {
+    width: 100%;
+    height: 10px;
+    background: #e2e8f0;
+    border-radius: 9999px;
+    overflow: hidden;
+    display: flex;
+}
+
+.admin-margin-split-fill-profit {
+    height: 100%;
+    background: #16a34a;
+    transition: width 0.4s ease;
+}
+
+.admin-margin-split-fill-cogs {
+    height: 100%;
+    background: #64748b;
+    transition: width 0.4s ease;
+}
+
+.admin-margin-metrics-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+}
+
+.admin-margin-metric-item {
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.admin-margin-metric-label {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: #64748b;
+}
+
+.admin-margin-metric-val {
+    font-size: 18px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+/* Leaderboard Toolbar & Badges */
+.admin-leaderboard-toolbar {
+    padding: 16px 20px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.admin-leaderboard-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.admin-leaderboard-sub {
+    font-size: 12px;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.admin-leaderboard-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.admin-margin-badge {
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+.admin-margin-badge.high {
+    background: #dcfce7;
+    color: #16a34a;
+    border: 1px solid #bbf7d0;
+}
+
+.admin-margin-badge.med {
+    background: #fef3c7;
+    color: #d97706;
+    border: 1px solid #fde68a;
+}
+
+.admin-margin-badge.low {
+    background: #fee2e2;
+    color: #dc2626;
+    border: 1px solid #fecaca;
+}
+
+.admin-units-sold-pill {
+    padding: 3px 9px;
+    background: #f1f5f9;
+    color: #0f172a;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 12px;
+    display: inline-block;
+}
+
+/* Leaderboard Desktop Table Wrap */
+.admin-leaderboard-desktop-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+}
+
+/* Mobile Leaderboard Cards */
+.admin-profit-mobile-cards {
+    display: none;
+    padding: 12px;
+    gap: 12px;
+    flex-direction: column;
+}
+
+.admin-profit-card-mobile-item {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: var(--admin-shadow-sm);
+}
+
+.admin-profit-card-mobile-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.admin-profit-card-mobile-img {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    object-fit: cover;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    flex-shrink: 0;
+}
+
+.admin-profit-card-mobile-title-block {
+    flex: 1;
+    min-width: 0;
+}
+
+.admin-profit-card-mobile-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: #0f172a;
+    line-height: 1.3;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.admin-profit-card-mobile-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.admin-profit-card-mobile-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+    background: #f8fafc;
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid #f1f5f9;
+}
+
+.admin-profit-card-mobile-col {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.admin-profit-card-col-label {
+    font-size: 11px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.admin-profit-card-col-val {
+    font-size: 13px;
+    color: #0f172a;
+    font-weight: 700;
+}
+
 /* TABLET & MOBILE (< 1024px) */
 @media (max-width: 1023px) {
     .admin-main-wrapper,
@@ -2706,6 +3071,32 @@
     .admin-stat-cards-grid {
         grid-template-columns: 1fr !important;
         gap: 10px !important;
+    }
+
+    .admin-margin-metrics-row {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
+
+    .admin-leaderboard-toolbar {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 10px !important;
+        padding: 12px !important;
+    }
+
+    .admin-leaderboard-controls {
+        flex-direction: column !important;
+        width: 100% !important;
+        gap: 8px !important;
+    }
+
+    .admin-leaderboard-desktop-table-wrap {
+        display: none !important;
+    }
+
+    .admin-profit-mobile-cards {
+        display: flex !important;
     }
 
     /* Table Toolbar */
