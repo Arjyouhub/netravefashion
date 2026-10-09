@@ -575,6 +575,12 @@ const handleMultipleUpload = (req, res) => {
 app.post('/api/upload-multiple', upload.array('images', 20), handleMultipleUpload);
 app.post('/upload-multiple', upload.array('images', 20), handleMultipleUpload);
 
+// Helper to strip any accidental whitespace, newlines, or quotes from API keys
+const sanitizeRazorpayCredential = (val) => {
+    if (!val) return '';
+    return String(val).replace(/[\r\n\t\s"']/g, '').trim();
+};
+
 // 2. Fetch Shop Settings
 app.get('/api/settings', async (req, res) => {
     try {
@@ -583,26 +589,28 @@ app.get('/api/settings', async (req, res) => {
             if (!settings) {
                 settings = await SettingsModel.create({ key: 'main', whatsappNumber: '919876543210', adminPassword: 'admin123' });
             }
+            const cleanKeyId = sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_ID) || sanitizeRazorpayCredential(settings.razorpayKeyId) || 'rzp_live_TlpkVGUFJvf2lv';
             res.json({
                 whatsappNumber: settings.whatsappNumber,
                 maintenanceMode: settings.maintenanceMode || false,
                 maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: settings.maintenanceExpiry || 0,
                 offerNotification: settings.offerNotification || '',
-                razorpayKeyId: process.env.RAZORPAY_KEY_ID || settings.razorpayKeyId || 'rzp_live_TlpkVGUFJvf2lv',
+                razorpayKeyId: cleanKeyId,
                 razorpayEnabled: settings.razorpayEnabled !== undefined ? settings.razorpayEnabled : true,
                 googleClientId: settings.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
         } else {
             const settings = await readJson(settingsPath);
             const data = Array.isArray(settings) ? settings[0] : settings;
+            const cleanKeyId = sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_ID) || sanitizeRazorpayCredential(data?.razorpayKeyId) || 'rzp_live_TlpkVGUFJvf2lv';
             res.json({
                 whatsappNumber: data?.whatsappNumber || '919876543210',
                 maintenanceMode: data?.maintenanceMode || false,
                 maintenanceMessage: data?.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: data?.maintenanceExpiry || 0,
                 offerNotification: data?.offerNotification || '',
-                razorpayKeyId: process.env.RAZORPAY_KEY_ID || data?.razorpayKeyId || 'rzp_live_TlpkVGUFJvf2lv',
+                razorpayKeyId: cleanKeyId,
                 razorpayEnabled: data?.razorpayEnabled !== undefined ? data?.razorpayEnabled : true,
                 googleClientId: data?.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
@@ -1881,30 +1889,37 @@ app.patch('/api/bookings/:orderId/courier', async (req, res) => {
 // 10B. RAZORPAY PAYMENT GATEWAY ENDPOINTS
 // --------------------------------------------------------------------------
 async function getRazorpayConfig() {
-    let keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TlpkVGUFJvf2lv';
-    let keySecret = process.env.RAZORPAY_KEY_SECRET || 'QDaTxvxvNq19jyC77BER8ATh';
+    let keyId = 'rzp_live_TlpkVGUFJvf2lv';
+    let keySecret = 'QDaTxvxvNq19jyC77BER8ATh';
     let isEnabled = true;
 
     try {
         if (useMongo) {
             const settings = await SettingsModel.findOne({ key: 'main' });
-            if (settings?.razorpayKeyId) keyId = settings.razorpayKeyId;
-            if (settings?.razorpayKeySecret) keySecret = settings.razorpayKeySecret;
+            if (settings?.razorpayKeyId) keyId = sanitizeRazorpayCredential(settings.razorpayKeyId);
+            if (settings?.razorpayKeySecret) keySecret = sanitizeRazorpayCredential(settings.razorpayKeySecret);
             if (settings?.razorpayEnabled !== undefined) isEnabled = settings.razorpayEnabled;
         } else {
             const fileSettings = await readJson(settingsPath);
             const s = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
-            if (s?.razorpayKeyId) keyId = s.razorpayKeyId;
-            if (s?.razorpayKeySecret) keySecret = s.razorpayKeySecret;
+            if (s?.razorpayKeyId) keyId = sanitizeRazorpayCredential(s.razorpayKeyId);
+            if (s?.razorpayKeySecret) keySecret = sanitizeRazorpayCredential(s.razorpayKeySecret);
             if (s?.razorpayEnabled !== undefined) isEnabled = s.razorpayEnabled;
         }
     } catch (e) {
         console.error('Failed to read Razorpay config:', e.message);
     }
 
-    // Always prioritize the environment variables provided in .env
-    if (process.env.RAZORPAY_KEY_ID) keyId = process.env.RAZORPAY_KEY_ID;
-    if (process.env.RAZORPAY_KEY_SECRET) keySecret = process.env.RAZORPAY_KEY_SECRET;
+    // Always prioritize the environment variables provided in .env (strictly trimmed)
+    if (process.env.RAZORPAY_KEY_ID && sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_ID)) {
+        keyId = sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_ID);
+    }
+    if (process.env.RAZORPAY_KEY_SECRET && sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_SECRET)) {
+        keySecret = sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_SECRET);
+    }
+
+    keyId = sanitizeRazorpayCredential(keyId) || 'rzp_live_TlpkVGUFJvf2lv';
+    keySecret = sanitizeRazorpayCredential(keySecret) || 'QDaTxvxvNq19jyC77BER8ATh';
 
     return { keyId, keySecret, isEnabled };
 }

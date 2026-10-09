@@ -267,7 +267,8 @@ export default function CheckoutModal({
 
             const orderData = await orderRes.json();
 
-            const razorpayKey = orderData.key_id || orderData.keyId || (settings && settings.razorpayKeyId) || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TlpkVGUFJvf2lv';
+            const rawKey = orderData.key_id || orderData.keyId || (settings && settings.razorpayKeyId) || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TlpkVGUFJvf2lv';
+            const razorpayKey = String(rawKey || '').replace(/[\r\n\t\s"']/g, '').trim();
             const razorpayOrderId = orderData.order_id || orderData.id;
 
             if (!window.Razorpay) {
