@@ -25,8 +25,6 @@ export default function HomeSections({
     onNavigate
 }) {
     const [activeFeaturedTab, setActiveFeaturedTab] = useState('All');
-    const [newsletterEmail, setNewsletterEmail] = useState('');
-    const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
 
     // Tab filter for Featured Products
     const filterFeaturedProducts = () => {
@@ -53,14 +51,6 @@ export default function HomeSections({
     const newArrivalsList = products.filter(p => p.isNewArrival || p.tags?.includes('New')).slice(0, 5);
     const displayNewArrivals = newArrivalsList.length >= 3 ? newArrivalsList : products.slice(3, 8);
 
-    const handleNewsletterSubmit = (e) => {
-        e.preventDefault();
-        if (newsletterEmail && newsletterEmail.includes('@')) {
-            setNewsletterSubscribed(true);
-            setTimeout(() => setNewsletterSubscribed(false), 5000);
-            setNewsletterEmail('');
-        }
-    };
 
     const handleCategoryClick = (slug) => {
         if (slug === 'offers') {
@@ -347,36 +337,6 @@ export default function HomeSections({
                                 className="trendy-img-4" 
                             />
                         </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* 8. Stay Updated Newsletter Box */}
-            <section className="newsletter-stay-updated">
-                <div className="netrave-container">
-                    <div className="newsletter-box">
-                        <div className="newsletter-heading-col">
-                            <h3 className="newsletter-title">Stay Updated</h3>
-                            <p className="newsletter-desc">Get exclusive offers, new arrivals and more!</p>
-                        </div>
-                        <form className="newsletter-form" onSubmit={handleNewsletterSubmit}>
-                            <input 
-                                type="email" 
-                                className="newsletter-input" 
-                                placeholder="Enter your email address" 
-                                value={newsletterEmail}
-                                onChange={(e) => setNewsletterEmail(e.target.value)}
-                                required 
-                            />
-                            <button type="submit" className="newsletter-submit-btn">
-                                Subscribe
-                            </button>
-                        </form>
-                        {newsletterSubscribed && (
-                            <p className="newsletter-success-note">
-                                ✓ Thank you for subscribing! Check your inbox for exclusive discounts.
-                            </p>
-                        )}
                     </div>
                 </div>
             </section>
