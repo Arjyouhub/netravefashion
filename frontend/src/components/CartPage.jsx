@@ -235,7 +235,7 @@ export default function CartPage({
                                     <input 
                                         type="text" 
                                         className="cart-coupon-field" 
-                                        placeholder="Enter promo code (e.g FESTIVE70)"
+                                        placeholder="Enter promo code (e.g. FESTIVE)"
                                         value={couponCode}
                                         onChange={(e) => setCouponCode(e.target.value)}
                                     />
