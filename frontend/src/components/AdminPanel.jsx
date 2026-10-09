@@ -1694,7 +1694,8 @@ export default function AdminPanel({
         return { month: m, sales: mSales, profit: mProfit };
     });
 
-    const maxMonthlyVal = Math.max(...monthlySalesProfitData.map(d => Math.max(d.sales, d.profit)), 40000);
+    const peakMonthlyVal = Math.max(...monthlySalesProfitData.map(d => Math.max(d.sales, d.profit)), 1000);
+    const maxMonthlyVal = peakMonthlyVal <= 20000 ? 20000 : (Math.ceil(peakMonthlyVal / 10000) * 10000);
 
     // Top categories with counts
     const categoryGroupMap = {};
@@ -2288,18 +2289,18 @@ export default function AdminPanel({
 
                                     <div className="admin-bar-chart-svg-wrap">
                                         <svg viewBox="0 0 740 280" className="admin-bar-chart-svg">
-                                            {/* Grid Lines */}
+                                            {/* Dynamic Grid Lines */}
                                             <line x1="45" y1="30" x2="720" y2="30" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                                            <text x="12" y="34" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">40K</text>
+                                            <text x="12" y="34" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">{Math.round(maxMonthlyVal / 1000)}K</text>
 
                                             <line x1="45" y1="82" x2="720" y2="82" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                                            <text x="12" y="86" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">30K</text>
+                                            <text x="12" y="86" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">{Math.round((maxMonthlyVal * 0.75) / 1000)}K</text>
 
                                             <line x1="45" y1="135" x2="720" y2="135" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                                            <text x="12" y="139" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">20K</text>
+                                            <text x="12" y="139" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">{Math.round((maxMonthlyVal * 0.5) / 1000)}K</text>
 
                                             <line x1="45" y1="188" x2="720" y2="188" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
-                                            <text x="12" y="192" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">10K</text>
+                                            <text x="12" y="192" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">{Math.round((maxMonthlyVal * 0.25) / 1000)}K</text>
 
                                             <line x1="45" y1="240" x2="720" y2="240" stroke="#e2e8f0" strokeWidth="1" />
                                             <text x="24" y="244" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">0</text>
@@ -2307,8 +2308,8 @@ export default function AdminPanel({
                                             {/* 12 Months Grouped Bars */}
                                             {monthlySalesProfitData.map((d, i) => {
                                                 const centerX = 75 + (i * 54);
-                                                const salesHeight = Math.max(4, Math.round((d.sales / maxMonthlyVal) * 205));
-                                                const profitHeight = Math.max(4, Math.round((d.profit / maxMonthlyVal) * 205));
+                                                const salesHeight = Math.max(6, Math.round((d.sales / maxMonthlyVal) * 205));
+                                                const profitHeight = Math.max(5, Math.round((d.profit / maxMonthlyVal) * 205));
                                                 const salesY = 240 - salesHeight;
                                                 const profitY = 240 - profitHeight;
 
@@ -2316,12 +2317,12 @@ export default function AdminPanel({
                                                     <g key={d.month}>
                                                         {/* Yellow Sales Bar */}
                                                         <rect 
-                                                            x={centerX - 13} 
+                                                            x={centerX - 16} 
                                                             y={salesY} 
-                                                            width="12" 
+                                                            width="15" 
                                                             height={salesHeight} 
                                                             fill="#f59e0b" 
-                                                            rx="3"
+                                                            rx="4"
                                                         >
                                                             <title>{`${d.month} Sales: ₹${d.sales.toLocaleString('en-IN')}`}</title>
                                                         </rect>
@@ -2330,10 +2331,10 @@ export default function AdminPanel({
                                                         <rect 
                                                             x={centerX + 1} 
                                                             y={profitY} 
-                                                            width="12" 
+                                                            width="15" 
                                                             height={profitHeight} 
                                                             fill="#0f172a" 
-                                                            rx="3"
+                                                            rx="4"
                                                         >
                                                             <title>{`${d.month} Profit: ₹${d.profit.toLocaleString('en-IN')}`}</title>
                                                         </rect>
@@ -2343,8 +2344,8 @@ export default function AdminPanel({
                                                             x={centerX} 
                                                             y="262" 
                                                             fill="#64748b" 
-                                                            fontSize="11" 
-                                                            fontWeight="600"
+                                                            fontSize="12" 
+                                                            fontWeight="700"
                                                             fontFamily="sans-serif" 
                                                             textAnchor="middle"
                                                         >
