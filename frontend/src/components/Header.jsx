@@ -58,6 +58,26 @@ export default function Header({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Auto-close mobile drawer when switching pages/routes
+    useEffect(() => {
+        setIsMobileDrawerOpen(false);
+    }, [currentPage]);
+
+    // Lock background page scroll when mobile drawer is open
+    useEffect(() => {
+        if (isMobileDrawerOpen) {
+            document.body.style.overflow = 'hidden';
+            document.body.style.touchAction = 'none';
+        } else {
+            document.body.style.overflow = '';
+            document.body.style.touchAction = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+            document.body.style.touchAction = '';
+        };
+    }, [isMobileDrawerOpen]);
+
     const handleSearchSubmit = (e) => {
         if (e) e.preventDefault();
         setIsSearchFocused(false);
@@ -97,7 +117,7 @@ export default function Header({
     };
 
     return (
-        <header className="netrave-header-master">
+        <header className={`netrave-header-master ${isMobileDrawerOpen ? 'has-drawer-open' : ''}`}>
             {/* 1. Yellow Top Announcement Bar (Desktop & Tablet) */}
             <div className="netrave-top-bar">
                 <div className="netrave-header-container top-bar-inner">
@@ -504,7 +524,12 @@ export default function Header({
 
                         <div className="mobile-drawer-user-card">
                             {user ? (
-                                <div className="mobile-user-row">
+                                <div 
+                                    className="mobile-user-row" 
+                                    onClick={() => handleNav('account')}
+                                    style={{ cursor: 'pointer' }}
+                                    title="Go to Account"
+                                >
                                     <div className="user-avatar-circle">
                                         {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
                                     </div>
@@ -544,6 +569,7 @@ export default function Header({
 
                             <h4 className="mobile-drawer-section-title">Account & Orders</h4>
                             <ul className="mobile-drawer-list">
+                                <li><button type="button" onClick={() => handleNav('account')}>👤 My Account Profile</button></li>
                                 <li><button type="button" onClick={() => handleNav('orders')}>📦 My Orders</button></li>
                                 <li><button type="button" onClick={() => handleNav('tracking')}>🚚 Track Order</button></li>
                                 <li><button type="button" onClick={() => handleNav('wishlist')}>❤️ Wishlist ({wishlistCount})</button></li>
