@@ -356,7 +356,15 @@ export default function App() {
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [pendingCheckout, setPendingCheckout] = useState(false);
     const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
-    const [user, setUser] = useState(() => getCookie('netrave_user'));
+    const [user, setUser] = useState(() => {
+        const c = getCookie('netrave_user');
+        if (c) return c;
+        try {
+            const s = JSON.parse(localStorage.getItem('netrave_user'));
+            if (s) return s;
+        } catch {}
+        return null;
+    });
 
     // D. Focused Items
     const [selectedProductId, setSelectedProductId] = useState(null);
@@ -386,6 +394,12 @@ export default function App() {
     const [pageParams, setPageParams] = useState({});
 
     const navigate = (page, params = {}) => {
+        // If customer is already logged in, redirect away from login/signup to Home
+        if (user && (page === 'login' || page === 'signup')) {
+            page = 'home';
+            params = {};
+        }
+
         setCurrentPage(page);
         setPageParams(params);
         if (page === 'category') {
@@ -421,6 +435,17 @@ export default function App() {
                 const parts = raw.split('/');
                 const p = parts[0];
                 const id = parts[1];
+
+                // If customer is already logged in, redirect away from login/signup to Home
+                const currentSession = user || getCookie('netrave_user') || (() => {
+                    try { return JSON.parse(localStorage.getItem('netrave_user')); } catch { return null; }
+                })();
+                if (currentSession && (p === 'login' || p === 'signup')) {
+                    window.history.replaceState({}, '', '/');
+                    setCurrentPage('home');
+                    return;
+                }
+
                 setCurrentPage(p);
                 if (p === 'product' && id) {
                     setSelectedProductId(Number(id));
@@ -437,7 +462,7 @@ export default function App() {
         handleHash();
         window.addEventListener('hashchange', handleHash);
         return () => window.removeEventListener('hashchange', handleHash);
-    }, []);
+    }, [user]);
 
     useEffect(() => {
         localStorage.setItem('netrave_wishlist', JSON.stringify(wishlist));
@@ -556,6 +581,11 @@ export default function App() {
     const handleAuthSuccess = (userData) => {
         setUser(userData);
         setCookie('netrave_user', userData);
+        try {
+            localStorage.setItem('netrave_user', JSON.stringify(userData));
+        } catch (e) {
+            console.error('Failed to save user in localStorage:', e);
+        }
 
         // Merge guest cart with user's saved cart
         try {
@@ -589,11 +619,9 @@ export default function App() {
         if (pendingCheckout) {
             setIsCheckoutOpen(true);
             setPendingCheckout(false);
-        } else if (!userData.phone || !userData.address) {
-            setIsProfileOpen(true);
-            showToast('Welcome! Please complete your phone & delivery address.', 'info');
         } else {
-            showToast(`Welcome back, ${userData.name}!`, 'success');
+            showToast(`Welcome back, ${userData.name || 'Member'}!`, 'success');
+            navigate('home');
         }
     };
 
@@ -607,7 +635,14 @@ export default function App() {
         }
         setUser(null);
         eraseCookie('netrave_user');
+        try {
+            localStorage.removeItem('netrave_user');
+        } catch (e) {
+            console.error(e);
+        }
         setBookings([]);
+        showToast('You have been logged out.', 'info');
+        navigate('home');
     };
 
     // 2c. Listen to client-side path / route changes to toggle Admin / Developer view
@@ -1227,6 +1262,9 @@ export default function App() {
                         onUpdateUser={(updated) => {
                             setUser(updated);
                             setCookie('netrave_user', updated);
+                            try {
+                                localStorage.setItem('netrave_user', JSON.stringify(updated));
+                            } catch (e) {}
                         }}
                         onOpenLogin={() => setIsAuthOpen(true)}
                         API_BASE_URL={API_BASE_URL}
