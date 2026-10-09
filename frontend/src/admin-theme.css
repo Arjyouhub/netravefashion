@@ -376,10 +376,10 @@
     color: var(--admin-text-main);
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
     position: relative;
-    overflow-x: hidden;
+    overflow-x: clip;
 }
 
-/* 2.1 LEFT SIDEBAR */
+/* 2.1 LEFT SIDEBAR (Fixed permanent on desktop) */
 .admin-sidebar {
     width: 250px;
     background: var(--admin-sidebar-bg);
@@ -387,9 +387,12 @@
     display: flex;
     flex-direction: column;
     flex-shrink: 0;
-    position: sticky;
+    position: fixed;
     top: 0;
+    left: 0;
+    bottom: 0;
     height: 100vh;
+    height: 100dvh;
     z-index: 100;
     transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), width 0.3s ease;
     overflow: hidden;
@@ -607,6 +610,9 @@
     min-width: 0;
     min-height: 100vh;
     background: #f8fafc;
+    margin-left: 250px;
+    width: calc(100% - 250px);
+    box-sizing: border-box;
 }
 
 /* 2.3 TOP HEADER BAR */
@@ -2345,8 +2351,14 @@
     color: #0f172a !important;
 }
 
-/* TABLET (768px - 1023px) */
+/* TABLET & MOBILE (< 1024px) */
 @media (max-width: 1023px) {
+    .admin-main-wrapper,
+    .admin-main-viewport {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+
     .admin-sidebar {
         position: fixed;
         top: 0;
