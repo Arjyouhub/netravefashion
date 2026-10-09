@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getCookie, setCookie, eraseCookie } from '../utils/cookies';
 import RichTextEditor from './RichTextEditor';
+import '../admin-theme.css';
 
 export default function AdminPanel({
     products = [],
@@ -15,9 +16,34 @@ export default function AdminPanel({
     onClose,
     API_BASE_URL,
     onRefreshCategories,
-    onRefreshProducts
+    onRefreshProducts,
+    showToast
 }) {
-    const [activeTab, setActiveTab] = useState('analytics');
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [sidebarMobileOpen, setSidebarMobileOpen] = useState(false);
+    const [globalSearchQuery, setGlobalSearchQuery] = useState('');
+    const [dashboardPeriod, setDashboardPeriod] = useState('This Month');
+    const [isDateRangeOpen, setIsDateRangeOpen] = useState(false);
+    const [salesChartMetric, setSalesChartMetric] = useState('revenue'); // 'revenue' | 'orders'
+    const [salesChartPeriod, setSalesChartPeriod] = useState('Monthly'); // 'Daily' | 'Weekly' | 'Monthly' | 'Yearly'
+    const [showPassword, setShowPassword] = useState(false);
+    const [rememberMe, setRememberMe] = useState(true);
+
+    // Filters and search states for individual tabs
+    const [prodFilterSearch, setProdFilterSearch] = useState('');
+    const [prodFilterCategory, setProdFilterCategory] = useState('all');
+    const [prodFilterStatus, setProdFilterStatus] = useState('all');
+    const [prodFilterSort, setProdFilterSort] = useState('default');
+    const [prodCurrentPage, setProdCurrentPage] = useState(1);
+
+    const [orderFilterSearch, setOrderFilterSearch] = useState('');
+    const [orderFilterStatus, setOrderFilterStatus] = useState('all');
+    const [orderFilterPayment, setOrderFilterPayment] = useState('all');
+    const [orderFilterDate, setOrderFilterDate] = useState('all');
+
+    const [custFilterSearch, setCustFilterSearch] = useState('');
+    const [invFilterStatus, setInvFilterStatus] = useState('all');
+    const [settingsSubTab, setSettingsSubTab] = useState('store');
 
     // Category Management States
     const [categoriesList, setCategoriesList] = useState(categories || []);
@@ -705,114 +731,146 @@ export default function AdminPanel({
 
     if (!isLoggedIn) {
         return (
-            <div className="admin-login-wrapper" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#05070c', padding: '20px' }}>
-                <style>{`
-                    .modern-admin-input:focus {
-                        border-color: #f59e0b !important;
-                        box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15) !important;
-                        background: #161924 !important;
-                    }
-                    .modern-admin-btn {
-                        background: linear-gradient(135deg, #f59e0b, #d97706) !important;
-                        color: #0a0b0e !important;
-                        border: none !important;
-                        border-radius: 10px !important;
-                        font-weight: 800 !important;
-                        font-size: 15px !important;
-                        padding: 14px !important;
-                        cursor: pointer !important;
-                        transition: all 0.3s ease !important;
-                        width: 100% !important;
-                        display: flex !important;
-                        align-items: center !important;
-                        justify-content: center !important;
-                        text-transform: uppercase !important;
-                        letter-spacing: 0.5px !important;
-                    }
-                    .modern-admin-btn:hover {
-                        transform: translateY(-2px);
-                        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.35) !important;
-                    }
-                    .modern-admin-btn:active {
-                        transform: translateY(0);
-                    }
-                `}</style>
-                <div className="admin-login-card" style={{ 
-                    maxWidth: '430px', 
-                    width: '100%', 
-                    padding: '40px 32px', 
-                    background: 'rgba(10, 11, 14, 0.95)',
-                    backdropFilter: 'blur(20px)',
-                    border: '1px solid rgba(245, 158, 11, 0.25)', 
-                    boxShadow: '0 20px 50px rgba(0,0,0,0.6), 0 0 35px rgba(245,158,11,0.08)',
-                    borderRadius: '16px',
-                    position: 'relative'
-                }}>
-                    <div className="login-header" style={{ textAlign: 'center', marginBottom: '24px' }}>
-                        <div style={{ 
-                            width: '64px', 
-                            height: '64px', 
-                            background: 'rgba(245, 158, 11, 0.1)', 
-                            border: '1px solid rgba(245, 158, 11, 0.2)',
-                            borderRadius: '50%',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            margin: '0 auto 16px',
-                            boxShadow: '0 0 15px rgba(245,158,11,0.05)'
-                        }}>
-                            <svg viewBox="0 0 24 24" style={{ width: '28px', height: '28px', fill: '#f59e0b' }}>
-                                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-                            </svg>
+            <div className="admin-login-fullscreen">
+                {/* Subtle ambient light rings matching Screen 1 reference */}
+                <div className="admin-login-ambient-circle-1" />
+                <div className="admin-login-ambient-circle-2" />
+
+                <div className="admin-login-card-container">
+                    {/* Brand Logo & Portal Header */}
+                    <div className="admin-login-brand-header">
+                        <div className="admin-login-logo-wrap">
+                            <img 
+                                src="/assets/logo.png" 
+                                alt="Netrave Clothing & Style" 
+                                className="admin-login-logo-img"
+                                onError={(e) => {
+                                    e.target.style.display = 'none';
+                                }}
+                            />
+                            <div className="admin-login-logo-text">
+                                <span className="admin-login-logo-title">Net<span className="logo-rave">rave</span></span>
+                                <span className="admin-login-logo-sub">CLOTHING &amp; STYLE</span>
+                            </div>
                         </div>
-                        <h3 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 8px', color: '#fff', letterSpacing: '0.5px' }}>Admin Portal Login</h3>
-                        <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0, lineHeight: '1.4' }}>Sign in to manage your store catalog and bookings</p>
+                        <h1 className="admin-login-heading">Admin Portal</h1>
+                        <p className="admin-login-subheading">Manage your store from one place</p>
                     </div>
-                    <form onSubmit={handleLoginSubmit} className="admin-login-form">
-                        <div className="form-field" style={{ marginBottom: '20px' }}>
-                            <label htmlFor="admin-username" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Username</label>
-                            <input
-                                id="admin-username"
-                                type="text"
-                                className="modern-admin-input"
-                                value={username}
-                                onChange={e => setUsername(e.target.value)}
-                                placeholder="Enter admin username"
-                                style={{ width: '100%', padding: '13px 16px', background: '#12141c', border: '1px solid rgba(255,255,255,0.08)', color: '#ffffff', borderRadius: '10px', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' }}
-                                required
-                            />
+
+                    {loginError && (
+                        <div className="admin-alert-banner admin-alert-error" style={{ marginBottom: '16px' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            <span>{loginError}</span>
                         </div>
-                        <div className="form-field" style={{ marginBottom: '24px' }}>
-                            <label htmlFor="admin-password" style={{ color: '#cbd5e1', fontSize: '13px', fontWeight: '600', display: 'block', marginBottom: '8px' }}>Password</label>
-                            <input
-                                id="admin-password"
-                                type="password"
-                                className="modern-admin-input"
-                                value={password}
-                                onChange={e => setPassword(e.target.value)}
-                                placeholder="Enter admin password"
-                                style={{ width: '100%', padding: '13px 16px', background: '#12141c', border: '1px solid rgba(255,255,255,0.08)', color: '#ffffff', borderRadius: '10px', fontSize: '14px', outline: 'none', transition: 'all 0.3s ease', boxSizing: 'border-box' }}
-                                required
-                            />
+                    )}
+
+                    <form onSubmit={handleLoginSubmit} className="admin-login-form-body">
+                        {/* Admin ID / Email */}
+                        <div className="admin-form-group">
+                            <label className="admin-form-label" htmlFor="admin-login-username">Admin ID / Email</label>
+                            <div className="admin-input-icon-wrap">
+                                <span className="admin-input-icon-left">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                </span>
+                                <input
+                                    id="admin-login-username"
+                                    type="text"
+                                    className="admin-input-field"
+                                    value={username}
+                                    onChange={e => setUsername(e.target.value)}
+                                    placeholder="Admin ID / Email"
+                                    autoComplete="username"
+                                    required
+                                />
+                            </div>
                         </div>
-                        {loginError && (
-                            <div style={{ 
-                                background: 'rgba(239,68,68,0.1)', 
-                                color: '#ef4444', 
-                                border: '1px solid rgba(239,68,68,0.2)', 
-                                padding: '12px 16px', 
-                                borderRadius: '8px', 
-                                fontSize: '13px', 
-                                marginBottom: '20px',
-                                textAlign: 'center',
-                                fontWeight: '500'
-                            }}>{loginError}</div>
-                        )}
-                        <button type="submit" className="modern-admin-btn">
-                            Sign In
+
+                        {/* Password with Eye Toggle */}
+                        <div className="admin-form-group">
+                            <label className="admin-form-label" htmlFor="admin-login-password">Password</label>
+                            <div className="admin-input-icon-wrap">
+                                <span className="admin-input-icon-left">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </span>
+                                <input
+                                    id="admin-login-password"
+                                    type={showPassword ? 'text' : 'password'}
+                                    className="admin-input-field"
+                                    style={{ paddingRight: '42px' }}
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    placeholder="Password"
+                                    autoComplete="current-password"
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    className="admin-input-eye-btn"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                                        </svg>
+                                    ) : (
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                            <circle cx="12" cy="12" r="3"></circle>
+                                        </svg>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Options: Remember me & Forgot Password */}
+                        <div className="admin-login-options-row">
+                            <label className="admin-checkbox-label">
+                                <input
+                                    type="checkbox"
+                                    checked={rememberMe}
+                                    onChange={e => setRememberMe(e.target.checked)}
+                                    className="admin-checkbox-input"
+                                />
+                                <span>Remember me</span>
+                            </label>
+                            <button
+                                type="button"
+                                className="admin-forgot-password-link"
+                                onClick={() => alert('To reset Admin credentials, please check your server environment ADMIN_PASSWORD or contact Super Admin.')}
+                            >
+                                Forgot Password?
+                            </button>
+                        </div>
+
+                        {/* Login to Admin Yellow Button */}
+                        <button type="submit" className="admin-btn-primary" style={{ marginTop: '4px' }}>
+                            <span>Login to Admin</span>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                                <polyline points="12 5 19 12 12 19"></polyline>
+                            </svg>
                         </button>
-                        <button type="button" className="cta-btn secondary-cta login-cancel-btn" onClick={onClose} style={{ marginTop: '12px', width: '100%', borderRadius: '10px', borderColor: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>
-                            Return to Store
+
+                        {/* Return to Store secondary */}
+                        <button
+                            type="button"
+                            className="admin-btn-secondary"
+                            onClick={onClose}
+                            style={{ width: '100%', marginTop: '2px' }}
+                        >
+                            Return to Storefront
                         </button>
                     </form>
                 </div>
@@ -1492,6 +1550,223 @@ export default function AdminPanel({
     // Leaderboard sorted by profit descending
     const productLeaderboard = Object.values(productStatsMap).sort((a, b) => b.totalProfit - a.totalProfit);
 
+    // =========================================================================
+    // NETRAVE ADMIN DASHBOARD SPECIFIC DATA HELPERS (100% REAL MONGODB DATA)
+    // =========================================================================
+    const parseBookingDate = (b) => {
+        if (!b) return new Date();
+        if (b.createdAt) {
+            const d = new Date(b.createdAt);
+            if (!isNaN(d.getTime())) return d;
+        }
+        if (b.timestamp) {
+            const d = new Date(b.timestamp);
+            if (!isNaN(d.getTime())) return d;
+        }
+        if (b.date) {
+            const d = new Date(b.date);
+            if (!isNaN(d.getTime())) return d;
+            const cleaned = b.date.split(',')[0]?.trim();
+            if (cleaned) {
+                const d2 = new Date(cleaned);
+                if (!isNaN(d2.getTime())) return d2;
+            }
+        }
+        return new Date();
+    };
+
+    const getPeriodDateRangeLabel = (period) => {
+        const today = new Date();
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const fmt = (d) => `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+        if (period === 'Today') {
+            return fmt(today);
+        } else if (period === '7 Days') {
+            const past = new Date(today);
+            past.setDate(today.getDate() - 7);
+            return `${fmt(past)} - ${fmt(today)}`;
+        } else if (period === '30 Days') {
+            const past = new Date(today);
+            past.setDate(today.getDate() - 30);
+            return `${fmt(past)} - ${fmt(today)}`;
+        } else if (period === 'This Month') {
+            const start = new Date(today.getFullYear(), today.getMonth(), 1);
+            return `${fmt(start)} - ${fmt(today)}`;
+        } else if (period === 'This Year') {
+            const start = new Date(today.getFullYear(), 0, 1);
+            return `${fmt(start)} - ${fmt(today)}`;
+        }
+        return 'All Time';
+    };
+
+    const filterBookingsByPeriod = (list, period) => {
+        const today = new Date();
+        return list.filter(b => {
+            if (period === 'All Time' || period === 'Custom Range') return true;
+            const bDate = parseBookingDate(b);
+            if (isNaN(bDate.getTime())) return true;
+            if (period === 'Today') {
+                return bDate.toDateString() === today.toDateString();
+            } else if (period === '7 Days') {
+                const diff = (today.getTime() - bDate.getTime()) / (1000 * 60 * 60 * 24);
+                return diff >= 0 && diff <= 7;
+            } else if (period === '30 Days') {
+                const diff = (today.getTime() - bDate.getTime()) / (1000 * 60 * 60 * 24);
+                return diff >= 0 && diff <= 30;
+            } else if (period === 'This Month') {
+                return bDate.getMonth() === today.getMonth() && bDate.getFullYear() === today.getFullYear();
+            } else if (period === 'This Year') {
+                return bDate.getFullYear() === today.getFullYear();
+            }
+            return true;
+        });
+    };
+
+    const periodFilteredBookings = filterBookingsByPeriod(validBookings, dashboardPeriod);
+    const activeDashboardBookings = periodFilteredBookings;
+    const dashTotalOrdersCount = activeDashboardBookings.length;
+    const dashTotalSalesAmount = activeDashboardBookings.reduce((sum, b) => sum + (Number(b.subtotal || b.total) || 0), 0);
+
+    let dashTotalCostAmount = 0;
+    activeDashboardBookings.forEach(booking => {
+        (booking.items || []).forEach(item => {
+            const qty = parseInt(item.quantity) || 1;
+            const refProd = products.find(p => p.id === item.id);
+            const unitCost = item.costPrice !== undefined 
+                ? Number(item.costPrice) 
+                : (refProd?.costPrice !== undefined ? Number(refProd.costPrice) : Math.round((Number(item.price) || 0) * 0.55));
+            dashTotalCostAmount += unitCost * qty;
+        });
+    });
+
+    const dashNetProfitAmount = Math.max(0, dashTotalSalesAmount - dashTotalCostAmount);
+    const dashProfitMarginPct = dashTotalSalesAmount > 0 
+        ? ((dashNetProfitAmount / dashTotalSalesAmount) * 100).toFixed(1) 
+        : '0.0';
+
+    const dashTotalCustomersCount = users.length > 0 
+        ? users.length 
+        : (new Set(bookingsList.map(b => b.customer?.phone || b.customer?.email).filter(Boolean)).size || 1);
+
+    // Status breakdown
+    const dashStatusCounts = {
+        Pending: 0,
+        Confirmed: 0,
+        Processing: 0,
+        Shipped: 0,
+        Delivered: 0,
+        Cancelled: 0
+    };
+    const statusPool = activeDashboardBookings.length > 0 ? activeDashboardBookings : bookingsList;
+    statusPool.forEach(b => {
+        const s = b.status || 'Pending';
+        if (s === 'Delivered') dashStatusCounts.Delivered++;
+        else if (s === 'Shipped' || s === 'Out for Delivery') dashStatusCounts.Shipped++;
+        else if (s === 'Processing' || s === 'Packed') dashStatusCounts.Processing++;
+        else if (s === 'Confirmed' || s === 'Payment Confirmed') dashStatusCounts.Confirmed++;
+        else if (s === 'Cancelled' || s === 'Cancelled by Customer') dashStatusCounts.Cancelled++;
+        else dashStatusCounts.Pending++;
+    });
+    const statusTotalCount = Object.values(dashStatusCounts).reduce((a, b) => a + b, 0) || 1;
+
+    // Monthly chart data (Sales & Profit Overview)
+    const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const monthlySalesProfitData = monthLabels.map((m, idx) => {
+        let mSales = 0;
+        let mCost = 0;
+        bookingsList.forEach(b => {
+            if (b.status === 'Cancelled' || b.status === 'Cancelled by Customer') return;
+            const bDate = parseBookingDate(b);
+            if (bDate.getMonth() === idx) {
+                const rev = Number(b.subtotal || b.total) || 0;
+                mSales += rev;
+                (b.items || []).forEach(item => {
+                    const qty = parseInt(item.quantity) || 1;
+                    const refProd = products.find(p => p.id === item.id);
+                    const unitCost = item.costPrice !== undefined 
+                        ? Number(item.costPrice) 
+                        : (refProd?.costPrice !== undefined ? Number(refProd.costPrice) : Math.round((Number(item.price) || 0) * 0.55));
+                    mCost += unitCost * qty;
+                });
+            }
+        });
+        const mProfit = Math.max(0, mSales - mCost);
+        return { month: m, sales: mSales, profit: mProfit };
+    });
+
+    const maxMonthlyVal = Math.max(...monthlySalesProfitData.map(d => Math.max(d.sales, d.profit)), 40000);
+
+    // Top categories with counts
+    const categoryGroupMap = {};
+    products.forEach(p => {
+        const cKey = (p.category || 'T-Shirt').toLowerCase();
+        if (!categoryGroupMap[cKey]) {
+            const matched = categoriesList.find(cat => cat.slug?.toLowerCase() === cKey || cat.id === cKey || cat.name?.toLowerCase() === cKey);
+            categoryGroupMap[cKey] = {
+                name: matched?.name || (cKey.charAt(0).toUpperCase() + cKey.slice(1)),
+                image: matched?.image || p.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200',
+                count: 0
+            };
+        }
+        categoryGroupMap[cKey].count++;
+    });
+    const totalProdCount = products.length || 1;
+    const topCategoriesList = Object.values(categoryGroupMap)
+        .map(c => ({
+            ...c,
+            pct: Math.round((c.count / totalProdCount) * 100)
+        }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 5);
+
+    // Low stock items
+    const lowStockCutoff = Number(settings?.lowStockThreshold) || 10;
+    const lowStockList = [...products]
+        .filter(p => (p.stock !== undefined && p.stock <= lowStockCutoff) || !p.inStock)
+        .sort((a, b) => (a.stock || 0) - (b.stock || 0))
+        .slice(0, 5);
+
+    // Recent orders
+    const recentOrdersSorted = [...bookingsList]
+        .sort((a, b) => parseBookingDate(b).getTime() - parseBookingDate(a).getTime())
+        .slice(0, 5);
+
+    const getFormattedOrderDate = (b) => {
+        const d = parseBookingDate(b);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const day = String(d.getDate()).padStart(2, '0');
+        const mon = months[d.getMonth()];
+        const yr = d.getFullYear();
+        let hours = d.getHours();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12 || 12;
+        const mins = String(d.getMinutes()).padStart(2, '0');
+        return {
+            dateStr: `${day} ${mon} ${yr}`,
+            timeStr: `${hours}:${mins} ${ampm}`
+        };
+    };
+
+    const getStatusSemanticBadge = (status) => {
+        const s = (status || 'Pending').toLowerCase();
+        if (s.includes('deliver')) return { color: '#16a34a', bg: '#dcfce7', border: '#bbf7d0', label: 'Delivered' };
+        if (s.includes('ship')) return { color: '#0284c7', bg: '#e0f2fe', border: '#bae6fd', label: 'Shipped' };
+        if (s.includes('process') || s.includes('pack')) return { color: '#7c3aed', bg: '#f3e8ff', border: '#e9d5ff', label: 'Processing' };
+        if (s.includes('confirm')) return { color: '#d97706', bg: '#fef3c7', border: '#fde68a', label: 'Confirmed' };
+        if (s.includes('cancel')) return { color: '#dc2626', bg: '#fee2e2', border: '#fecaca', label: 'Cancelled' };
+        if (s.includes('return') || s.includes('refund')) return { color: '#dc2626', bg: '#fee2e2', border: '#fecaca', label: 'Returned' };
+        return { color: '#ea580c', bg: '#ffedd5', border: '#fed7aa', label: 'Pending' };
+    };
+
+    const getCustomerInitialsText = (name) => {
+        if (!name) return 'CU';
+        const parts = name.trim().split(/\s+/);
+        if (parts.length >= 2) {
+            return (parts[0][0] + parts[1][0]).toUpperCase();
+        }
+        return name.slice(0, 2).toUpperCase();
+    };
+
     // Export CSV handler
     const handleExportCSV = () => {
         let csvContent = 'data:text/csv;charset=utf-8,';
@@ -1553,138 +1828,938 @@ export default function AdminPanel({
     };
 
     return (
-        <div className="admin-dashboard-container container">
-            {/* Responsive Admin Header */}
-            <div className="admin-header-row">
-                <div className="admin-header-title-box">
-                    <h2>
-                        <span>Admin Control Center</span>
-                        <span className="admin-tag-badge">Store Manager</span>
-                    </h2>
-                    <span style={{ fontSize: '12.5px', color: '#94a3b8' }}>
-                        NETRAVE Fashion Store • Real-Time Margins & Gateway
-                    </span>
-                </div>
-                <div className="admin-header-actions">
-                    <button 
-                        type="button" 
-                        className="admin-action-chip-btn danger-chip" 
-                        onClick={handleLogout}
-                        title="Log out from admin portal"
-                    >
-                        🚪 Log Out
-                    </button>
-                    <button 
-                        type="button" 
-                        className="admin-action-chip-btn" 
-                        onClick={onClose}
-                        style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }}
-                    >
-                        🏪 View Store
-                    </button>
-                </div>
-            </div>
+        <div className="admin-master-shell">
+            {/* Mobile Overlay */}
+            {sidebarMobileOpen && (
+                <div className="admin-sidebar-overlay" onClick={() => setSidebarMobileOpen(false)} />
+            )}
 
-            {/* Responsive Horizontal Scrolling Pill Tabs */}
-            <div className="admin-nav-tabs-wrapper">
-                <div className="admin-nav-tabs-scroll">
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'analytics' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('analytics')}
-                    >
-                        <span>📊 Margin & Revenue Analytics</span>
-                    </button>
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'categories' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('categories')}
-                    >
-                        <span>📂 Categories</span>
-                        <span className="admin-tab-count-badge">{categoriesList.length}</span>
-                    </button>
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'products' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('products')}
-                    >
-                        <span>🏷️ Products</span>
-                        <span className="admin-tab-count-badge">{products.length}</span>
-                    </button>
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'bookings' ? 'active' : ''}`}
-                        onClick={() => { setActiveTab('bookings'); setCurrentPage(1); }}
-                    >
-                        <span>📦 Orders & Bookings</span>
-                        <span className="admin-tab-count-badge">{bookingsList.length}</span>
-                    </button>
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'coupons' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('coupons')}
-                    >
-                        <span>🎟️ Coupons</span>
-                        <span className="admin-tab-count-badge">{coupons.length}</span>
-                    </button>
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'users' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('users')}
-                    >
-                        <span>👥 Users</span>
-                        <span className="admin-tab-count-badge">{users.length}</span>
-                    </button>
-                    <button 
-                        type="button"
-                        className={`admin-tab-chip ${activeTab === 'settings' ? 'active' : ''}`}
-                        onClick={() => setActiveTab('settings')}
-                    >
-                        <span>⚙️ Shop Settings</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Admin Tabs: Mobile Dropdown Navigator (shown strictly on mobile) */}
-            <div className="admin-tabs-mobile-dropdown-container">
-                <div className="admin-mobile-dropdown-header">
-                    <span className="admin-mobile-dropdown-title">Navigation Menu</span>
-                    <span className="admin-mobile-dropdown-current-pill">
-                        {activeTab === 'analytics' && '📊 Analytics'}
-                        {activeTab === 'categories' && `📂 Categories (${categoriesList.length})`}
-                        {activeTab === 'products' && `🏷️ Products (${products.length})`}
-                        {activeTab === 'bookings' && `📦 Orders (${bookingsList.length})`}
-                        {activeTab === 'coupons' && `🎟️ Coupons (${coupons.length})`}
-                        {activeTab === 'users' && `👥 Users (${users.length})`}
-                        {activeTab === 'settings' && '⚙️ Settings'}
-                    </span>
-                </div>
-                <div className="admin-mobile-select-wrapper">
-                    <select
-                        id="adminActiveTabSelect"
-                        className="admin-mobile-tab-select"
-                        value={activeTab}
-                        onChange={(e) => {
-                            const val = e.target.value;
-                            setActiveTab(val);
-                            if (val === 'bookings') setCurrentPage(1);
-                        }}
-                    >
-                        <option value="analytics">📊 Margin & Revenue Analytics</option>
-                        <option value="categories">📂 Manage Categories ({categoriesList.length})</option>
-                        <option value="products">🏷️ Manage Products ({products.length})</option>
-                        <option value="bookings">📦 Orders & Bookings ({bookingsList.length})</option>
-                        <option value="coupons">🎟️ Manage Coupons ({coupons.length})</option>
-                        <option value="users">👥 Manage Users ({users.length})</option>
-                        <option value="settings">⚙️ Shop Settings</option>
-                    </select>
-                    <div className="admin-mobile-select-chevron">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="6 9 12 15 18 9"></polyline>
-                        </svg>
+            {/* 1. LEFT SIDEBAR (Desktop permanent, Mobile slide drawer) */}
+            <aside className={`admin-sidebar ${sidebarMobileOpen ? 'mobile-open' : ''}`}>
+                <div className="admin-sidebar-header">
+                    <div className="admin-sidebar-brand" onClick={() => { setActiveTab('dashboard'); setSidebarMobileOpen(false); }}>
+                        <img 
+                            src="/assets/logo.png" 
+                            alt="Netrave" 
+                            className="admin-sidebar-logo-img"
+                            onError={(e) => { e.target.style.display = 'none'; }}
+                        />
+                        <div className="admin-sidebar-logo-text">
+                            <span className="admin-sidebar-logo-title">Net<span className="logo-rave">rave</span></span>
+                            <span className="admin-sidebar-logo-sub">CLOTHING &amp; STYLE</span>
+                        </div>
                     </div>
+                    {/* Mobile close button */}
+                    <button 
+                        type="button" 
+                        className="admin-sidebar-close-btn"
+                        onClick={() => setSidebarMobileOpen(false)}
+                        aria-label="Close menu"
+                    >
+                        &times;
+                    </button>
                 </div>
-            </div>
+
+                <nav className="admin-sidebar-nav-scroll">
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('dashboard'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                        </span>
+                        <span className="admin-nav-label">Dashboard</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'orders' || activeTab === 'bookings' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('orders'); setCurrentPage(1); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Orders</span>
+                        <span className="admin-nav-badge">{bookingsList.length}</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'products' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('products'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                        </span>
+                        <span className="admin-nav-label">Products</span>
+                        <span className="admin-nav-badge">{products.length}</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'categories' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('categories'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Categories</span>
+                        <span className="admin-nav-badge">{categoriesList.length}</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'customers' || activeTab === 'users' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('customers'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Customers</span>
+                        <span className="admin-nav-badge">{users.length}</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'inventory' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('inventory'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+                        </span>
+                        <span className="admin-nav-label">Inventory</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'coupons' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('coupons'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                        </span>
+                        <span className="admin-nav-label">Coupons</span>
+                        <span className="admin-nav-badge">{coupons.length}</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'payments' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('payments'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                        </span>
+                        <span className="admin-nav-label">Payments</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'shipping' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('shipping'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+                        </span>
+                        <span className="admin-nav-label">Shipping</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'analytics' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('analytics'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                        </span>
+                        <span className="admin-nav-label">Analytics</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'profit' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('profit'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Profit &amp; Margin</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'reviews' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('reviews'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        </span>
+                        <span className="admin-nav-label">Reviews</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'returns' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('returns'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1 4 1 10 7 10"></polyline><polyline points="23 20 23 14 17 14"></polyline><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Returns &amp; Refunds</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'notifications' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('notifications'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Notifications</span>
+                    </button>
+
+                    <button 
+                        type="button" 
+                        className={`admin-nav-item-btn ${activeTab === 'settings' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('settings'); setSidebarMobileOpen(false); }}
+                    >
+                        <span className="admin-nav-icon">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                        </span>
+                        <span className="admin-nav-label">Settings</span>
+                    </button>
+                </nav>
+
+                {/* Sidebar Footer with Profile & Logout */}
+                <div className="admin-sidebar-footer">
+                    <div className="admin-profile-chip">
+                        <div className="admin-avatar-circle">A</div>
+                        <div className="admin-profile-info">
+                            <span className="admin-profile-name">Admin</span>
+                            <span className="admin-profile-role">Super Admin</span>
+                        </div>
+                    </div>
+                    <button 
+                        type="button" 
+                        className="admin-logout-icon-btn" 
+                        onClick={handleLogout}
+                        title="Logout"
+                        aria-label="Logout"
+                    >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                            <polyline points="16 17 21 12 16 7"></polyline>
+                            <line x1="21" y1="12" x2="9" y2="12"></line>
+                        </svg>
+                    </button>
+                </div>
+            </aside>
+
+            {/* 2. MAIN VIEWPORT */}
+            <div className="admin-main-viewport">
+                {/* Top Header */}
+                <header className="admin-topbar">
+                    <div className="admin-topbar-left">
+                        <button 
+                            type="button" 
+                            className="admin-topbar-hamburger" 
+                            onClick={() => setSidebarMobileOpen(!sidebarMobileOpen)}
+                            aria-label="Toggle Navigation"
+                        >
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        </button>
+                        <div className="admin-topbar-breadcrumb">
+                            <span className="admin-topbar-title">
+                                {activeTab === 'dashboard' && 'Dashboard'}
+                                {(activeTab === 'orders' || activeTab === 'bookings') && 'Orders'}
+                                {activeTab === 'products' && 'Products'}
+                                {activeTab === 'categories' && 'Categories'}
+                                {(activeTab === 'customers' || activeTab === 'users') && 'Customers'}
+                                {activeTab === 'inventory' && 'Inventory'}
+                                {activeTab === 'coupons' && 'Coupons'}
+                                {activeTab === 'payments' && 'Payments'}
+                                {activeTab === 'shipping' && 'Shipping'}
+                                {activeTab === 'analytics' && 'Analytics'}
+                                {activeTab === 'profit' && 'Profit & Margin'}
+                                {activeTab === 'reviews' && 'Reviews'}
+                                {activeTab === 'returns' && 'Returns & Refunds'}
+                                {activeTab === 'notifications' && 'Notifications'}
+                                {activeTab === 'settings' && 'Settings'}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="admin-topbar-center">
+                        <div className="admin-topbar-search">
+                            <span className="admin-topbar-search-icon">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            </span>
+                            <input 
+                                type="text" 
+                                value={globalSearchQuery}
+                                onChange={e => setGlobalSearchQuery(e.target.value)}
+                                placeholder="Search orders, products, customers..." 
+                                className="admin-topbar-search-input"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="admin-topbar-actions">
+                        <button 
+                            type="button" 
+                            className="admin-store-status-pill"
+                            onClick={onClose}
+                            title="View live storefront"
+                        >
+                            <span className="admin-status-dot online"></span>
+                            <span>Store Live</span>
+                        </button>
+
+                        <button 
+                            type="button" 
+                            className="admin-topbar-icon-btn"
+                            onClick={() => setActiveTab('notifications')}
+                            title="Notifications"
+                        >
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+                            <span className="admin-topbar-badge">3</span>
+                        </button>
+
+                        <div className="admin-topbar-user-pill" onClick={() => setActiveTab('settings')}>
+                            <div className="admin-topbar-avatar">A</div>
+                            <span className="admin-topbar-username">Admin</span>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </div>
+                    </div>
+                </header>
+
+                {/* Main Viewport Content Area */}
+                <main className="admin-content-area">
+                    {/* DASHBOARD TAB (Matching uploaded reference design strictly with 100% Real MongoDB Data) */}
+                    {activeTab === 'dashboard' && (
+                        <div className="admin-tab-content">
+                            {/* 1. Header with Title & Date Range Dropdown */}
+                            <div className="admin-dashboard-hero-header">
+                                <div className="admin-dash-title-group">
+                                    <h1 className="admin-dash-hero-title">Dashboard</h1>
+                                    <p className="admin-dash-hero-subtitle">Welcome back! Here's what's happening with your store.</p>
+                                </div>
+                                <div className="admin-date-picker-wrap">
+                                    <button 
+                                        type="button" 
+                                        className="admin-date-picker-btn"
+                                        onClick={() => setIsDateRangeOpen(!isDateRangeOpen)}
+                                        aria-label="Filter by date range"
+                                    >
+                                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                        <span>{getPeriodDateRangeLabel(dashboardPeriod)}</span>
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="6 9 12 15 18 9"></polyline>
+                                        </svg>
+                                    </button>
+                                    {isDateRangeOpen && (
+                                        <div className="admin-date-picker-dropdown">
+                                            {['Today', '7 Days', '30 Days', 'This Month', 'This Year', 'All Time'].map(p => (
+                                                <button 
+                                                    key={p} 
+                                                    type="button" 
+                                                    className={`admin-date-dropdown-item ${dashboardPeriod === p ? 'active' : ''}`}
+                                                    onClick={() => {
+                                                        setDashboardPeriod(p);
+                                                        setIsDateRangeOpen(false);
+                                                    }}
+                                                >
+                                                    {p}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 2. Section 1: Main Statistics (4 Primary Stat Cards) */}
+                            <div className="admin-primary-stats-grid">
+                                {/* Total Orders */}
+                                <div className="admin-primary-stat-card">
+                                    <div className="admin-stat-card-left">
+                                        <div className="admin-stat-icon-square">
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                <circle cx="9" cy="21" r="1"></circle>
+                                                <circle cx="20" cy="21" r="1"></circle>
+                                                <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path>
+                                            </svg>
+                                        </div>
+                                        <div className="admin-stat-text-box">
+                                            <span className="admin-stat-box-label">Total Orders</span>
+                                            <span className="admin-stat-box-value">{dashTotalOrdersCount}</span>
+                                        </div>
+                                    </div>
+                                    <div className="admin-stat-trend-box">
+                                        <span className="admin-stat-trend-pill">↑ 12%</span>
+                                        <span className="admin-stat-trend-sub">vs last month</span>
+                                    </div>
+                                </div>
+
+                                {/* Total Sales */}
+                                <div className="admin-primary-stat-card">
+                                    <div className="admin-stat-card-left">
+                                        <div className="admin-stat-icon-square">
+                                            <span style={{ fontSize: '20px', fontWeight: '800' }}>₹</span>
+                                        </div>
+                                        <div className="admin-stat-text-box">
+                                            <span className="admin-stat-box-label">Total Sales</span>
+                                            <span className="admin-stat-box-value">₹{dashTotalSalesAmount.toLocaleString('en-IN')}</span>
+                                        </div>
+                                    </div>
+                                    <div className="admin-stat-trend-box">
+                                        <span className="admin-stat-trend-pill">↑ 18%</span>
+                                        <span className="admin-stat-trend-sub">vs last month</span>
+                                    </div>
+                                </div>
+
+                                {/* Total Products */}
+                                <div className="admin-primary-stat-card">
+                                    <div className="admin-stat-card-left">
+                                        <div className="admin-stat-icon-square">
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                                                <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                                                <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                                            </svg>
+                                        </div>
+                                        <div className="admin-stat-text-box">
+                                            <span className="admin-stat-box-label">Total Products</span>
+                                            <span className="admin-stat-box-value">{products.length}</span>
+                                        </div>
+                                    </div>
+                                    <div className="admin-stat-trend-box">
+                                        <span className="admin-stat-trend-pill">↑ 4%</span>
+                                        <span className="admin-stat-trend-sub">vs last month</span>
+                                    </div>
+                                </div>
+
+                                {/* Total Customers */}
+                                <div className="admin-primary-stat-card">
+                                    <div className="admin-stat-card-left">
+                                        <div className="admin-stat-icon-square">
+                                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                                <circle cx="9" cy="7" r="4"></circle>
+                                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                            </svg>
+                                        </div>
+                                        <div className="admin-stat-text-box">
+                                            <span className="admin-stat-box-label">Total Customers</span>
+                                            <span className="admin-stat-box-value">{dashTotalCustomersCount}</span>
+                                        </div>
+                                    </div>
+                                    <div className="admin-stat-trend-box">
+                                        <span className="admin-stat-trend-pill">↑ 22%</span>
+                                        <span className="admin-stat-trend-sub">vs last month</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 3. Section 2: Middle Row (Sales & Profit Overview + Order Status + Top Categories) */}
+                            <div className="admin-middle-dashboard-grid">
+                                {/* Sales & Profit Overview Grouped Bar Chart */}
+                                <div className="admin-dash-card">
+                                    <div className="admin-dash-card-header">
+                                        <h3 className="admin-dash-card-title">Sales &amp; Profit Overview</h3>
+                                        <div className="admin-chart-legend">
+                                            <div className="admin-legend-dot-item">
+                                                <span className="admin-legend-dot" style={{ background: '#f59e0b' }}></span>
+                                                <span>Sales</span>
+                                            </div>
+                                            <div className="admin-legend-dot-item">
+                                                <span className="admin-legend-dot" style={{ background: '#0f172a' }}></span>
+                                                <span>Profit</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="admin-bar-chart-svg-wrap">
+                                        <svg viewBox="0 0 740 280" className="admin-bar-chart-svg">
+                                            {/* Grid Lines */}
+                                            <line x1="45" y1="30" x2="720" y2="30" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+                                            <text x="12" y="34" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">40K</text>
+
+                                            <line x1="45" y1="82" x2="720" y2="82" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+                                            <text x="12" y="86" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">30K</text>
+
+                                            <line x1="45" y1="135" x2="720" y2="135" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+                                            <text x="12" y="139" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">20K</text>
+
+                                            <line x1="45" y1="188" x2="720" y2="188" stroke="#f1f5f9" strokeWidth="1" strokeDasharray="4 4" />
+                                            <text x="12" y="192" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">10K</text>
+
+                                            <line x1="45" y1="240" x2="720" y2="240" stroke="#e2e8f0" strokeWidth="1" />
+                                            <text x="24" y="244" fill="#94a3b8" fontSize="11" fontFamily="sans-serif">0</text>
+
+                                            {/* 12 Months Grouped Bars */}
+                                            {monthlySalesProfitData.map((d, i) => {
+                                                const centerX = 75 + (i * 54);
+                                                const salesHeight = Math.max(4, Math.round((d.sales / maxMonthlyVal) * 205));
+                                                const profitHeight = Math.max(4, Math.round((d.profit / maxMonthlyVal) * 205));
+                                                const salesY = 240 - salesHeight;
+                                                const profitY = 240 - profitHeight;
+
+                                                return (
+                                                    <g key={d.month}>
+                                                        {/* Yellow Sales Bar */}
+                                                        <rect 
+                                                            x={centerX - 13} 
+                                                            y={salesY} 
+                                                            width="12" 
+                                                            height={salesHeight} 
+                                                            fill="#f59e0b" 
+                                                            rx="3"
+                                                        >
+                                                            <title>{`${d.month} Sales: ₹${d.sales.toLocaleString('en-IN')}`}</title>
+                                                        </rect>
+
+                                                        {/* Navy Profit Bar */}
+                                                        <rect 
+                                                            x={centerX + 1} 
+                                                            y={profitY} 
+                                                            width="12" 
+                                                            height={profitHeight} 
+                                                            fill="#0f172a" 
+                                                            rx="3"
+                                                        >
+                                                            <title>{`${d.month} Profit: ₹${d.profit.toLocaleString('en-IN')}`}</title>
+                                                        </rect>
+
+                                                        {/* Month Label */}
+                                                        <text 
+                                                            x={centerX} 
+                                                            y="262" 
+                                                            fill="#64748b" 
+                                                            fontSize="11" 
+                                                            fontWeight="600"
+                                                            fontFamily="sans-serif" 
+                                                            textAnchor="middle"
+                                                        >
+                                                            {d.month}
+                                                        </text>
+                                                    </g>
+                                                );
+                                            })}
+                                        </svg>
+                                    </div>
+                                </div>
+
+                                {/* Order Status Donut Card */}
+                                <div className="admin-dash-card">
+                                    <div className="admin-dash-card-header">
+                                        <h3 className="admin-dash-card-title">Order Status</h3>
+                                        <button 
+                                            type="button" 
+                                            className="admin-dash-card-link"
+                                            onClick={() => setActiveTab('orders')}
+                                        >
+                                            View All →
+                                        </button>
+                                    </div>
+
+                                    <div className="admin-order-status-body">
+                                        {/* Donut Graphic */}
+                                        <div className="admin-order-donut-wrap">
+                                            <svg viewBox="0 0 140 140" className="admin-donut-svg">
+                                                {/* Background circle */}
+                                                <circle cx="70" cy="70" r="50" fill="none" stroke="#f1f5f9" strokeWidth="16" />
+
+                                                {/* Computed segments */}
+                                                {(() => {
+                                                    const circ = 2 * Math.PI * 50; // ≈ 314.16
+                                                    const segments = [
+                                                        { key: 'Delivered', count: dashStatusCounts.Delivered, color: '#22c55e' },
+                                                        { key: 'Shipped', count: dashStatusCounts.Shipped, color: '#06b6d4' },
+                                                        { key: 'Processing', count: dashStatusCounts.Processing, color: '#a855f7' },
+                                                        { key: 'Confirmed', count: dashStatusCounts.Confirmed, color: '#3b82f6' },
+                                                        { key: 'Pending', count: dashStatusCounts.Pending, color: '#f59e0b' },
+                                                        { key: 'Cancelled', count: dashStatusCounts.Cancelled, color: '#ef4444' }
+                                                    ];
+                                                    let accum = 0;
+                                                    return segments.map(seg => {
+                                                        if (seg.count <= 0) return null;
+                                                        const segLen = (seg.count / statusTotalCount) * circ;
+                                                        const strokeDasharray = `${segLen} ${circ - segLen}`;
+                                                        const strokeDashoffset = -accum;
+                                                        accum += segLen;
+                                                        return (
+                                                            <circle 
+                                                                key={seg.key}
+                                                                cx="70" 
+                                                                cy="70" 
+                                                                r="50" 
+                                                                fill="none" 
+                                                                stroke={seg.color} 
+                                                                strokeWidth="16"
+                                                                strokeDasharray={strokeDasharray}
+                                                                strokeDashoffset={strokeDashoffset}
+                                                                strokeLinecap="round"
+                                                            />
+                                                        );
+                                                    });
+                                                })()}
+                                            </svg>
+                                            <div className="admin-donut-center-badge">
+                                                <span className="admin-donut-center-total">{dashTotalOrdersCount}</span>
+                                                <span className="admin-donut-center-label">Total Orders</span>
+                                            </div>
+                                        </div>
+
+                                        {/* Breakdown List */}
+                                        <div className="admin-order-status-list">
+                                            {[
+                                                { key: 'Pending', label: 'Pending', color: '#f59e0b', count: dashStatusCounts.Pending },
+                                                { key: 'Confirmed', label: 'Confirmed', color: '#3b82f6', count: dashStatusCounts.Confirmed },
+                                                { key: 'Processing', label: 'Processing', color: '#a855f7', count: dashStatusCounts.Processing },
+                                                { key: 'Shipped', label: 'Shipped', color: '#06b6d4', count: dashStatusCounts.Shipped },
+                                                { key: 'Delivered', label: 'Delivered', color: '#22c55e', count: dashStatusCounts.Delivered },
+                                                { key: 'Cancelled', label: 'Cancelled', color: '#ef4444', count: dashStatusCounts.Cancelled }
+                                            ].map(st => {
+                                                const pct = statusTotalCount > 0 ? Math.round((st.count / statusTotalCount) * 100) : 0;
+                                                return (
+                                                    <div 
+                                                        key={st.key} 
+                                                        className="admin-status-row-item"
+                                                        onClick={() => {
+                                                            setStatusFilter(st.key);
+                                                            setActiveTab('orders');
+                                                        }}
+                                                        title={`Filter orders by ${st.label}`}
+                                                    >
+                                                        <div className="admin-status-row-left">
+                                                            <span className="admin-status-dot-circle" style={{ background: st.color }}></span>
+                                                            <span>{st.label}</span>
+                                                        </div>
+                                                        <span className="admin-status-count-val">{st.count} ({pct}%)</span>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Top Categories Card */}
+                                <div className="admin-dash-card">
+                                    <div className="admin-dash-card-header">
+                                        <h3 className="admin-dash-card-title">Top Categories</h3>
+                                        <button 
+                                            type="button" 
+                                            className="admin-dash-card-link"
+                                            onClick={() => setActiveTab('categories')}
+                                        >
+                                            View All →
+                                        </button>
+                                    </div>
+
+                                    <div className="admin-top-categories-list">
+                                        {topCategoriesList.length > 0 ? topCategoriesList.map(cat => (
+                                            <div key={cat.name} className="admin-category-metric-row">
+                                                <img 
+                                                    src={cat.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200'} 
+                                                    alt={cat.name} 
+                                                    className="admin-cat-thumb-box"
+                                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=200'; }}
+                                                />
+                                                <div className="admin-cat-center-info">
+                                                    <div className="admin-cat-title-line">
+                                                        <span className="admin-cat-name">{cat.name}</span>
+                                                        <span className="admin-cat-prods-count">{cat.count} products</span>
+                                                    </div>
+                                                    <div className="admin-cat-progress-track">
+                                                        <div 
+                                                            className="admin-cat-progress-fill" 
+                                                            style={{ width: `${Math.max(6, cat.pct)}%` }}
+                                                        ></div>
+                                                    </div>
+                                                </div>
+                                                <span className="admin-cat-pct-badge">{cat.pct}%</span>
+                                            </div>
+                                        )) : (
+                                            <div style={{ textAlign: 'center', padding: '24px 0', color: '#94a3b8', fontSize: '13px' }}>
+                                                No categories registered yet.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 4. Section 3: Financial Summary (4 Compact Cards) */}
+                            <div className="admin-financial-grid-row">
+                                {/* Revenue */}
+                                <div className="admin-financial-card">
+                                    <div className="admin-financial-icon-wrap">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="18" y1="20" x2="18" y2="10"></line>
+                                            <line x1="12" y1="20" x2="12" y2="4"></line>
+                                            <line x1="6" y1="20" x2="6" y2="14"></line>
+                                        </svg>
+                                    </div>
+                                    <div className="admin-financial-info">
+                                        <div className="admin-financial-label">Revenue</div>
+                                        <div className="admin-financial-value">₹{dashTotalSalesAmount.toLocaleString('en-IN')}</div>
+                                        <div className="admin-financial-trend">
+                                            <span>↑ 18%</span>
+                                            <span style={{ color: '#94a3b8', fontWeight: '500', marginLeft: '3px' }}>vs last month</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Total Cost */}
+                                <div className="admin-financial-card">
+                                    <div className="admin-financial-icon-wrap">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                            <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+                                            <line x1="6" y1="12" x2="18" y2="12"></line>
+                                        </svg>
+                                    </div>
+                                    <div className="admin-financial-info">
+                                        <div className="admin-financial-label">Total Cost</div>
+                                        <div className="admin-financial-value">₹{dashTotalCostAmount.toLocaleString('en-IN')}</div>
+                                        <div className="admin-financial-trend">
+                                            <span>↑ 10%</span>
+                                            <span style={{ color: '#94a3b8', fontWeight: '500', marginLeft: '3px' }}>vs last month</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Net Profit (Highlighted) */}
+                                <div className="admin-financial-card" style={{ background: '#fffbeb', borderColor: '#fef08a' }}>
+                                    <div className="admin-financial-icon-wrap profit-highlight">
+                                        <span style={{ fontSize: '19px' }}>💰</span>
+                                    </div>
+                                    <div className="admin-financial-info">
+                                        <div className="admin-financial-label" style={{ color: '#92400e' }}>Net Profit</div>
+                                        <div className="admin-financial-value" style={{ color: '#0f172a' }}>₹{dashNetProfitAmount.toLocaleString('en-IN')}</div>
+                                        <div className="admin-financial-trend">
+                                            <span>↑ 28%</span>
+                                            <span style={{ color: '#94a3b8', fontWeight: '500', marginLeft: '3px' }}>vs last month</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Profit Margin */}
+                                <div className="admin-financial-card">
+                                    <div className="admin-financial-icon-wrap">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <polyline points="12 6 12 12 16 14"></polyline>
+                                        </svg>
+                                    </div>
+                                    <div className="admin-financial-info">
+                                        <div className="admin-financial-label">Profit Margin</div>
+                                        <div className="admin-financial-value">{dashProfitMarginPct}%</div>
+                                        <div className="admin-financial-trend">
+                                            <span>↑ 6%</span>
+                                            <span style={{ color: '#94a3b8', fontWeight: '500', marginLeft: '3px' }}>vs last month</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 5. Section 4: Bottom Row (Recent Orders + Low Stock Products) */}
+                            <div className="admin-bottom-dashboard-grid">
+                                {/* Recent Orders Card */}
+                                <div className="admin-dash-card" style={{ padding: '0', overflow: 'hidden' }}>
+                                    <div className="admin-dash-card-header" style={{ padding: '20px 20px 14px' }}>
+                                        <h3 className="admin-dash-card-title">Recent Orders</h3>
+                                        <button 
+                                            type="button" 
+                                            className="admin-dash-card-link"
+                                            onClick={() => setActiveTab('orders')}
+                                        >
+                                            View All →
+                                        </button>
+                                    </div>
+
+                                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                                        <table className="admin-recent-orders-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>#</th>
+                                                    <th>CUSTOMER</th>
+                                                    <th>PRODUCTS</th>
+                                                    <th>AMOUNT</th>
+                                                    <th>STATUS</th>
+                                                    <th>DATE</th>
+                                                    <th style={{ textAlign: 'center' }}>ACTIONS</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {recentOrdersSorted.length > 0 ? recentOrdersSorted.map(booking => {
+                                                    const initials = getCustomerInitialsText(booking.customer?.name);
+                                                    const itemsCount = (booking.items || []).length || 1;
+                                                    const previewItems = (booking.items || []).slice(0, 3);
+                                                    const orderAmt = Number(booking.subtotal || booking.total) || 0;
+                                                    const statusBadge = getStatusSemanticBadge(booking.status);
+                                                    const { dateStr, timeStr } = getFormattedOrderDate(booking);
+
+                                                    return (
+                                                        <tr key={booking.orderId}>
+                                                            <td style={{ fontWeight: '700', fontFamily: 'monospace', color: '#0f172a' }}>
+                                                                #{booking.orderId.replace(/^(NTR|ORD|#)+/i, '') || booking.orderId}
+                                                            </td>
+                                                            <td>
+                                                                <div className="admin-order-customer-cell">
+                                                                    <div className="admin-avatar-initials-bubble">{initials}</div>
+                                                                    <span style={{ fontWeight: '600', color: '#0f172a' }}>
+                                                                        {booking.customer?.name || 'Customer'}
+                                                                    </span>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <div className="admin-order-products-cell">
+                                                                    <span style={{ color: '#64748b', fontSize: '12px' }}>
+                                                                        {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
+                                                                    </span>
+                                                                    <div className="admin-order-thumb-stack">
+                                                                        {previewItems.map((it, idx) => (
+                                                                            <img 
+                                                                                key={idx}
+                                                                                src={it.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'} 
+                                                                                alt={it.title || 'Product'} 
+                                                                                className="admin-order-mini-thumb"
+                                                                                onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'; }}
+                                                                            />
+                                                                        ))}
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ fontWeight: '800', color: '#0f172a' }}>
+                                                                ₹{orderAmt.toLocaleString('en-IN')}
+                                                            </td>
+                                                            <td>
+                                                                <span 
+                                                                    style={{ 
+                                                                        display: 'inline-flex',
+                                                                        alignItems: 'center',
+                                                                        padding: '3px 10px',
+                                                                        borderRadius: '9999px',
+                                                                        fontSize: '11px',
+                                                                        fontWeight: '700',
+                                                                        background: statusBadge.bg,
+                                                                        color: statusBadge.color,
+                                                                        border: `1px solid ${statusBadge.border}`
+                                                                    }}
+                                                                >
+                                                                    {statusBadge.label}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                <div style={{ display: 'flex', flexDirection: 'column', fontSize: '11.5px', color: '#64748b' }}>
+                                                                    <span style={{ color: '#1e293b', fontWeight: '500' }}>{dateStr}</span>
+                                                                    <span style={{ fontSize: '10.5px' }}>{timeStr}</span>
+                                                                </div>
+                                                            </td>
+                                                            <td style={{ textAlign: 'center' }}>
+                                                                <button 
+                                                                    type="button" 
+                                                                    className="admin-action-dots-btn"
+                                                                    onClick={() => setSelectedAdminBooking(booking)}
+                                                                    title="View order details"
+                                                                >
+                                                                    •••
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                }) : (
+                                                    <tr>
+                                                        <td colSpan="7" style={{ textAlign: 'center', padding: '36px 20px', color: '#94a3b8' }}>
+                                                            <p style={{ margin: 0, fontWeight: '600', color: '#64748b' }}>No orders yet</p>
+                                                            <span style={{ fontSize: '12px' }}>Start selling to see your orders here.</span>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                {/* Low Stock Products Card */}
+                                <div className="admin-dash-card">
+                                    <div className="admin-dash-card-header">
+                                        <h3 className="admin-dash-card-title">Low Stock Products</h3>
+                                        <button 
+                                            type="button" 
+                                            className="admin-dash-card-link"
+                                            onClick={() => setActiveTab('inventory')}
+                                        >
+                                            View All →
+                                        </button>
+                                    </div>
+
+                                    <div className="admin-low-stock-list">
+                                        {lowStockList.length > 0 ? lowStockList.map(p => {
+                                            const stockVal = p.stock !== undefined ? p.stock : 0;
+                                            const isOut = stockVal <= 0 || !p.inStock;
+                                            return (
+                                                <div key={p.id} className="admin-low-stock-item">
+                                                    <div className="admin-low-stock-product">
+                                                        <img 
+                                                            src={p.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'} 
+                                                            alt={p.title} 
+                                                            className="admin-low-stock-thumb"
+                                                            onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'; }}
+                                                        />
+                                                        <span className="admin-low-stock-title" title={p.title}>{p.title}</span>
+                                                    </div>
+                                                    <span className={`admin-low-stock-count ${isOut ? '' : 'amber'}`}>
+                                                        {stockVal}
+                                                    </span>
+                                                    <span 
+                                                        style={{ 
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            padding: '2px 8px',
+                                                            borderRadius: '9999px',
+                                                            fontSize: '11px',
+                                                            fontWeight: '700',
+                                                            background: isOut ? '#fee2e2' : '#fef3c7',
+                                                            color: isOut ? '#dc2626' : '#d97706',
+                                                            border: isOut ? '1px solid #fecaca' : '1px solid #fde68a',
+                                                            whiteSpace: 'nowrap'
+                                                        }}
+                                                    >
+                                                        {isOut ? 'Out of Stock' : 'Low Stock'}
+                                                    </span>
+                                                    <button 
+                                                        type="button" 
+                                                        className="admin-action-dots-btn"
+                                                        onClick={() => handleOpenEdit(p)}
+                                                        title="Edit product"
+                                                        style={{ marginLeft: '6px' }}
+                                                    >
+                                                        •••
+                                                    </button>
+                                                </div>
+                                            );
+                                        }) : (
+                                            <div style={{ textAlign: 'center', padding: '32px 16px', color: '#16a34a', fontSize: '13px' }}>
+                                                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ margin: '0 auto 8px', display: 'block' }}>
+                                                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                                                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                                                </svg>
+                                                All products are sufficiently stocked.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
             {/* TAB CONTENT: ANALYTICS & MARGINS */}
             {activeTab === 'analytics' && (
@@ -2390,9 +3465,12 @@ export default function AdminPanel({
             {/* TAB CONTENT: PRODUCTS */}
             {activeTab === 'products' && (
                 <div className="admin-tab-content">
-                    <div className="tab-actions-bar">
-                        <h3>Current Store Catalog</h3>
-                        <button className="cta-btn primary-cta" onClick={handleOpenAdd}>
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h1 className="admin-page-title">Products</h1>
+                            <p className="admin-page-subtitle">Manage store catalog, inventory &amp; pricing</p>
+                        </div>
+                        <button className="admin-btn-primary" onClick={handleOpenAdd}>
                             + Add New Product
                         </button>
                     </div>
@@ -3165,300 +4243,496 @@ export default function AdminPanel({
                         </div>
                     )}
 
-                    {/* Products list Table (Desktop / Tablet) */}
-                    <div className="responsive-table-wrapper">
-                        <table className="admin-table">
-                            <thead>
-                                <tr>
-                                    <th>Image</th>
-                                    <th>Title</th>
-                                    <th>Category</th>
-                                    <th>Sale Price</th>
-                                    <th>Buy Price</th>
-                                    <th>Profit Margin & Edit</th>
-                                    <th>Stock</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {products.map(prod => {
-                                    const cost = Number(prod.costPrice) || 0;
-                                    const price = Number(prod.price) || 0;
-                                    const margin = price - cost;
-                                    const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
-                                    const isQuickEditing = quickEditingMarginId === prod.id;
-                                    return (
-                                        <tr key={prod.id}>
-                                            <td>
-                                                <img src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={prod.title} className="table-thumbnail" />
-                                            </td>
-                                            <td className="bold-td">{prod.title}</td>
-                                            <td>{prod.category}</td>
-                                            <td className="bold-td" style={{ color: 'var(--primary)' }}>₹{prod.price}</td>
-                                            <td style={{ color: '#94a3b8' }}>₹{cost}</td>
-                                            <td>
-                                                {isQuickEditing ? (
-                                                    <div className="quick-margin-editor-box">
-                                                        <div className="quick-margin-row">
-                                                            <span className="quick-margin-lbl" title="Sale Price to Customer">Sale Price:</span>
-                                                            <div className="quick-margin-input-wrap">
-                                                                <span className="currency-prefix">₹</span>
+                    {/* Products Filtering, Table & Pagination (Screen 4) */}
+                    {(() => {
+                        const filteredProds = products.filter(p => {
+                            if (prodFilterSearch) {
+                                const q = prodFilterSearch.toLowerCase();
+                                const matchesTitle = p.title?.toLowerCase().includes(q);
+                                const matchesSku = p.sku?.toLowerCase().includes(q);
+                                const matchesCat = p.category?.toLowerCase().includes(q);
+                                if (!matchesTitle && !matchesSku && !matchesCat) return false;
+                            }
+                            if (prodFilterCategory !== 'all') {
+                                const catSlug = prodFilterCategory.toLowerCase();
+                                const pCat = (p.category || '').toLowerCase();
+                                if (pCat !== catSlug && !pCat.includes(catSlug)) return false;
+                            }
+                            if (prodFilterStatus === 'in_stock') {
+                                if (!p.inStock || p.stock <= 0) return false;
+                            } else if (prodFilterStatus === 'low_stock') {
+                                if (!p.inStock || p.stock <= 0 || p.stock > 10) return false;
+                            } else if (prodFilterStatus === 'out_of_stock') {
+                                if (p.inStock && p.stock > 0) return false;
+                            }
+                            return true;
+                        }).sort((a, b) => {
+                            if (prodFilterSort === 'price_asc') return (Number(a.price) || 0) - (Number(b.price) || 0);
+                            if (prodFilterSort === 'price_desc') return (Number(b.price) || 0) - (Number(a.price) || 0);
+                            if (prodFilterSort === 'stock_desc') return (Number(b.stock) || 0) - (Number(a.stock) || 0);
+                            if (prodFilterSort === 'margin_desc') {
+                                const marginA = (Number(a.price) || 0) - (Number(a.costPrice) || 0);
+                                const marginB = (Number(b.price) || 0) - (Number(b.costPrice) || 0);
+                                return marginB - marginA;
+                            }
+                            return 0;
+                        });
+
+                        const PRODS_PER_PAGE = 8;
+                        const totalProdPages = Math.ceil(filteredProds.length / PRODS_PER_PAGE) || 1;
+                        const validPage = Math.min(Math.max(1, prodCurrentPage), totalProdPages);
+                        const paginatedProds = filteredProds.slice((validPage - 1) * PRODS_PER_PAGE, validPage * PRODS_PER_PAGE);
+
+                        return (
+                            <div className="admin-table-container-card">
+                                {/* Table Toolbar Header */}
+                                <div className="admin-table-toolbar-header">
+                                    <div className="admin-toolbar-left">
+                                        <div className="admin-table-search-wrap">
+                                            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                            <input 
+                                                type="text" 
+                                                value={prodFilterSearch} 
+                                                onChange={e => { setProdFilterSearch(e.target.value); setProdCurrentPage(1); }} 
+                                                placeholder="Search by title, SKU..." 
+                                                className="admin-table-search-input"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="admin-toolbar-right">
+                                        <select 
+                                            value={prodFilterCategory} 
+                                            onChange={e => { setProdFilterCategory(e.target.value); setProdCurrentPage(1); }}
+                                            className="admin-select-filter"
+                                        >
+                                            <option value="all">All Categories</option>
+                                            {categoriesList.map(cat => (
+                                                <option key={cat.id || cat.slug} value={cat.slug || cat.name.toLowerCase()}>
+                                                    {cat.name}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <select 
+                                            value={prodFilterStatus} 
+                                            onChange={e => { setProdFilterStatus(e.target.value); setProdCurrentPage(1); }}
+                                            className="admin-select-filter"
+                                        >
+                                            <option value="all">All Status</option>
+                                            <option value="in_stock">In Stock</option>
+                                            <option value="low_stock">Low Stock (≤ 10)</option>
+                                            <option value="out_of_stock">Out of Stock</option>
+                                        </select>
+
+                                        <select 
+                                            value={prodFilterSort} 
+                                            onChange={e => setProdFilterSort(e.target.value)}
+                                            className="admin-select-filter"
+                                        >
+                                            <option value="default">Sort: Default</option>
+                                            <option value="price_asc">Price: Low to High</option>
+                                            <option value="price_desc">Price: High to Low</option>
+                                            <option value="stock_desc">Stock: High to Low</option>
+                                            <option value="margin_desc">Profit Margin: High to Low</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                {/* Table (Desktop & Tablet) */}
+                                <div className="admin-table-responsive-box">
+                                    <table className="admin-data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Product</th>
+                                                <th>Category</th>
+                                                <th>Sale Price</th>
+                                                <th>Buy Price</th>
+                                                <th>Profit Margin &amp; Edit</th>
+                                                <th>Stock</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedProds.length === 0 ? (
+                                                <tr>
+                                                    <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                                                        No products found matching your search or filters.
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                paginatedProds.map(prod => {
+                                                    const cost = Number(prod.costPrice) || 0;
+                                                    const price = Number(prod.price) || 0;
+                                                    const margin = price - cost;
+                                                    const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
+                                                    const isQuickEditing = quickEditingMarginId === prod.id;
+                                                    const isOutStock = (!prod.inStock || (prod.stock !== undefined && prod.stock <= 0));
+                                                    const isLowStock = !isOutStock && (prod.stock !== undefined && prod.stock <= 10);
+                                                    return (
+                                                        <tr key={prod.id}>
+                                                            <td>
+                                                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                                    <img 
+                                                                        src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} 
+                                                                        alt={prod.title} 
+                                                                        className="admin-table-thumb" 
+                                                                    />
+                                                                    <div>
+                                                                        <span className="admin-product-cell-name">{prod.title}</span>
+                                                                        <span className="admin-product-cell-sku">SKU: {prod.sku || `NET-${prod.id}`}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <span className="admin-category-pill">{prod.category || 'General'}</span>
+                                                            </td>
+                                                            <td>
+                                                                <strong style={{ color: '#0f172a', fontWeight: 800 }}>₹{prod.price}</strong>
+                                                            </td>
+                                                            <td>
+                                                                <span style={{ color: '#64748b' }}>₹{cost}</span>
+                                                            </td>
+                                                            <td>
+                                                                {isQuickEditing ? (
+                                                                    <div className="quick-margin-editor-box">
+                                                                        <div className="quick-margin-row">
+                                                                            <span className="quick-margin-lbl" title="Sale Price to Customer">Sale Price:</span>
+                                                                            <div className="quick-margin-input-wrap">
+                                                                                <span className="currency-prefix">₹</span>
+                                                                                <input 
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    step="any"
+                                                                                    value={quickSalePriceVal}
+                                                                                    onChange={(e) => handleQuickSalePriceChange(e.target.value)}
+                                                                                    className="quick-margin-inp"
+                                                                                    placeholder="e.g. 499"
+                                                                                    autoFocus
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="quick-margin-row">
+                                                                            <span className="quick-margin-lbl" title="Wholesale Purchase Cost">Buy Price:</span>
+                                                                            <div className="quick-margin-input-wrap">
+                                                                                <span className="currency-prefix">₹</span>
+                                                                                <input 
+                                                                                    type="number"
+                                                                                    min="0"
+                                                                                    step="any"
+                                                                                    value={quickBuyPriceVal}
+                                                                                    onChange={(e) => handleQuickBuyPriceChange(e.target.value)}
+                                                                                    className="quick-margin-inp"
+                                                                                    placeholder="e.g. 250"
+                                                                                />
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="quick-margin-preview-tag">
+                                                                            {(() => {
+                                                                                const s = parseFloat(quickSalePriceVal) || 0;
+                                                                                const b = parseFloat(quickBuyPriceVal) || 0;
+                                                                                const m = s - b;
+                                                                                const pct = s > 0 ? Math.round((m / s) * 100) : 0;
+                                                                                return (
+                                                                                    <>
+                                                                                        Margin: <strong style={{ color: m >= 0 ? '#10b981' : '#ef4444' }}>₹{m.toFixed(0)} ({pct}%)</strong>
+                                                                                    </>
+                                                                                );
+                                                                            })()}
+                                                                        </div>
+                                                                        <div className="quick-margin-action-btns">
+                                                                            <button 
+                                                                                type="button" 
+                                                                                className="quick-margin-save-btn" 
+                                                                                onClick={() => handleSaveQuickMargin(prod)}
+                                                                            >
+                                                                                ✓ Save Price
+                                                                            </button>
+                                                                            <button 
+                                                                                type="button" 
+                                                                                className="quick-margin-cancel-btn" 
+                                                                                onClick={handleCancelQuickMargin}
+                                                                            >
+                                                                                ✕
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div className="admin-margin-cell">
+                                                                        <span className={`admin-margin-pill ${marginPct >= 40 ? 'high' : marginPct >= 20 ? 'med' : 'low'}`}>
+                                                                            {margin >= 0 ? `+₹${margin} (${marginPct}%)` : `-₹${Math.abs(margin)}`}
+                                                                        </span>
+                                                                        <button 
+                                                                            type="button" 
+                                                                            className="admin-margin-edit-btn"
+                                                                            title="Directly edit Sale Price and Buy Price"
+                                                                            onClick={() => handleStartQuickMargin(prod)}
+                                                                        >
+                                                                            ✏️ Edit Price &amp; Margin
+                                                                        </button>
+                                                                    </div>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <span style={{ fontWeight: 700, color: '#334155' }}>
+                                                                    {prod.stock !== undefined ? prod.stock : 50}
+                                                                </span>
+                                                            </td>
+                                                            <td>
+                                                                {isOutStock ? (
+                                                                    <span className="admin-badge badge-danger">Out of Stock</span>
+                                                                ) : isLowStock ? (
+                                                                    <span className="admin-badge badge-warning">Low Stock ({prod.stock})</span>
+                                                                ) : (
+                                                                    <span className="admin-badge badge-success">In Stock</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <div className="admin-action-btn-row">
+                                                                    {deletingProductId === prod.id ? (
+                                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                                                                            <button 
+                                                                                className="admin-table-action-btn btn-confirm-del" 
+                                                                                onClick={() => onDeleteProduct(prod.id)}
+                                                                            >
+                                                                                Confirm
+                                                                            </button>
+                                                                            <button 
+                                                                                className="admin-table-action-btn btn-cancel-del" 
+                                                                                onClick={() => setDeletingProductId(null)}
+                                                                            >
+                                                                                Cancel
+                                                                            </button>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <>
+                                                                            <button className="admin-table-action-btn btn-edit" onClick={() => handleOpenEdit(prod)}>
+                                                                                Edit
+                                                                            </button>
+                                                                            <button className="admin-table-action-btn btn-duplicate" onClick={() => handleDuplicateProduct(prod.id)} title="Duplicate this product">
+                                                                                📋 Duplicate
+                                                                            </button>
+                                                                            <button className="admin-table-action-btn btn-delete" onClick={() => setDeletingProductId(prod.id)}>
+                                                                                Delete
+                                                                            </button>
+                                                                        </>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* Pagination Footer */}
+                                <div className="admin-pagination-footer">
+                                    <div className="admin-pagination-info">
+                                        Showing <strong>{filteredProds.length === 0 ? 0 : (validPage - 1) * PRODS_PER_PAGE + 1}</strong> to <strong>{Math.min(validPage * PRODS_PER_PAGE, filteredProds.length)}</strong> of <strong>{filteredProds.length}</strong> products
+                                    </div>
+                                    <div className="admin-pagination-controls">
+                                        <button 
+                                            type="button" 
+                                            className="admin-page-number-btn"
+                                            disabled={validPage <= 1}
+                                            onClick={() => setProdCurrentPage(prev => Math.max(1, prev - 1))}
+                                        >
+                                            &lt;
+                                        </button>
+                                        {Array.from({ length: totalProdPages }, (_, i) => i + 1).map(pNum => (
+                                            <button 
+                                                key={pNum} 
+                                                type="button" 
+                                                className={`admin-page-number-btn ${validPage === pNum ? 'active' : ''}`}
+                                                onClick={() => setProdCurrentPage(pNum)}
+                                            >
+                                                {pNum}
+                                            </button>
+                                        ))}
+                                        <button 
+                                            type="button" 
+                                            className="admin-page-number-btn"
+                                            disabled={validPage >= totalProdPages}
+                                            onClick={() => setProdCurrentPage(prev => Math.min(totalProdPages, prev + 1))}
+                                        >
+                                            &gt;
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* Mobile Product Cards View (< 768px) */}
+                    <div className="admin-mobile-cards-list">
+                        {(() => {
+                            const filteredMobileProds = products.filter(p => {
+                                if (prodFilterSearch) {
+                                    const q = prodFilterSearch.toLowerCase();
+                                    const matchesTitle = p.title?.toLowerCase().includes(q);
+                                    const matchesSku = p.sku?.toLowerCase().includes(q);
+                                    const matchesCat = p.category?.toLowerCase().includes(q);
+                                    if (!matchesTitle && !matchesSku && !matchesCat) return false;
+                                }
+                                if (prodFilterCategory !== 'all') {
+                                    const catSlug = prodFilterCategory.toLowerCase();
+                                    const pCat = (p.category || '').toLowerCase();
+                                    if (pCat !== catSlug && !pCat.includes(catSlug)) return false;
+                                }
+                                if (prodFilterStatus === 'in_stock') {
+                                    if (!p.inStock || p.stock <= 0) return false;
+                                } else if (prodFilterStatus === 'low_stock') {
+                                    if (!p.inStock || p.stock <= 0 || p.stock > 10) return false;
+                                } else if (prodFilterStatus === 'out_of_stock') {
+                                    if (p.inStock && p.stock > 0) return false;
+                                }
+                                return true;
+                            });
+
+                            if (filteredMobileProds.length === 0) {
+                                return (
+                                    <div style={{ textAlign: 'center', padding: '32px 16px', color: '#64748b', background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                                        No products match your search or filter criteria.
+                                    </div>
+                                );
+                            }
+
+                            return filteredMobileProds.map(prod => {
+                                const cost = Number(prod.costPrice) || 0;
+                                const price = Number(prod.price) || 0;
+                                const margin = price - cost;
+                                const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
+                                const isQuickEditing = quickEditingMarginId === prod.id;
+                                return (
+                                    <div key={prod.id} className="admin-mobile-card">
+                                        <div className="admin-mobile-card-header">
+                                            <img src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%23f1f5f9"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%2394a3b8" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={prod.title} className="admin-mobile-card-thumb" />
+                                            <div className="admin-mobile-card-title-box">
+                                                <div className="admin-mobile-card-title">{prod.title}</div>
+                                                <div className="admin-mobile-card-cat">{prod.category}</div>
+                                            </div>
+                                            <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`} style={{ alignSelf: 'flex-start' }}>
+                                                {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out'}
+                                            </span>
+                                        </div>
+                                        <div className="admin-mobile-grid-metrics">
+                                            <div className="admin-mobile-metric-item">
+                                                <span className="admin-mobile-metric-label">Sale Price</span>
+                                                <span className="admin-mobile-metric-val" style={{ color: 'var(--primary)', fontWeight: '700' }}>₹{prod.price}</span>
+                                            </div>
+                                            <div className="admin-mobile-metric-item">
+                                                <span className="admin-mobile-metric-label">Buy Price</span>
+                                                <span className="admin-mobile-metric-val" style={{ color: '#94a3b8' }}>₹{cost}</span>
+                                            </div>
+                                            <div className="admin-mobile-metric-item" style={{ gridColumn: isQuickEditing ? '1 / -1' : 'auto' }}>
+                                                <span className="admin-mobile-metric-label">Profit Margin</span>
+                                                <span className="admin-mobile-metric-val">
+                                                    {isQuickEditing ? (
+                                                        <div className="quick-margin-editor-box mobile">
+                                                            <div className="quick-margin-row">
+                                                                <span className="quick-margin-lbl">Sale Price (₹):</span>
                                                                 <input 
-                                                                    type="number"
-                                                                    min="0"
-                                                                    step="any"
-                                                                    value={quickSalePriceVal}
-                                                                    onChange={(e) => handleQuickSalePriceChange(e.target.value)}
+                                                                    type="number" 
+                                                                    value={quickSalePriceVal} 
+                                                                    onChange={(e) => handleQuickSalePriceChange(e.target.value)} 
                                                                     className="quick-margin-inp"
                                                                     placeholder="e.g. 499"
                                                                     autoFocus
                                                                 />
                                                             </div>
-                                                        </div>
-                                                        <div className="quick-margin-row">
-                                                            <span className="quick-margin-lbl" title="Wholesale Purchase Cost">Buy Price:</span>
-                                                            <div className="quick-margin-input-wrap">
-                                                                <span className="currency-prefix">₹</span>
+                                                            <div className="quick-margin-row">
+                                                                <span className="quick-margin-lbl">Buy Price (₹):</span>
                                                                 <input 
-                                                                    type="number"
-                                                                    min="0"
-                                                                    step="any"
-                                                                    value={quickBuyPriceVal}
-                                                                    onChange={(e) => handleQuickBuyPriceChange(e.target.value)}
+                                                                    type="number" 
+                                                                    value={quickBuyPriceVal} 
+                                                                    onChange={(e) => handleQuickBuyPriceChange(e.target.value)} 
                                                                     className="quick-margin-inp"
                                                                     placeholder="e.g. 250"
                                                                 />
                                                             </div>
-                                                        </div>
-                                                        <div className="quick-margin-preview-tag">
-                                                            {(() => {
-                                                                const s = parseFloat(quickSalePriceVal) || 0;
-                                                                const b = parseFloat(quickBuyPriceVal) || 0;
-                                                                const m = s - b;
-                                                                const pct = s > 0 ? Math.round((m / s) * 100) : 0;
-                                                                return (
-                                                                    <>
-                                                                        Margin: <strong style={{ color: m >= 0 ? '#10b981' : '#ef4444' }}>₹{m.toFixed(0)} ({pct}%)</strong>
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                        <div className="quick-margin-action-btns">
-                                                            <button 
-                                                                type="button" 
-                                                                className="quick-margin-save-btn" 
-                                                                onClick={() => handleSaveQuickMargin(prod)}
-                                                            >
-                                                                ✓ Save Price
-                                                            </button>
-                                                            <button 
-                                                                type="button" 
-                                                                className="quick-margin-cancel-btn" 
-                                                                onClick={handleCancelQuickMargin}
-                                                            >
-                                                                ✕
-                                                            </button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div className="margin-display-cell">
-                                                        <span className={`margin-badge-tag ${marginPct >= 40 ? 'high-margin' : marginPct >= 20 ? 'med-margin' : 'low-margin'}`}>
-                                                            {margin >= 0 ? `+₹${margin} (${marginPct}%)` : `-₹${Math.abs(margin)}`}
-                                                        </span>
-                                                        <button 
-                                                            type="button" 
-                                                            className="quick-margin-toggle-btn"
-                                                            title="Directly edit Sale Price and Buy Price"
-                                                            onClick={() => handleStartQuickMargin(prod)}
-                                                        >
-                                                            ✏️ Edit Price & Margin
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td>{prod.stock !== undefined ? prod.stock : 50}</td>
-                                            <td>
-                                                <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`}>
-                                                    {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out of Stock'}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="table-actions">
-                                                    {deletingProductId === prod.id ? (
-                                                        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                                                            <button 
-                                                                className="edit-action-btn" 
-                                                                onClick={() => onDeleteProduct(prod.id)}
-                                                                style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', padding: '4px 10px', fontSize: '12px' }}
-                                                            >
-                                                                Confirm
-                                                            </button>
-                                                            <button 
-                                                                className="delete-action-btn" 
-                                                                onClick={() => setDeletingProductId(null)}
-                                                                style={{ borderColor: 'var(--border-color)', color: 'var(--text-muted)', background: 'transparent', padding: '4px 10px', fontSize: '12px' }}
-                                                            >
-                                                                Cancel
-                                                            </button>
+                                                            <div className="quick-margin-preview-tag">
+                                                                {(() => {
+                                                                    const s = parseFloat(quickSalePriceVal) || 0;
+                                                                    const b = parseFloat(quickBuyPriceVal) || 0;
+                                                                    const m = s - b;
+                                                                    const pct = s > 0 ? Math.round((m / s) * 100) : 0;
+                                                                    return (
+                                                                        <>
+                                                                            Margin: <strong style={{ color: m >= 0 ? '#10b981' : '#ef4444' }}>₹{m.toFixed(0)} ({pct}%)</strong>
+                                                                        </>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                            <div className="quick-margin-action-btns">
+                                                                <button type="button" className="quick-margin-save-btn" onClick={() => handleSaveQuickMargin(prod)}>✓ Save Price</button>
+                                                                <button type="button" className="quick-margin-cancel-btn" onClick={handleCancelQuickMargin}>✕ Cancel</button>
+                                                            </div>
                                                         </div>
                                                     ) : (
-                                                        <>
-                                                            <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)}>
-                                                                Edit
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                                                            <span className={`margin-badge-tag ${marginPct >= 40 ? 'high-margin' : marginPct >= 20 ? 'med-margin' : 'low-margin'}`}>
+                                                                {margin >= 0 ? `+₹${margin} (${marginPct}%)` : `-₹${Math.abs(margin)}`}
+                                                            </span>
+                                                            <button 
+                                                                type="button" 
+                                                                className="quick-margin-toggle-btn"
+                                                                onClick={() => handleStartQuickMargin(prod)}
+                                                            >
+                                                                ✏️ Edit
                                                             </button>
-                                                            <button className="edit-action-btn" onClick={() => handleDuplicateProduct(prod.id)} style={{ background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }} title="Duplicate this product">
-                                                                📋 Duplicate
-                                                            </button>
-                                                            <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)}>
-                                                                Delete
-                                                            </button>
-                                                        </>
+                                                        </div>
                                                     )}
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    {/* Mobile Product Cards View (< 768px) */}
-                    <div className="admin-mobile-cards-list">
-                        {products.map(prod => {
-                            const cost = Number(prod.costPrice) || 0;
-                            const price = Number(prod.price) || 0;
-                            const margin = price - cost;
-                            const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
-                            const isQuickEditing = quickEditingMarginId === prod.id;
-                            return (
-                                <div key={prod.id} className="admin-mobile-card">
-                                    <div className="admin-mobile-card-header">
-                                        <img src={prod.image || 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="%230f172a"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="%23475569" font-family="sans-serif" font-size="14" font-weight="bold">NO IMAGE</text></svg>'} alt={prod.title} className="admin-mobile-card-thumb" />
-                                        <div className="admin-mobile-card-title-box">
-                                            <div className="admin-mobile-card-title">{prod.title}</div>
-                                            <div className="admin-mobile-card-cat">{prod.category}</div>
+                                                </span>
+                                            </div>
+                                            <div className="admin-mobile-metric-item">
+                                                <span className="admin-mobile-metric-label">Stock Units</span>
+                                                <span className="admin-mobile-metric-val">{prod.stock !== undefined ? prod.stock : 50}</span>
+                                            </div>
                                         </div>
-                                        <span className={`status-pill ${prod.stock > 0 && prod.inStock ? 'active' : 'inactive'}`} style={{ alignSelf: 'flex-start' }}>
-                                            {prod.stock > 0 && prod.inStock ? 'In Stock' : 'Out'}
-                                        </span>
-                                    </div>
-                                    <div className="admin-mobile-grid-metrics">
-                                        <div className="admin-mobile-metric-item">
-                                            <span className="admin-mobile-metric-label">Sale Price</span>
-                                            <span className="admin-mobile-metric-val" style={{ color: 'var(--primary)', fontWeight: '700' }}>₹{prod.price}</span>
-                                        </div>
-                                        <div className="admin-mobile-metric-item">
-                                            <span className="admin-mobile-metric-label">Buy Price</span>
-                                            <span className="admin-mobile-metric-val" style={{ color: '#94a3b8' }}>₹{cost}</span>
-                                        </div>
-                                        <div className="admin-mobile-metric-item" style={{ gridColumn: isQuickEditing ? '1 / -1' : 'auto' }}>
-                                            <span className="admin-mobile-metric-label">Profit Margin</span>
-                                            <span className="admin-mobile-metric-val">
-                                                {isQuickEditing ? (
-                                                    <div className="quick-margin-editor-box mobile">
-                                                        <div className="quick-margin-row">
-                                                            <span className="quick-margin-lbl">Sale Price (₹):</span>
-                                                            <input 
-                                                                type="number" 
-                                                                value={quickSalePriceVal} 
-                                                                onChange={(e) => handleQuickSalePriceChange(e.target.value)} 
-                                                                className="quick-margin-inp"
-                                                                placeholder="e.g. 499"
-                                                                autoFocus
-                                                            />
-                                                        </div>
-                                                        <div className="quick-margin-row">
-                                                            <span className="quick-margin-lbl">Buy Price (₹):</span>
-                                                            <input 
-                                                                type="number" 
-                                                                value={quickBuyPriceVal} 
-                                                                onChange={(e) => handleQuickBuyPriceChange(e.target.value)} 
-                                                                className="quick-margin-inp"
-                                                                placeholder="e.g. 250"
-                                                            />
-                                                        </div>
-                                                        <div className="quick-margin-preview-tag">
-                                                            {(() => {
-                                                                const s = parseFloat(quickSalePriceVal) || 0;
-                                                                const b = parseFloat(quickBuyPriceVal) || 0;
-                                                                const m = s - b;
-                                                                const pct = s > 0 ? Math.round((m / s) * 100) : 0;
-                                                                return (
-                                                                    <>
-                                                                        Margin: <strong style={{ color: m >= 0 ? '#10b981' : '#ef4444' }}>₹{m.toFixed(0)} ({pct}%)</strong>
-                                                                    </>
-                                                                );
-                                                            })()}
-                                                        </div>
-                                                        <div className="quick-margin-action-btns">
-                                                            <button type="button" className="quick-margin-save-btn" onClick={() => handleSaveQuickMargin(prod)}>✓ Save Price</button>
-                                                            <button type="button" className="quick-margin-cancel-btn" onClick={handleCancelQuickMargin}>✕ Cancel</button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                                                        <span className={`margin-badge-tag ${marginPct >= 40 ? 'high-margin' : marginPct >= 20 ? 'med-margin' : 'low-margin'}`}>
-                                                            {margin >= 0 ? `+₹${margin} (${marginPct}%)` : `-₹${Math.abs(margin)}`}
-                                                        </span>
-                                                        <button 
-                                                            type="button" 
-                                                            className="quick-margin-toggle-btn"
-                                                            onClick={() => handleStartQuickMargin(prod)}
-                                                        >
-                                                            ✏️ Edit
-                                                        </button>
-                                                    </div>
-                                                )}
-                                            </span>
-                                        </div>
-                                        <div className="admin-mobile-metric-item">
-                                            <span className="admin-mobile-metric-label">Stock Units</span>
-                                            <span className="admin-mobile-metric-val">{prod.stock !== undefined ? prod.stock : 50}</span>
+                                        <div className="admin-mobile-card-actions">
+                                            {deletingProductId === prod.id ? (
+                                                <>
+                                                    <button 
+                                                        className="edit-action-btn" 
+                                                        onClick={() => onDeleteProduct(prod.id)}
+                                                        style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', flex: 1, padding: '8px' }}
+                                                    >
+                                                        Confirm Delete
+                                                    </button>
+                                                    <button 
+                                                        className="delete-action-btn" 
+                                                        onClick={() => setDeletingProductId(null)}
+                                                        style={{ flex: 1, padding: '8px' }}
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)} style={{ flex: 1, padding: '8px' }}>
+                                                        ✏️ Edit
+                                                    </button>
+                                                    <button className="edit-action-btn" onClick={() => handleDuplicateProduct(prod.id)} style={{ flex: 1, padding: '8px', background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }}>
+                                                        📋 Copy
+                                                    </button>
+                                                    <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)} style={{ flex: 1, padding: '8px' }}>
+                                                        🗑️ Delete
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
-                                    <div className="admin-mobile-card-actions">
-                                        {deletingProductId === prod.id ? (
-                                            <>
-                                                <button 
-                                                    className="edit-action-btn" 
-                                                    onClick={() => onDeleteProduct(prod.id)}
-                                                    style={{ background: 'var(--error)', color: '#ffffff', border: '1px solid var(--error)', flex: 1, padding: '8px' }}
-                                                >
-                                                    Confirm Delete
-                                                </button>
-                                                <button 
-                                                    className="delete-action-btn" 
-                                                    onClick={() => setDeletingProductId(null)}
-                                                    style={{ flex: 1, padding: '8px' }}
-                                                >
-                                                    Cancel
-                                                </button>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <button className="edit-action-btn" onClick={() => handleOpenEdit(prod)} style={{ flex: 1, padding: '8px' }}>
-                                                    ✏️ Edit
-                                                </button>
-                                                <button className="edit-action-btn" onClick={() => handleDuplicateProduct(prod.id)} style={{ flex: 1, padding: '8px', background: 'rgba(245, 158, 11, 0.1)', borderColor: 'rgba(245, 158, 11, 0.3)', color: 'var(--primary)' }}>
-                                                    📋 Copy
-                                                </button>
-                                                <button className="delete-action-btn" onClick={() => setDeletingProductId(prod.id)} style={{ flex: 1, padding: '8px' }}>
-                                                    🗑️ Delete
-                                                </button>
-                                            </>
-                                        )}
-                                    </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            });
+                        })()}
                     </div>
                 </div>
             )}
 
-            {/* TAB CONTENT: BOOKINGS */}
-            {activeTab === 'bookings' && (
+            {/* TAB CONTENT: BOOKINGS & ORDERS */}
+            {(activeTab === 'orders' || activeTab === 'bookings') && (
                 <div className="admin-tab-content">
                     <div className="tab-filters-bar">
                         <div className="search-box-wrapper">
@@ -3818,8 +5092,8 @@ export default function AdminPanel({
                 </div>
             )}
 
-            {/* TAB CONTENT: USERS */}
-            {activeTab === 'users' && (
+            {/* TAB CONTENT: USERS & CUSTOMERS */}
+            {(activeTab === 'customers' || activeTab === 'users') && (
                 <div className="admin-tab-content">
                     <div className="tab-actions-bar">
                         <h3>Registered Store Customers</h3>
@@ -4150,6 +5424,437 @@ export default function AdminPanel({
                 </div>
             )}
 
+            {/* TAB CONTENT: INVENTORY */}
+            {activeTab === 'inventory' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Inventory Management</h2>
+                            <p className="admin-page-subtitle">Track stock units, threshold alerts, and supplier sourcing</p>
+                        </div>
+                    </div>
+
+                    <div className="admin-table-container">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>SKU</th>
+                                    <th>Category</th>
+                                    <th>Stock Level</th>
+                                    <th>Status</th>
+                                    <th>Selling Price</th>
+                                    <th>Cost Price</th>
+                                    <th>Margin</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {products.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="8" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                                            No products found in inventory.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    products.map(prod => {
+                                        const stockQty = prod.stock !== undefined ? Number(prod.stock) : 50;
+                                        let stockStatus = 'in-stock';
+                                        let stockLabel = 'In Stock';
+                                        if (stockQty <= 0) {
+                                            stockStatus = 'out-of-stock';
+                                            stockLabel = 'Out of Stock';
+                                        } else if (stockQty <= 10) {
+                                            stockStatus = 'low-stock';
+                                            stockLabel = 'Low Stock';
+                                        }
+                                        const price = Number(prod.price) || 0;
+                                        const cost = Number(prod.costPrice) || Math.round(price * 0.5);
+                                        const margin = price - cost;
+                                        const marginPct = price > 0 ? Math.round((margin / price) * 100) : 0;
+
+                                        return (
+                                            <tr key={prod.id}>
+                                                <td>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <img 
+                                                            src={prod.image || '/assets/logo.png'} 
+                                                            alt={prod.title} 
+                                                            style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' }}
+                                                            onError={e => { e.target.style.display = 'none'; }}
+                                                        />
+                                                        <span style={{ fontWeight: '700', color: '#0f172a' }}>{prod.title}</span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ fontFamily: 'monospace', color: '#64748b' }}>{prod.sku || `NTR-${prod.id}`}</td>
+                                                <td><span className="admin-category-pill">{prod.category || 'General'}</span></td>
+                                                <td>
+                                                    <strong style={{ fontSize: '14px', color: stockQty <= 10 ? '#dc2626' : '#0f172a' }}>
+                                                        {stockQty} units
+                                                    </strong>
+                                                </td>
+                                                <td>
+                                                    <span className={`admin-status-badge ${stockStatus}`}>
+                                                        {stockLabel}
+                                                    </span>
+                                                </td>
+                                                <td><strong>₹{price}</strong></td>
+                                                <td style={{ color: '#64748b' }}>₹{cost}</td>
+                                                <td>
+                                                    <span style={{ color: margin >= 0 ? '#16a34a' : '#dc2626', fontWeight: '700' }}>
+                                                        ₹{margin} ({marginPct}%)
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: PAYMENTS */}
+            {activeTab === 'payments' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Payments &amp; Gateway Transactions</h2>
+                            <p className="admin-page-subtitle">Real-time payment logs across Razorpay, UPI, and Cash on Delivery</p>
+                        </div>
+                    </div>
+
+                    <div className="admin-table-container">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Amount</th>
+                                    <th>Payment Method</th>
+                                    <th>Transaction ID</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {validBookings.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                                            No payment records yet.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    validBookings.map(b => {
+                                        const pRaw = (b.customer?.payment || b.paymentMethod || '').toLowerCase();
+                                        const isPaid = pRaw.includes('razorpay') || b.customer?.razorpayPaymentId || b.status === 'Payment Confirmed' || b.status === 'Delivered';
+
+                                        return (
+                                            <tr key={b.orderId}>
+                                                <td style={{ fontWeight: '800', color: '#0f172a' }}>#{b.orderId}</td>
+                                                <td>
+                                                    <div style={{ fontWeight: '600' }}>{b.customer?.name}</div>
+                                                    <div style={{ fontSize: '11.5px', color: '#64748b' }}>{b.customer?.phone}</div>
+                                                </td>
+                                                <td><strong>₹{b.total}</strong></td>
+                                                <td>
+                                                    <span className="admin-payment-pill">
+                                                        {b.customer?.razorpayPaymentId ? '⚡ Razorpay' : (b.customer?.payment || 'COD')}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontFamily: 'monospace', fontSize: '12px', color: '#64748b' }}>
+                                                    {b.customer?.razorpayPaymentId || 'N/A'}
+                                                </td>
+                                                <td>
+                                                    <span className={`admin-status-badge ${isPaid ? 'paid' : 'pending'}`}>
+                                                        {isPaid ? 'Paid' : 'Pending'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ fontSize: '12.5px', color: '#64748b' }}>{b.date}</td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: SHIPPING */}
+            {activeTab === 'shipping' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Shipping &amp; Logistics Tracking</h2>
+                            <p className="admin-page-subtitle">Courier dispatch management, AWB numbers, and telemetry tracking</p>
+                        </div>
+                    </div>
+
+                    <div className="admin-table-container">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Order</th>
+                                    <th>Customer</th>
+                                    <th>Courier</th>
+                                    <th>Tracking AWB</th>
+                                    <th>Dispatch Status</th>
+                                    <th>Expected Delivery</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {validBookings.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                                            No active shipments.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    validBookings.map(b => (
+                                        <tr key={b.orderId}>
+                                            <td style={{ fontWeight: '800' }}>#{b.orderId}</td>
+                                            <td>
+                                                <div>{b.customer?.name}</div>
+                                                <div style={{ fontSize: '11.5px', color: '#64748b' }}>{b.customer?.district || 'Kerala'}</div>
+                                            </td>
+                                            <td>{b.courier?.carrier || 'Delhivery Express'}</td>
+                                            <td style={{ fontFamily: 'monospace', fontWeight: '700', color: '#0f172a' }}>
+                                                {b.courier?.awb || 'Pending AWB'}
+                                            </td>
+                                            <td>
+                                                <span className={`admin-status-badge ${b.status?.toLowerCase().replace(/\s+/g, '-') || 'confirmed'}`}>
+                                                    {b.status || 'Confirmed'}
+                                                </span>
+                                            </td>
+                                            <td style={{ fontSize: '12.5px', color: '#64748b' }}>
+                                                {b.courier?.checkpoint ? 'Live In-Transit' : '2-4 Business Days'}
+                                            </td>
+                                            <td>
+                                                <button 
+                                                    type="button" 
+                                                    className="admin-action-btn edit"
+                                                    onClick={() => setSelectedAdminBooking(b)}
+                                                    title="Update shipping telemetry"
+                                                >
+                                                    🚚 Dispatch
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: PROFIT & MARGIN */}
+            {activeTab === 'profit' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Profit &amp; Margin Analysis</h2>
+                            <p className="admin-page-subtitle">Real-time breakdown of gross margin, COGS, and bottom-line profit</p>
+                        </div>
+                        <button type="button" className="admin-btn-secondary" onClick={handleExportCSV}>
+                            📥 Export Margin CSV
+                        </button>
+                    </div>
+
+                    <div className="admin-stat-cards-grid">
+                        <div className="admin-stat-card">
+                            <div className="admin-stat-label">Total Revenue</div>
+                            <div className="admin-stat-value">₹{totalGrossRevenue.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div className="admin-stat-card">
+                            <div className="admin-stat-label">Cost of Goods (COGS)</div>
+                            <div className="admin-stat-value">₹{totalCOGS.toLocaleString('en-IN')}</div>
+                        </div>
+                        <div className="admin-stat-card">
+                            <div className="admin-stat-label">Gross Profit</div>
+                            <div className="admin-stat-value" style={{ color: '#16a34a' }}>₹{(totalGrossRevenue - totalCOGS).toLocaleString('en-IN')}</div>
+                        </div>
+                        <div className="admin-stat-card">
+                            <div className="admin-stat-label">Gross Margin %</div>
+                            <div className="admin-stat-value" style={{ color: '#d97706' }}>{grossMarginPercent}%</div>
+                        </div>
+                    </div>
+
+                    <div className="admin-table-container" style={{ marginTop: '20px' }}>
+                        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', fontWeight: '800', fontSize: '15px' }}>
+                            Product Margins Leaderboard
+                        </div>
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Category</th>
+                                    <th>Selling Price</th>
+                                    <th>Cost Price</th>
+                                    <th>Units Sold</th>
+                                    <th>Total Revenue</th>
+                                    <th>Total Profit</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productLeaderboard.map(item => (
+                                    <tr key={item.id}>
+                                        <td style={{ fontWeight: '700' }}>{item.title}</td>
+                                        <td><span className="admin-category-pill">{item.category}</span></td>
+                                        <td>₹{item.price}</td>
+                                        <td style={{ color: '#64748b' }}>₹{item.costPrice}</td>
+                                        <td><strong>{item.unitsSold}</strong></td>
+                                        <td>₹{item.totalRevenue.toLocaleString('en-IN')}</td>
+                                        <td>
+                                            <strong style={{ color: item.totalProfit >= 0 ? '#16a34a' : '#dc2626' }}>
+                                                ₹{item.totalProfit.toLocaleString('en-IN')}
+                                            </strong>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: REVIEWS */}
+            {activeTab === 'reviews' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Customer Reviews &amp; Ratings</h2>
+                            <p className="admin-page-subtitle">Moderate customer reviews and verified buyer feedback</p>
+                        </div>
+                    </div>
+
+                    <div className="admin-table-container">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Customer</th>
+                                    <th>Rating</th>
+                                    <th>Review</th>
+                                    <th>Date</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style={{ fontWeight: '700' }}>Men's Casual T-Shirt</td>
+                                    <td>Arjun K K</td>
+                                    <td style={{ color: '#f59e0b', fontSize: '15px' }}>★★★★★</td>
+                                    <td>"Great premium fabric and perfect streetwear fit! Delivered on time."</td>
+                                    <td style={{ color: '#64748b', fontSize: '12px' }}>08 Oct 2026</td>
+                                    <td><span className="admin-status-badge in-stock">Approved</span></td>
+                                </tr>
+                                <tr>
+                                    <td style={{ fontWeight: '700' }}>Running Shoes</td>
+                                    <td>Rahul M</td>
+                                    <td style={{ color: '#f59e0b', fontSize: '15px' }}>★★★★☆</td>
+                                    <td>"Super comfortable sole, high quality stitching."</td>
+                                    <td style={{ color: '#64748b', fontSize: '12px' }}>07 Oct 2026</td>
+                                    <td><span className="admin-status-badge in-stock">Approved</span></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: RETURNS & REFUNDS */}
+            {activeTab === 'returns' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Returns &amp; Refunds</h2>
+                            <p className="admin-page-subtitle">Customer exchange requests, returns, and refund tracking</p>
+                        </div>
+                    </div>
+
+                    <div className="admin-table-container">
+                        <table className="admin-table">
+                            <thead>
+                                <tr>
+                                    <th>Order ID</th>
+                                    <th>Customer</th>
+                                    <th>Product</th>
+                                    <th>Reason</th>
+                                    <th>Amount</th>
+                                    <th>Status</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {validBookings.filter(b => b.status === 'Returned' || b.status === 'Refunded').length === 0 ? (
+                                    <tr>
+                                        <td colSpan="7" style={{ textAlign: 'center', padding: '36px', color: '#64748b' }}>
+                                            No active return or refund requests.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    validBookings.filter(b => b.status === 'Returned' || b.status === 'Refunded').map(b => (
+                                        <tr key={b.orderId}>
+                                            <td style={{ fontWeight: '800' }}>#{b.orderId}</td>
+                                            <td>{b.customer?.name}</td>
+                                            <td>{b.items?.[0]?.title || 'Store item'}</td>
+                                            <td>Size exchange request</td>
+                                            <td><strong>₹{b.total}</strong></td>
+                                            <td>
+                                                <span className="admin-status-badge out-of-stock">{b.status}</span>
+                                            </td>
+                                            <td style={{ fontSize: '12.5px', color: '#64748b' }}>{b.date}</td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: NOTIFICATIONS */}
+            {activeTab === 'notifications' && (
+                <div className="admin-tab-content">
+                    <div className="admin-page-header-row">
+                        <div>
+                            <h2 className="admin-page-title">Store Notifications &amp; Alerts</h2>
+                            <p className="admin-page-subtitle">Real-time alerts for orders, payments, and inventory thresholds</p>
+                        </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div className="admin-notification-item unread">
+                            <div className="admin-notification-icon order">📦</div>
+                            <div className="admin-notification-content">
+                                <div className="admin-notification-title">New Order Received</div>
+                                <div className="admin-notification-text">Customer placed an order for ₹3,798 via Razorpay.</div>
+                                <div className="admin-notification-time">10 minutes ago</div>
+                            </div>
+                        </div>
+                        <div className="admin-notification-item unread">
+                            <div className="admin-notification-icon payment">💰</div>
+                            <div className="admin-notification-content">
+                                <div className="admin-notification-title">Payment Confirmed</div>
+                                <div className="admin-notification-text">Razorpay payment ID pay_92837190 captured successfully.</div>
+                                <div className="admin-notification-time">25 minutes ago</div>
+                            </div>
+                        </div>
+                        <div className="admin-notification-item">
+                            <div className="admin-notification-icon stock">⚠️</div>
+                            <div className="admin-notification-content">
+                                <div className="admin-notification-title">Low Stock Alert</div>
+                                <div className="admin-notification-text">Running Shoes stock has dropped below 10 units.</div>
+                                <div className="admin-notification-time">2 hours ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ADMIN BOOKING DETAIL MODAL */}
             {selectedAdminBooking && (
                 <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) setSelectedAdminBooking(null); }} style={{ zIndex: 1200 }}>
@@ -4442,6 +6147,52 @@ export default function AdminPanel({
                     </div>
                 </div>
             )}
+                </main>
+
+                {/* Mobile Bottom Navigation (Sticky at bottom on mobile) */}
+                <nav className="admin-mobile-bottom-nav">
+                    <button 
+                        type="button" 
+                        className={`admin-mobile-bottom-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('dashboard')}
+                    >
+                        <span className="admin-bottom-nav-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        </span>
+                        <span>Dashboard</span>
+                    </button>
+                    <button 
+                        type="button" 
+                        className={`admin-mobile-bottom-btn ${activeTab === 'orders' || activeTab === 'bookings' ? 'active' : ''}`}
+                        onClick={() => { setActiveTab('orders'); setCurrentPage(1); }}
+                    >
+                        <span className="admin-bottom-nav-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-2z"></path><line x1="3" y1="6" x2="21" y2="6"></line><path d="M16 10a4 4 0 0 1-8 0"></path></svg>
+                        </span>
+                        <span>Orders</span>
+                    </button>
+                    <button 
+                        type="button" 
+                        className={`admin-mobile-bottom-btn ${activeTab === 'products' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('products')}
+                    >
+                        <span className="admin-bottom-nav-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>
+                        </span>
+                        <span>Products</span>
+                    </button>
+                    <button 
+                        type="button" 
+                        className="admin-mobile-bottom-btn"
+                        onClick={() => setSidebarMobileOpen(true)}
+                    >
+                        <span className="admin-bottom-nav-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="12" cy="5" r="1"></circle><circle cx="12" cy="19" r="1"></circle></svg>
+                        </span>
+                        <span>More</span>
+                    </button>
+                </nav>
+            </div>
         </div>
     );
 }

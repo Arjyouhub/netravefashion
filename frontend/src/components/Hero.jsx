@@ -3,32 +3,33 @@ import React, { useState, useEffect } from 'react';
 const HERO_SLIDES = [
     {
         id: 1,
-        tag: "MEN'S COLLECTION",
-        title: "URBAN STREETWEAR & STYLE",
-        subtitle: "Sharp Layering, Trendy Outerwear & Everyday Comfort",
-        ctaText: "Shop Men →",
+        tag: "⚡ NEW DROP 2026",
+        title: "STYLE BEYOND LIMITS",
+        subtitle: "Urban Streetwear, Layered Fits & Everyday Statement Aesthetics",
+        badge: "👑 VERIFIED FIT",
+        ctaText: "Shop Collection →",
         ctaSecondary: "Explore Styles",
-        image: "/assets/men-hero-desktop.jpg",
-        mobileImage: "/assets/men-hero-mobile.jpg",
+        image: "/assets/hero_slide_female.jpg",
         accentColor: "#f59e0b",
-        categorySlug: "shirt"
+        categorySlug: "all"
     },
     {
         id: 2,
-        tag: "FOOTWEAR EDIT",
-        title: "STEP INTO STYLE",
-        subtitle: "Premium sneakers designed for everyday movement.",
-        ctaText: "Shop Footwear →",
-        ctaSecondary: "Explore Collection",
-        image: "/assets/shoe-hero-desktop.jpg",
-        mobileImage: "/assets/shoe-hero-mobile.jpg",
+        tag: "🔥 MEN'S STREETWEAR",
+        title: "DESIGNED TO STAND OUT",
+        subtitle: "Heavyweight Cotton, Precision Cuts & Contemporary Street Luxury",
+        badge: "⚡ SIGNATURE DROP",
+        ctaText: "Shop Men →",
+        ctaSecondary: "View Best Sellers",
+        image: "/assets/hero_slide_male.jpg",
         accentColor: "#f59e0b",
-        categorySlug: "footwear"
+        categorySlug: "shirt"
     }
 ];
 
 export default function Hero({ onShopClick, onNavigateCategory }) {
     const [currentSlide, setCurrentSlide] = useState(0);
+    const [touchStartX, setTouchStartX] = useState(null);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -47,21 +48,43 @@ export default function Hero({ onShopClick, onNavigateCategory }) {
         }
     };
 
+    const handleTouchStart = (e) => {
+        setTouchStartX(e.touches[0].clientX);
+    };
+
+    const handleTouchEnd = (e) => {
+        if (touchStartX === null) return;
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartX - touchEndX;
+        if (diff > 45) {
+            setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length);
+        } else if (diff < -45) {
+            setCurrentSlide(prev => (prev - 1 + HERO_SLIDES.length) % HERO_SLIDES.length);
+        }
+        setTouchStartX(null);
+    };
+
     return (
-        <section className="netrave-hero-wrapper">
-            {/* Desktop 16:9 Widescreen Cover (Kept exact for laptop view) */}
+        <section 
+            className="netrave-hero-wrapper"
+            onTouchStart={handleTouchStart}
+            onTouchEnd={handleTouchEnd}
+        >
+            {/* Desktop ambient blurred backdrop that matches current slide colors smoothly */}
             <div 
-                className="hero-bg-backdrop hero-bg-desktop" 
+                className="hero-ambient-backdrop" 
                 style={{ backgroundImage: `url("${slide.image}")` }}
             />
-            {/* Mobile Vertical 9:16 Portrait Cover (Perfect fit for phone view) */}
-            <div 
-                className="hero-bg-backdrop hero-bg-mobile" 
-                style={{ backgroundImage: `url("${slide.mobileImage || slide.image}")` }}
-            />
-            <div className="hero-bg-gradient-overlay" />
+            <div className="hero-ambient-pattern" />
 
-            {/* Navigation Arrows positioned on outer wrapper away from text */}
+            {/* Mobile Dedicated Full-Bleed 9:16 Vertical Background */}
+            <div 
+                className="hero-bg-mobile" 
+                style={{ backgroundImage: `url("${slide.image}")` }}
+            />
+            <div className="hero-bg-mobile-overlay" />
+
+            {/* Navigation Arrows positioned on outer wrapper */}
             <button 
                 type="button" 
                 className="hero-arrow-btn arrow-prev" 
@@ -91,6 +114,16 @@ export default function Hero({ onShopClick, onNavigateCategory }) {
                     <p className="netrave-hero-desc">
                         {slide.subtitle}
                     </p>
+
+                    {/* Trust Perks for Desktop/Laptop */}
+                    <div className="hero-trust-perks">
+                        <span className="hero-perk-item">✓ 100% Original Quality</span>
+                        <span className="hero-perk-divider">•</span>
+                        <span className="hero-perk-item">✓ Dispatched in 24h</span>
+                        <span className="hero-perk-divider">•</span>
+                        <span className="hero-perk-item">✓ 7-Day Easy Exchange</span>
+                    </div>
+
                     <div className="netrave-hero-btn-row">
                         <button 
                             type="button" 
@@ -109,32 +142,40 @@ export default function Hero({ onShopClick, onNavigateCategory }) {
                     </div>
                 </div>
 
-                {/* Right Visual Space (Model shines through uncropped on desktop) */}
-                <div className="netrave-hero-visual-open">
-                    {slide.desktopModel && (
-                        <div className="hero-desktop-model-frame">
+                {/* Right Visual Image Column (Prominently displayed on Desktop/Laptop) */}
+                <div className="netrave-hero-visual">
+                    {/* Yellow Dynamic Geometric Accent Graphic */}
+                    <div className="hero-accent-stripes">
+                        <div className="accent-stripe stripe-1"></div>
+                        <div className="accent-stripe stripe-2"></div>
+                    </div>
+
+                    <div className="hero-model-container">
+                        <div className="hero-model-card">
+                            <span className="hero-floating-badge">{slide.badge}</span>
                             <img 
-                                src={slide.desktopModel} 
+                                key={slide.id}
+                                src={slide.image} 
                                 alt={slide.title} 
-                                className="hero-desktop-model-img" 
+                                className="hero-model-img" 
                             />
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
 
-                {/* Dot Pagination */}
-                <div className="hero-dots-row">
-                    {HERO_SLIDES.map((s, idx) => (
-                        <button
-                            key={s.id}
-                            type="button"
-                            className={`hero-dot ${idx === currentSlide ? 'active' : ''}`}
-                            onClick={() => setCurrentSlide(idx)}
-                            aria-label={`Go to slide ${idx + 1}`}
-                        />
-                    ))}
-                </div>
+            {/* Dot Pagination */}
+            <div className="hero-dots-row">
+                {HERO_SLIDES.map((s, idx) => (
+                    <button
+                        key={s.id}
+                        type="button"
+                        className={`hero-dot ${idx === currentSlide ? 'active' : ''}`}
+                        onClick={() => setCurrentSlide(idx)}
+                        aria-label={`Go to slide ${idx + 1}`}
+                    />
+                ))}
+            </div>
         </section>
     );
 }

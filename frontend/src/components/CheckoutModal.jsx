@@ -178,13 +178,16 @@ export default function CheckoutModal({
         setRazorpayError('');
 
         try {
-            const verifyRes = await fetch(`${API_BASE_URL || ''}/api/razorpay/verify-payment`, {
+            const verifyRes = await fetch(`${API_BASE_URL || ''}/api/verify-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    razorpay_order_id: paymentDetails.order_id || `order_sim_${Date.now()}`,
-                    razorpay_payment_id: paymentDetails.payment_id || `pay_test_${Date.now()}`,
-                    razorpay_signature: paymentDetails.signature || 'simulated_test_signature',
+                    razorpay_order_id: paymentDetails.order_id,
+                    razorpay_payment_id: paymentDetails.payment_id,
+                    razorpay_signature: paymentDetails.signature,
+                    order_id: paymentDetails.order_id,
+                    payment_id: paymentDetails.payment_id,
+                    signature: paymentDetails.signature,
                     customer: {
                         name: name.trim(),
                         phone: phone.trim(),
@@ -206,18 +209,18 @@ export default function CheckoutModal({
                 })
             });
 
-            if (verifyRes.ok) {
-                const confirmedBooking = await verifyRes.json();
-                setConfirmedOrder(confirmedBooking);
+            const verifyData = await verifyRes.json();
+
+            if (verifyRes.ok && verifyData.success !== false) {
+                setConfirmedOrder(verifyData);
                 setCurrentStep(5); // Go to Order Confirmation step
                 if (onRazorpaySuccess) {
-                    onRazorpaySuccess(confirmedBooking);
+                    onRazorpaySuccess(verifyData);
                 } else if (onSubmitBooking) {
-                    onSubmitBooking(confirmedBooking);
+                    onSubmitBooking(verifyData);
                 }
             } else {
-                const errData = await verifyRes.json();
-                setRazorpayError(errData.error || 'Payment verification failed on server.');
+                setRazorpayError(verifyData.error || 'Payment verification failed on server.');
             }
         } catch (err) {
             console.error('Payment verification error:', err);
@@ -235,39 +238,50 @@ export default function CheckoutModal({
         try {
             const scriptLoaded = await loadRazorpayScript();
             if (!scriptLoaded) {
-                setShowTestSimulator(true);
+                setRazorpayError('Razorpay checkout SDK failed to load. Please check your internet connection.');
                 setIsProcessingPayment(false);
                 return;
             }
 
-            const orderRes = await fetch(`${API_BASE_URL || ''}/api/razorpay/create-order`, {
+            // Amount in paise (minimum 100 paise = 1 INR)
+            const amountInPaise = Math.max(100, Math.round(Number(total) * 100));
+
+            const orderRes = await fetch(`${API_BASE_URL || ''}/api/create-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount: total, receipt: `rcpt_${Date.now()}` })
+                body: JSON.stringify({ 
+                    amount: amountInPaise, 
+                    currency: 'INR', 
+                    receipt: `rcpt_${Date.now()}` 
+                })
             });
 
             if (!orderRes.ok) {
-                setShowTestSimulator(true);
+                const errData = await orderRes.json().catch(() => ({}));
+                setRazorpayError(errData.error || 'Failed to initialize Razorpay order on server.');
                 setIsProcessingPayment(false);
                 return;
             }
 
             const orderData = await orderRes.json();
 
-            if (orderData.isMock || !window.Razorpay) {
-                setShowTestSimulator(true);
+            const razorpayKey = orderData.key_id || orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+            const razorpayOrderId = orderData.order_id || orderData.id;
+
+            if (!window.Razorpay) {
+                setRazorpayError('Razorpay SDK is not available in browser window.');
                 setIsProcessingPayment(false);
                 return;
             }
 
             const options = {
-                key: orderData.keyId,
-                amount: orderData.amount,
+                key: razorpayKey,
+                amount: orderData.amount || amountInPaise,
                 currency: orderData.currency || 'INR',
                 name: 'NETRAVE Fashion Store',
                 description: `Payment for ${cart.length} item(s)`,
                 image: '/assets/logo.png',
-                order_id: orderData.id,
+                order_id: razorpayOrderId,
                 prefill: {
                     name: name.trim(),
                     contact: phone.trim(),
@@ -284,19 +298,20 @@ export default function CheckoutModal({
                 modal: {
                     ondismiss: function () {
                         setIsProcessingPayment(false);
+                        setRazorpayError('Payment was cancelled by user.');
                     }
                 }
             };
 
             const rzp = new window.Razorpay(options);
             rzp.on('payment.failed', function (response) {
-                setRazorpayError(`Payment failed: ${response.error?.description || 'Unknown error'}`);
+                setRazorpayError(`Payment failed: ${response.error?.description || 'Payment unsuccessful'}`);
                 setIsProcessingPayment(false);
             });
             rzp.open();
         } catch (err) {
             console.error('Razorpay initialization error:', err);
-            setShowTestSimulator(true);
+            setRazorpayError('Failed to launch Razorpay checkout modal: ' + err.message);
             setIsProcessingPayment(false);
         }
     };

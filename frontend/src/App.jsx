@@ -947,39 +947,30 @@ export default function App() {
         );
     }
 
-    // Conditional Admin Dashboard Rendering (removes storefront header)
+    // Conditional Admin Dashboard Rendering (Full-screen standalone layout)
     if (isAdminView) {
         return (
-            <div className="app-container">
-                <main style={{ paddingTop: '20px' }}>
-                    <AdminPanel
-                        products={products}
-                        categories={categories}
-                        bookings={bookings}
-                        settings={settings}
-                        onAddProduct={handleAddProduct}
-                        onEditProduct={handleEditProduct}
-                        onDeleteProduct={handleDeleteProduct}
-                        onUpdateBookingStatus={handleUpdateBookingStatus}
-                        onSaveSettings={handleSaveSettings}
-                        onRefreshCategories={fetchCategories}
-                        onRefreshProducts={fetchProducts}
-                        API_BASE_URL={API_BASE_URL}
-                        showToast={showToast}
-                        onClose={() => {
-                            setIsAdminView(false);
-                            window.history.pushState({}, '', '/');
-                            fetchProducts();
-                            fetchCategories();
-                        }}
-                    />
-                </main>
-                <footer className="main-footer">
-                    <div className="footer-bottom">
-                        <p>&copy; 2026 NETRAVE Store. All rights reserved. Admin Panel Dashboard.</p>
-                    </div>
-                </footer>
-            </div>
+            <AdminPanel
+                products={products}
+                categories={categories}
+                bookings={bookings}
+                settings={settings}
+                onAddProduct={handleAddProduct}
+                onEditProduct={handleEditProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onUpdateBookingStatus={handleUpdateBookingStatus}
+                onSaveSettings={handleSaveSettings}
+                onRefreshCategories={fetchCategories}
+                onRefreshProducts={fetchProducts}
+                API_BASE_URL={API_BASE_URL}
+                showToast={showToast}
+                onClose={() => {
+                    setIsAdminView(false);
+                    window.history.pushState({}, '', '/');
+                    fetchProducts();
+                    fetchCategories();
+                }}
+            />
         );
     }
 
@@ -1153,6 +1144,7 @@ export default function App() {
                         onSubmitBooking={handlePlaceBooking}
                         onNavigate={navigate}
                         settings={settings}
+                        API_BASE_URL={API_BASE_URL}
                     />
                 )}
 
@@ -1207,9 +1199,19 @@ export default function App() {
                     <MyAccountPage
                         user={user}
                         bookings={bookings}
+                        cart={cart}
+                        cartCount={cartCount}
                         wishlist={wishlist}
                         onLogout={handleLogout}
                         onNavigate={navigate}
+                        onAddToCart={handleAddToCart}
+                        onUpdateUser={(updated) => {
+                            setUser(updated);
+                            setCookie('netrave_user', updated);
+                        }}
+                        onOpenLogin={() => setIsAuthOpen(true)}
+                        API_BASE_URL={API_BASE_URL}
+                        showToast={showToast}
                         initialTab={pageParams.tab || 'profile'}
                     />
                 )}

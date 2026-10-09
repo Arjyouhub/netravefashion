@@ -1881,8 +1881,8 @@ app.patch('/api/bookings/:orderId/courier', async (req, res) => {
 // 10B. RAZORPAY PAYMENT GATEWAY ENDPOINTS
 // --------------------------------------------------------------------------
 async function getRazorpayConfig() {
-    let keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ';
-    let keySecret = process.env.RAZORPAY_KEY_SECRET || 'pCQ9OLsHF6rbJP5XdMU9J9mG';
+    let keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TlUr8CBAq66765';
+    let keySecret = process.env.RAZORPAY_KEY_SECRET || '9DWv1HXzIw8sOaQc0YEDClCH';
     let isEnabled = true;
 
     try {
@@ -1902,65 +1902,100 @@ async function getRazorpayConfig() {
         console.error('Failed to read Razorpay config:', e.message);
     }
 
+    // Always prioritize the environment variables provided in .env
+    if (process.env.RAZORPAY_KEY_ID) keyId = process.env.RAZORPAY_KEY_ID;
+    if (process.env.RAZORPAY_KEY_SECRET) keySecret = process.env.RAZORPAY_KEY_SECRET;
+
     return { keyId, keySecret, isEnabled };
 }
 
-// 1. Create Razorpay Payment Order
-app.post('/api/razorpay/create-order', async (req, res) => {
+// --------------------------------------------------------------------------
+// 10B. RAZORPAY STANDARD WEB CHECKOUT ENDPOINTS
+// --------------------------------------------------------------------------
+
+// 1. Create Order: POST /api/create-order, POST /create-order, POST /api/razorpay/create-order
+const handleCreateRazorpayOrder = async (req, res) => {
     try {
-        const { amount, receipt } = req.body;
-        if (!amount || amount <= 0) {
-            return res.status(400).json({ error: 'Valid payment amount is required.' });
+        const { amount, currency = 'INR', receipt, amountInRupees } = req.body;
+
+        // Determine amount in paise
+        let amountInPaise;
+        if (amountInRupees !== undefined) {
+            amountInPaise = Math.round(Number(amountInRupees) * 100);
+        } else if (amount !== undefined) {
+            amountInPaise = Math.round(Number(amount));
+        } else {
+            return res.status(400).json({ error: 'Payment amount is required.' });
+        }
+
+        // STEP 1 Requirement: Validate minimum amount >= 100 paise (1 INR)
+        if (isNaN(amountInPaise) || amountInPaise < 100) {
+            return res.status(400).json({ 
+                error: 'Amount must be at least 100 paise (₹1).' 
+            });
         }
 
         const { keyId, keySecret } = await getRazorpayConfig();
-        const amountInPaise = Math.round(Number(amount) * 100);
-
-        if (keyId && keySecret) {
-            try {
-                const instance = new Razorpay({
-                    key_id: keyId,
-                    key_secret: keySecret
-                });
-
-                const order = await instance.orders.create({
-                    amount: amountInPaise,
-                    currency: 'INR',
-                    receipt: receipt || `rcpt_${Date.now()}`
-                });
-
-                return res.json({
-                    id: order.id,
-                    amount: order.amount,
-                    currency: order.currency,
-                    keyId: keyId,
-                    isLive: true
-                });
-            } catch (rzpErr) {
-                console.warn('Razorpay SDK order create failed, falling back to simulated order:', rzpErr.message);
-            }
+        if (!keyId || !keySecret) {
+            return res.status(401).json({ 
+                error: 'Razorpay API credentials (KEY_ID, KEY_SECRET) are missing or not configured.' 
+            });
         }
 
-        // Simulated/Test order fallback if keys not yet configured in admin
-        const mockOrderId = `order_sim_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
-        return res.json({
-            id: mockOrderId,
-            amount: amountInPaise,
-            currency: 'INR',
-            keyId: keyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ',
-            isMock: !Boolean(keyId && keySecret),
-            message: 'Razorpay test order initialized'
+        const razorpayInstance = new Razorpay({
+            key_id: keyId,
+            key_secret: keySecret
         });
-    } catch (err) {
-        console.error('Razorpay create-order error:', err);
-        res.status(500).json({ error: 'Failed to initiate Razorpay payment order.' });
-    }
-});
 
-// 2. Verify Razorpay Payment Signature and Record Booking
-app.post('/api/razorpay/verify-payment', async (req, res) => {
+        const orderOptions = {
+            amount: amountInPaise,
+            currency: currency || 'INR',
+            receipt: receipt || `rcpt_${Date.now()}`
+        };
+
+        try {
+            const order = await razorpayInstance.orders.create(orderOptions);
+            // Return { order_id, amount, currency } as required by spec, plus id & key_id for client convenience
+            return res.status(200).json({
+                order_id: order.id,
+                id: order.id,
+                amount: order.amount,
+                currency: order.currency,
+                key_id: keyId,
+                keyId: keyId,
+                receipt: order.receipt
+            });
+        } catch (rzpErr) {
+            console.error('Razorpay orders.create error:', rzpErr);
+            // Handle auth failures (return 401)
+            if (rzpErr.statusCode === 401 || (rzpErr.error && rzpErr.error.code === 'BAD_REQUEST_ERROR' && rzpErr.error.description?.toLowerCase().includes('auth'))) {
+                return res.status(401).json({ 
+                    error: 'Razorpay authentication failed. Invalid Key ID or Key Secret.' 
+                });
+            }
+            // Handle Razorpay API errors (return 500)
+            return res.status(500).json({ 
+                error: 'Failed to create Razorpay order.', 
+                details: rzpErr.error ? rzpErr.error.description : rzpErr.message 
+            });
+        }
+    } catch (err) {
+        console.error('Razorpay create-order server error:', err);
+        return res.status(500).json({ error: 'Internal server error creating payment order.' });
+    }
+};
+
+app.post('/api/create-order', handleCreateRazorpayOrder);
+app.post('/create-order', handleCreateRazorpayOrder);
+app.post('/api/razorpay/create-order', handleCreateRazorpayOrder);
+
+// 2. Verify Payment: POST /api/verify-payment, POST /verify-payment, POST /api/razorpay/verify-payment
+const handleVerifyRazorpayPayment = async (req, res) => {
     try {
         const { 
+            order_id, 
+            payment_id, 
+            signature, 
             razorpay_order_id, 
             razorpay_payment_id, 
             razorpay_signature, 
@@ -1973,137 +2008,184 @@ app.post('/api/razorpay/verify-payment', async (req, res) => {
             discount 
         } = req.body;
 
-        if (!customer || !items || !Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ error: 'Missing customer or cart items.' });
+        const effectiveOrderId = razorpay_order_id || order_id;
+        const effectivePaymentId = razorpay_payment_id || payment_id;
+        const effectiveSignature = razorpay_signature || signature;
+
+        // STEP 3 Requirement: Missing fields validation -> return 400
+        if (!effectiveOrderId || !effectivePaymentId || !effectiveSignature) {
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Missing required fields for signature verification (order_id, payment_id, signature).' 
+            });
         }
 
         const { keySecret } = await getRazorpayConfig();
-
-        // Verify signature if secret is present and not simulated
-        if (keySecret && razorpay_signature && !razorpay_order_id?.startsWith('order_sim_') && !razorpay_payment_id?.startsWith('pay_test_')) {
-            const body = razorpay_order_id + '|' + razorpay_payment_id;
-            const expectedSignature = crypto
-                .createHmac('sha256', keySecret)
-                .update(body.toString())
-                .digest('hex');
-
-            if (expectedSignature !== razorpay_signature) {
-                return res.status(400).json({ error: 'Razorpay payment signature verification failed.' });
-            }
-        }
-
-        // Fetch products to decrement stock and calculate costPrices
-        let products = [];
-        if (useMongo) {
-            products = await ProductModel.find().lean();
-        } else {
-            products = await readJson(productsPath);
-        }
-
-        const validatedItems = [];
-        for (const item of items) {
-            const productRef = products.find(p => Number(p.id) === Number(item.id));
-            const size = item.size || 'M';
-            const price = productRef ? productRef.price : (item.price || 0);
-            const costPrice = productRef?.costPrice !== undefined ? Number(productRef.costPrice) : Math.round(price * 0.5);
-            const quantity = parseInt(item.quantity) || 1;
-
-            validatedItems.push({
-                id: item.id,
-                title: productRef ? productRef.title : item.title,
-                image: productRef ? productRef.image : item.image,
-                price: price,
-                costPrice: costPrice,
-                size: size,
-                quantity: quantity,
-                category: productRef ? productRef.category : item.category
+        if (!keySecret) {
+            return res.status(500).json({ 
+                success: false, 
+                error: 'Razorpay KEY_SECRET is not configured on server.' 
             });
         }
 
-        const finalSubtotal = subtotal !== undefined ? Number(subtotal) : validatedItems.reduce((s, it) => s + (it.price * it.quantity), 0);
-        const finalDelivery = delivery !== undefined ? Number(delivery) : (finalSubtotal >= 999 ? 0 : 60);
-        const finalTotal = total !== undefined ? Number(total) : (finalSubtotal + finalDelivery);
+        // STEP 3 Requirement: Algorithm HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+        const expectedSignature = crypto
+            .createHmac('sha256', keySecret)
+            .update(`${effectiveOrderId}|${effectivePaymentId}`)
+            .digest('hex');
 
-        const orderId = `TR-${Math.floor(100000 + Math.random() * 900000)}`;
-        const dateString = new Date().toLocaleDateString('en-IN', {
-            day: 'numeric',
-            month: 'short',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        // Signature mismatch: return 400, do NOT mark as paid
+        if (expectedSignature !== effectiveSignature) {
+            console.warn(`[Razorpay] Signature mismatch for order: ${effectiveOrderId}`);
+            return res.status(400).json({ 
+                success: false, 
+                error: 'Payment verification failed: Signature mismatch.' 
+            });
+        }
 
-        const courierData = generateCourierDetails(orderId, dateString, customer?.district);
+        // Signatures match! If this is a checkout submission, persist the booking and decrement stock
+        if (customer && items && Array.isArray(items) && items.length > 0) {
+            let products = [];
+            if (useMongo) {
+                products = await ProductModel.find().lean();
+            } else {
+                products = await readJson(productsPath);
+            }
 
-        const newBookingRecord = {
-            orderId: orderId,
-            date: dateString,
-            customer: {
-                ...customer,
-                payment: 'Razorpay Online',
+            const validatedItems = [];
+            for (const item of items) {
+                const productRef = products.find(p => Number(p.id) === Number(item.id));
+                const size = item.size || 'M';
+                const price = productRef ? productRef.price : (item.price || 0);
+                const costPrice = productRef?.costPrice !== undefined ? Number(productRef.costPrice) : Math.round(price * 0.5);
+                const quantity = parseInt(item.quantity) || 1;
+
+                validatedItems.push({
+                    id: item.id,
+                    title: productRef ? productRef.title : item.title,
+                    image: productRef ? productRef.image : item.image,
+                    price: price,
+                    costPrice: costPrice,
+                    size: size,
+                    quantity: quantity,
+                    category: productRef ? productRef.category : item.category
+                });
+            }
+
+            const finalSubtotal = subtotal !== undefined ? Number(subtotal) : validatedItems.reduce((s, it) => s + (it.price * it.quantity), 0);
+            const finalDelivery = delivery !== undefined ? Number(delivery) : (finalSubtotal >= 999 ? 0 : 60);
+            const finalTotal = total !== undefined ? Number(total) : (finalSubtotal + finalDelivery);
+
+            const bookingOrderId = `TR-${Math.floor(100000 + Math.random() * 900000)}`;
+            const dateString = new Date().toLocaleDateString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const courierData = generateCourierDetails(bookingOrderId, dateString, customer?.district);
+
+            const newBookingRecord = {
+                orderId: bookingOrderId,
+                date: dateString,
+                customer: {
+                    ...customer,
+                    payment: 'Razorpay Online',
+                    paymentMethod: 'razorpay',
+                    paymentStatus: 'Paid',
+                    razorpayOrderId: effectiveOrderId,
+                    razorpayPaymentId: effectivePaymentId
+                },
                 paymentMethod: 'razorpay',
+                payment: 'Razorpay Online',
                 paymentStatus: 'Paid',
-                razorpayOrderId: razorpay_order_id,
-                razorpayPaymentId: razorpay_payment_id || `pay_${Date.now()}`
-            },
-            paymentMethod: 'razorpay',
-            payment: 'Razorpay Online',
-            paymentStatus: 'Paid',
-            razorpayOrderId: razorpay_order_id,
-            razorpayPaymentId: razorpay_payment_id || `pay_${Date.now()}`,
-            items: validatedItems,
-            subtotal: finalSubtotal,
-            delivery: finalDelivery,
-            total: finalTotal,
-            couponCode: couponCode || undefined,
-            discount: discount || 0,
-            status: 'Confirmed',
-            ...courierData
-        };
+                razorpayOrderId: effectiveOrderId,
+                razorpayPaymentId: effectivePaymentId,
+                items: validatedItems,
+                subtotal: finalSubtotal,
+                delivery: finalDelivery,
+                total: finalTotal,
+                couponCode: couponCode || undefined,
+                discount: discount || 0,
+                status: 'Confirmed',
+                ...courierData
+            };
 
-        // Decrement stock & persist
-        if (useMongo) {
-            for (const item of validatedItems) {
-                await ProductModel.findOneAndUpdate(
-                    { id: item.id },
-                    { $inc: { stock: -item.quantity } }
-                );
-                const p = await ProductModel.findOne({ id: item.id });
-                if (p && p.stock <= 0) {
-                    p.inStock = false;
-                    await p.save();
+            // Decrement stock & persist
+            if (useMongo) {
+                for (const item of validatedItems) {
+                    await ProductModel.findOneAndUpdate(
+                        { id: item.id },
+                        { $inc: { stock: -item.quantity } }
+                    );
+                    const p = await ProductModel.findOne({ id: item.id });
+                    if (p && p.stock <= 0) {
+                        p.inStock = false;
+                        await p.save();
+                    }
                 }
+                const bookingDoc = new BookingModel(newBookingRecord);
+                await bookingDoc.save();
+                return res.status(200).json({
+                    success: true,
+                    message: 'Payment verified successfully and order created.',
+                    order_id: effectiveOrderId,
+                    payment_id: effectivePaymentId,
+                    booking: bookingDoc,
+                    ...bookingDoc.toObject()
+                });
+            } else {
+                const updatedProductsList = products.map(p => {
+                    const boughtItems = validatedItems.filter(vi => vi.id === p.id);
+                    if (boughtItems.length > 0) {
+                        const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
+                        const newStock = Math.max(0, p.stock - totalBoughtQty);
+                        return {
+                            ...p,
+                            stock: newStock,
+                            inStock: newStock > 0 ? p.inStock : false
+                        };
+                    }
+                    return p;
+                });
+                await writeJson(productsPath, updatedProductsList);
+
+                const currentBookings = await readJson(bookingsPath);
+                currentBookings.unshift(newBookingRecord);
+                await writeJson(bookingsPath, currentBookings);
+
+                return res.status(200).json({
+                    success: true,
+                    message: 'Payment verified successfully and order created.',
+                    order_id: effectiveOrderId,
+                    payment_id: effectivePaymentId,
+                    booking: newBookingRecord,
+                    ...newBookingRecord
+                });
             }
-            const bookingDoc = new BookingModel(newBookingRecord);
-            await bookingDoc.save();
-            return res.status(201).json(bookingDoc);
-        } else {
-            const updatedProductsList = products.map(p => {
-                const boughtItems = validatedItems.filter(vi => vi.id === p.id);
-                if (boughtItems.length > 0) {
-                    const totalBoughtQty = boughtItems.reduce((sum, item) => sum + item.quantity, 0);
-                    const newStock = Math.max(0, p.stock - totalBoughtQty);
-                    return {
-                        ...p,
-                        stock: newStock,
-                        inStock: newStock > 0 ? p.inStock : false
-                    };
-                }
-                return p;
-            });
-            await writeJson(productsPath, updatedProductsList);
-
-            const currentBookings = await readJson(bookingsPath);
-            currentBookings.unshift(newBookingRecord);
-            await writeJson(bookingsPath, currentBookings);
-
-            return res.status(201).json(newBookingRecord);
         }
+
+        // Return standard verification success response when not creating a store booking
+        return res.status(200).json({
+            success: true,
+            message: 'Payment signature verified successfully.',
+            order_id: effectiveOrderId,
+            payment_id: effectivePaymentId
+        });
     } catch (err) {
         console.error('Razorpay verify-payment error:', err);
-        res.status(500).json({ error: 'Failed to verify payment and process booking.' });
+        return res.status(500).json({ 
+            success: false, 
+            error: 'Failed to verify payment signature on server.' 
+        });
     }
-});
+};
+
+app.post('/api/verify-payment', handleVerifyRazorpayPayment);
+app.post('/verify-payment', handleVerifyRazorpayPayment);
+app.post('/api/razorpay/verify-payment', handleVerifyRazorpayPayment);
 
 // Fetch reviews for a specific product
 app.get('/api/products/:id/reviews', async (req, res) => {
