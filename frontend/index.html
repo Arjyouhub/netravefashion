@@ -14,9 +14,44 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <!-- Razorpay Standard Web Checkout -->
     <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    <style>
+      /* Completely hide Vercel Toolbar & floating badge */
+      vercel-live-feedback,
+      [data-vercel-toolbar],
+      #__vercel-toolbar,
+      #vercel-toolbar,
+      [id*="vercel-toolbar"],
+      [class*="vercel-toolbar"] {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        width: 0 !important;
+        height: 0 !important;
+        position: absolute !important;
+        top: -9999px !important;
+        left: -9999px !important;
+        z-index: -99999 !important;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
+    <script>
+      (function() {
+        const removeToolbar = () => {
+          const targets = document.querySelectorAll('vercel-live-feedback, [data-vercel-toolbar], #__vercel-toolbar, #vercel-toolbar, [id*="vercel-toolbar"]');
+          targets.forEach(t => t.remove());
+        };
+        removeToolbar();
+        window.addEventListener('DOMContentLoaded', removeToolbar);
+        window.addEventListener('load', removeToolbar);
+        const observer = new MutationObserver(removeToolbar);
+        if (document.documentElement) {
+          observer.observe(document.documentElement, { childList: true, subtree: true });
+        }
+      })();
+    </script>
   </body>
 </html>

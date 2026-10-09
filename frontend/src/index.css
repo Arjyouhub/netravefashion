@@ -7137,3 +7137,24 @@ h1, h2, h3, h4, h5, h6 {
         font-size: 20px !important;
     }
 }
+
+/* Completely suppress Vercel toolbar and floating feedback widget */
+vercel-live-feedback,
+[data-vercel-toolbar],
+#__vercel-toolbar,
+#vercel-toolbar,
+[id*="vercel-toolbar"],
+[class*="vercel-toolbar"],
+[data-theme-source*="vercel"],
+div[data-name*="vercel-toolbar"] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    position: absolute !important;
+    top: -9999px !important;
+    left: -9999px !important;
+    z-index: -99999 !important;
+}
