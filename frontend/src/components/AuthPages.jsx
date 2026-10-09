@@ -316,20 +316,6 @@ export default function AuthPages({
 
     return (
         <div className="auth-page-root">
-            {/* Desktop Quick Return Button */}
-            <button 
-                type="button" 
-                className="auth-desktop-back-btn"
-                onClick={() => onNavigate && onNavigate('home')}
-                aria-label="Return to Store"
-            >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M19 12H5"/>
-                    <path d="m12 19-7-7 7-7"/>
-                </svg>
-                <span>Back to Store</span>
-            </button>
-
             {/* Main Split Authentication Card */}
             <div className="auth-master-card">
                 {/* ------------------------------------------------------------------

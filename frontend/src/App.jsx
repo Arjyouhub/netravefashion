@@ -9,9 +9,7 @@ import CheckoutModal from './components/CheckoutModal';
 import SuccessModal from './components/SuccessModal';
 import BookingsModal from './components/BookingsModal';
 import AdminPanel from './components/AdminPanel';
-import AuthModal from './components/AuthModal';
 import DeveloperModal from './components/DeveloperModal';
-import ProfileModal from './components/ProfileModal';
 import TrackingModal from './components/TrackingModal';
 import WishlistModal from './components/WishlistModal';
 import CategoryPage from './components/CategoryPage';
@@ -352,8 +350,6 @@ export default function App() {
     const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
     const [isBookingsOpen, setIsBookingsOpen] = useState(false);
     const [isSuccessOpen, setIsSuccessOpen] = useState(false);
-    const [isAuthOpen, setIsAuthOpen] = useState(false);
-    const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [pendingCheckout, setPendingCheckout] = useState(false);
     const [isDeveloperOpen, setIsDeveloperOpen] = useState(false);
     const [user, setUser] = useState(() => {
@@ -1266,7 +1262,7 @@ export default function App() {
                                 localStorage.setItem('netrave_user', JSON.stringify(updated));
                             } catch (e) {}
                         }}
-                        onOpenLogin={() => setIsAuthOpen(true)}
+                        onOpenLogin={() => navigate('login')}
                         API_BASE_URL={API_BASE_URL}
                         showToast={showToast}
                         initialTab={pageParams.tab || 'profile'}
@@ -1366,17 +1362,6 @@ export default function App() {
                 }}
             />
 
-            <AuthModal
-                isOpen={isAuthOpen}
-                onClose={() => {
-                    setIsAuthOpen(false);
-                    setPendingCheckout(false);
-                }}
-                onAuthSuccess={handleAuthSuccess}
-                API_BASE_URL={API_BASE_URL}
-                settings={settings}
-            />
-
             <SuccessModal
                 isOpen={isSuccessOpen}
                 order={placedOrder}
@@ -1419,31 +1404,6 @@ export default function App() {
                     setIsWishlistOpen(false);
                     setSelectedProductId(id);
                 }}
-            />
-
-            <ProfileModal
-                isOpen={isProfileOpen}
-                onClose={() => setIsProfileOpen(false)}
-                user={user}
-                bookings={bookings}
-                cartItems={cart}
-                cartCount={cart.reduce((sum, item) => sum + item.quantity, 0)}
-                onOpenCart={() => {
-                    setIsProfileOpen(false);
-                    setIsCartOpen(true);
-                }}
-                whatsappNumber={settings?.whatsappNumber}
-                onUpdateUser={(updated) => {
-                    setUser(updated);
-                    setCookie('netrave_user', updated);
-                }}
-                onViewOrders={() => {
-                    setIsProfileOpen(false);
-                    setIsBookingsOpen(true);
-                }}
-                onLogout={handleLogout}
-                API_BASE_URL={API_BASE_URL}
-                showToast={showToast}
             />
 
             {/* Mobile Bottom Navigation Bar Matching Reference */}

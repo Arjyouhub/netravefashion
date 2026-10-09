@@ -36,6 +36,17 @@ export default function MyAccountPage({
         }
     }, [user]);
 
+    useEffect(() => {
+        if (isEditModalOpen) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [isEditModalOpen]);
+
     const displayName = currentUser?.name || 'Customer';
     const displayPhone = currentUser?.phone || '';
     const displayEmail = currentUser?.email || '';
@@ -140,7 +151,7 @@ export default function MyAccountPage({
                         <button
                             type="button"
                             className="netrave-btn-primary account-hub-login-btn"
-                            onClick={() => (onOpenLogin ? onOpenLogin() : handleNav('login'))}
+                            onClick={() => handleNav('login')}
                         >
                             Sign In / Register
                         </button>
