@@ -2584,7 +2584,7 @@ export default function AdminPanel({
                                         </button>
                                     </div>
 
-                                    <div style={{ overflowX: 'auto', width: '100%' }}>
+                                    <div className="admin-recent-orders-table-wrapper">
                                         <table className="admin-recent-orders-table">
                                             <thead>
                                                 <tr>
@@ -2685,6 +2685,83 @@ export default function AdminPanel({
                                                 )}
                                             </tbody>
                                         </table>
+                                    </div>
+
+                                    {/* Mobile Cards View (< 768px) */}
+                                    <div className="admin-recent-orders-mobile-list">
+                                        {recentOrdersSorted.length > 0 ? recentOrdersSorted.map(booking => {
+                                            const initials = getCustomerInitialsText(booking.customer?.name);
+                                            const itemsCount = (booking.items || []).length || 1;
+                                            const previewItems = (booking.items || []).slice(0, 3);
+                                            const orderAmt = Number(booking.subtotal || booking.total) || 0;
+                                            const statusBadge = getStatusSemanticBadge(booking.status);
+                                            const { dateStr, timeStr } = getFormattedOrderDate(booking);
+
+                                            return (
+                                                <div 
+                                                    key={booking.orderId} 
+                                                    className="admin-recent-order-m-card"
+                                                    onClick={() => setSelectedAdminBooking(booking)}
+                                                >
+                                                    <div className="admin-recent-order-m-header">
+                                                        <span className="admin-recent-order-m-id">
+                                                            #{booking.orderId.replace(/^(NTR|ORD|#)+/i, '') || booking.orderId}
+                                                        </span>
+                                                        <span 
+                                                            className="admin-recent-order-m-badge"
+                                                            style={{
+                                                                background: statusBadge.bg,
+                                                                color: statusBadge.color,
+                                                                border: `1px solid ${statusBadge.border}`
+                                                            }}
+                                                        >
+                                                            {statusBadge.label}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="admin-recent-order-m-body">
+                                                        <div className="admin-order-customer-cell">
+                                                            <div className="admin-avatar-initials-bubble">{initials}</div>
+                                                            <div className="admin-recent-order-m-cust-info">
+                                                                <span className="admin-recent-order-m-name">{booking.customer?.name || 'Customer'}</span>
+                                                                <span className="admin-recent-order-m-time">{dateStr} • {timeStr}</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="admin-recent-order-m-amt">
+                                                            ₹{orderAmt.toLocaleString('en-IN')}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="admin-recent-order-m-footer">
+                                                        <div className="admin-order-thumb-stack">
+                                                            {previewItems.map((it, idx) => (
+                                                                <img 
+                                                                    key={idx}
+                                                                    src={it.image || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'} 
+                                                                    alt={it.title || 'Product'} 
+                                                                    className="admin-order-mini-thumb"
+                                                                    onError={(e) => { e.target.src = 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=100'; }}
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                        <span className="admin-recent-order-m-count">
+                                                            {itemsCount} {itemsCount === 1 ? 'item' : 'items'}
+                                                        </span>
+                                                        <button 
+                                                            type="button" 
+                                                            className="admin-recent-order-m-view-btn"
+                                                            onClick={(e) => { e.stopPropagation(); setSelectedAdminBooking(booking); }}
+                                                        >
+                                                            Details →
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }) : (
+                                            <div style={{ textAlign: 'center', padding: '30px 16px', color: '#94a3b8' }}>
+                                                <p style={{ margin: 0, fontWeight: '600', color: '#64748b' }}>No orders yet</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
