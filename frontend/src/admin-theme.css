@@ -1081,9 +1081,18 @@
 /* 3.2 MIDDLE DASHBOARD GRID (Sales Overview + Order Status + Top Categories) */
 .admin-middle-dashboard-grid {
     display: grid;
-    grid-template-columns: 2.35fr 1.05fr 1.05fr;
-    gap: 14px;
-    margin-bottom: 14px;
+    grid-template-columns: 1.4fr 1.3fr 1.3fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+@media (max-width: 1400px) {
+    .admin-middle-dashboard-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .admin-middle-dashboard-grid > :first-child {
+        grid-column: 1 / -1;
+    }
 }
 
 .admin-dash-card {
@@ -1184,8 +1193,8 @@
 
 .admin-order-donut-wrap {
     position: relative;
-    width: 140px;
-    height: 140px;
+    width: 120px;
+    height: 120px;
     flex-shrink: 0;
 }
 
@@ -1208,17 +1217,17 @@
 }
 
 .admin-donut-center-total {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 900;
     color: #0f172a;
     line-height: 1;
 }
 
 .admin-donut-center-label {
-    font-size: 10px;
+    font-size: 9.5px;
     font-weight: 700;
     color: #64748b;
-    margin-top: 3px;
+    margin-top: 2px;
     text-transform: uppercase;
     letter-spacing: 0.3px;
 }
@@ -1235,12 +1244,14 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    font-size: 12px;
-    padding: 4px 6px;
+    font-size: 12.5px;
+    padding: 5px 8px;
     border-radius: 6px;
     cursor: pointer;
     transition: background 0.12s;
     user-select: none;
+    gap: 10px;
+    box-sizing: border-box;
 }
 
 .admin-status-row-item:hover {
@@ -1253,6 +1264,8 @@
     gap: 8px;
     color: #334155;
     font-weight: 600;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .admin-status-dot-circle {
@@ -1265,6 +1278,10 @@
 .admin-status-count-val {
     font-weight: 700;
     color: #0f172a;
+    white-space: nowrap;
+    flex-shrink: 0;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
 }
 
 /* Top Categories List Layout */
@@ -2870,6 +2887,16 @@
         width: 34px !important;
         height: 34px !important;
         font-size: 16px !important;
+    }
+
+    .admin-order-status-body {
+        flex-direction: column !important;
+        align-items: center !important;
+        gap: 14px !important;
+    }
+
+    .admin-order-status-list {
+        width: 100% !important;
     }
 }
 
