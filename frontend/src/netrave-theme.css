@@ -3649,10 +3649,12 @@ html, body {
     .mobile-bottom-nav-bar { display: flex; }
     .netrave-page-wrapper { padding-bottom: 80px; }
 
-    /* Hero section on Mobile (Dedicated compact portrait background, reduced height, no secondary button) */
+    /* Hero section on Mobile (Dedicated compact portrait background, proper height, clean typography) */
     .netrave-hero-wrapper {
-        min-height: 380px;
-        height: 380px;
+        min-height: 430px;
+        height: 52vh;
+        max-height: 480px;
+        position: relative;
     }
     .hero-ambient-backdrop,
     .hero-ambient-pattern {
@@ -3662,7 +3664,7 @@ html, body {
         display: block !important;
         position: absolute;
         inset: 0;
-        background-position: center 20%;
+        background-position: center 22%;
         background-size: cover;
         background-repeat: no-repeat;
         z-index: 1;
@@ -3674,9 +3676,9 @@ html, body {
         inset: 0;
         background: linear-gradient(
             180deg,
-            rgba(10, 11, 14, 0.08) 0%,
-            rgba(10, 11, 14, 0.25) 35%,
-            rgba(10, 11, 14, 0.85) 75%,
+            rgba(10, 11, 14, 0.04) 0%,
+            rgba(10, 11, 14, 0.22) 38%,
+            rgba(10, 11, 14, 0.78) 72%,
             rgba(10, 11, 14, 0.98) 100%
         ) !important;
         z-index: 2;
@@ -3684,9 +3686,10 @@ html, body {
     }
     .netrave-hero-container {
         grid-template-columns: 1fr;
-        padding: 16px 16px 20px;
-        min-height: 380px;
-        height: 380px;
+        padding: 16px 18px 24px;
+        min-height: 430px;
+        height: 52vh;
+        max-height: 480px;
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
@@ -3699,36 +3702,42 @@ html, body {
         padding-right: 0;
         z-index: 5;
         text-align: left;
-        margin-bottom: 12px;
+        margin-bottom: 8px;
         max-width: 100%;
     }
     .netrave-hero-tag {
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         color: var(--netrave-yellow, #FFD400);
-        padding: 4px 10px;
-        border-radius: 20px;
+        padding: 4px 11px;
+        border-radius: 999px;
         display: inline-block;
         font-weight: 800;
-        letter-spacing: 1.2px;
+        letter-spacing: 1px;
         font-size: 10.5px;
         border: 1px solid rgba(255, 212, 0, 0.4);
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
-        margin-bottom: 6px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+        margin-bottom: 7px;
     }
     .netrave-hero-title {
-        font-size: clamp(22px, 6.5vw, 28px);
-        line-height: 1.15;
+        font-family: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+        font-size: 24px;
+        font-weight: 800;
+        line-height: 1.18;
+        letter-spacing: -0.3px;
         margin-bottom: 6px;
         color: #ffffff;
-        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.95), 0 4px 20px rgba(0, 0, 0, 0.85);
+        text-shadow: 0 2px 10px rgba(0, 0, 0, 0.75);
     }
     .netrave-hero-desc {
-        color: #f1f5f9;
-        font-size: 12.5px;
-        line-height: 1.4;
-        margin-bottom: 12px;
-        max-width: 300px;
-        text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+        color: rgba(255, 255, 255, 0.88);
+        font-size: 13px;
+        font-weight: 400;
+        line-height: 1.44;
+        margin-bottom: 14px;
+        max-width: 100%;
+        text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
     }
     .hero-trust-perks {
         display: none !important;
@@ -3745,12 +3754,14 @@ html, body {
         align-items: center;
         justify-content: center;
         width: auto;
-        min-width: 160px;
-        max-width: 220px;
+        min-width: 155px;
+        max-width: 210px;
         text-align: center;
-        padding: 10px 20px;
+        padding: 11px 22px;
         font-size: 13.5px;
-        border-radius: 8px;
+        font-weight: 700;
+        border-radius: 9px;
+        box-shadow: 0 4px 14px rgba(245, 158, 11, 0.35);
     }
     /* Hide secondary button (View Best Sellers / Explore Styles) on mobile */
     .hero-btn-secondary {
@@ -3765,39 +3776,114 @@ html, body {
         display: none !important;
     }
     .hero-dots-row {
-        bottom: 8px;
+        bottom: 10px;
         z-index: 10;
     }
 
+    /* Home sections flow on mobile */
+    .home-sections-flow {
+        gap: 32px;
+        padding-top: 16px;
+    }
+    .section-header-row {
+        margin-bottom: 14px;
+        gap: 10px;
+    }
+    .section-main-heading {
+        font-size: 18px !important;
+        font-weight: 800;
+        letter-spacing: -0.3px;
+        color: var(--netrave-gray-900);
+    }
+    .section-subtitle {
+        font-size: 12px !important;
+        margin-top: 2px;
+    }
+    .section-tabs-row {
+        display: flex;
+        gap: 7px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+    }
+    .section-tabs-row::-webkit-scrollbar {
+        display: none;
+    }
+    .section-tab-btn {
+        padding: 6px 14px;
+        font-size: 12px;
+        font-weight: 600;
+        border-radius: 999px;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
     /* Circular categories */
+    .categories-circle-section {
+        padding: 8px 0;
+    }
+    .categories-circle-scroll {
+        gap: 14px;
+        padding: 6px 0;
+    }
     .cat-circle-avatar {
-        width: 60px;
-        height: 60px;
+        width: 58px;
+        height: 58px;
+        margin-bottom: 5px;
     }
     .cat-circle-title {
-        font-size: 11.5px;
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    /* Promo Banners on mobile */
+    .promo-card {
+        padding: 16px 14px;
+        min-height: 125px;
+        border-radius: 12px;
+    }
+    .promo-card-title {
+        font-size: 16px !important;
+        line-height: 1.15;
+        font-weight: 800;
+        margin-bottom: 5px;
+    }
+    .promo-card-badge {
+        font-size: 11.5px !important;
+        margin-bottom: 5px;
+    }
+    .promo-cta-link {
+        font-size: 11.5px !important;
+        font-weight: 700;
     }
 
     /* 2-Column Product Grid */
     .netrave-products-grid {
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 10px;
     }
     .category-product-grid-display {
         grid-template-columns: repeat(2, 1fr);
-        gap: 12px;
+        gap: 10px;
     }
 
     /* Mobile product card */
-    .card-body { padding: 10px; }
-    .card-product-title { font-size: 13px; }
-    .card-price-current { font-size: 15px; }
-    .card-add-btn { font-size: 12px; padding: 7px; }
+    .card-body { padding: 9px 10px 10px; }
+    .card-product-title { 
+        font-size: 12.5px;
+        line-height: 1.3;
+        font-weight: 600;
+    }
+    .card-price-current { font-size: 14.5px; font-weight: 800; }
+    .card-price-original { font-size: 11px; }
+    .card-discount-badge { font-size: 9.5px; padding: 2px 5px; }
+    .card-add-btn { font-size: 11.5px; padding: 7px 10px; font-weight: 700; border-radius: 6px; }
 
     /* Benefits 1-column or 2-column */
     .benefits-grid {
         grid-template-columns: 1fr;
-        gap: 14px;
+        gap: 12px;
     }
 
     /* Footwear & Trendy banners */
