@@ -589,7 +589,7 @@ app.get('/api/settings', async (req, res) => {
                 maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: settings.maintenanceExpiry || 0,
                 offerNotification: settings.offerNotification || '',
-                razorpayKeyId: settings.razorpayKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ',
+                razorpayKeyId: process.env.RAZORPAY_KEY_ID || settings.razorpayKeyId || 'rzp_live_TlpkVGUFJvf2lv',
                 razorpayEnabled: settings.razorpayEnabled !== undefined ? settings.razorpayEnabled : true,
                 googleClientId: settings.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
@@ -602,7 +602,7 @@ app.get('/api/settings', async (req, res) => {
                 maintenanceMessage: data?.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: data?.maintenanceExpiry || 0,
                 offerNotification: data?.offerNotification || '',
-                razorpayKeyId: data?.razorpayKeyId || process.env.RAZORPAY_KEY_ID || 'rzp_test_TiZL1iB3f5bTHJ',
+                razorpayKeyId: process.env.RAZORPAY_KEY_ID || data?.razorpayKeyId || 'rzp_live_TlpkVGUFJvf2lv',
                 razorpayEnabled: data?.razorpayEnabled !== undefined ? data?.razorpayEnabled : true,
                 googleClientId: data?.googleClientId || process.env.GOOGLE_CLIENT_ID || ''
             });
@@ -1881,8 +1881,8 @@ app.patch('/api/bookings/:orderId/courier', async (req, res) => {
 // 10B. RAZORPAY PAYMENT GATEWAY ENDPOINTS
 // --------------------------------------------------------------------------
 async function getRazorpayConfig() {
-    let keyId = process.env.RAZORPAY_KEY_ID || 'rzp_test_TlUr8CBAq66765';
-    let keySecret = process.env.RAZORPAY_KEY_SECRET || '9DWv1HXzIw8sOaQc0YEDClCH';
+    let keyId = process.env.RAZORPAY_KEY_ID || 'rzp_live_TlpkVGUFJvf2lv';
+    let keySecret = process.env.RAZORPAY_KEY_SECRET || 'QDaTxvxvNq19jyC77BER8ATh';
     let isEnabled = true;
 
     try {
@@ -1988,6 +1988,7 @@ const handleCreateRazorpayOrder = async (req, res) => {
 app.post('/api/create-order', handleCreateRazorpayOrder);
 app.post('/create-order', handleCreateRazorpayOrder);
 app.post('/api/razorpay/create-order', handleCreateRazorpayOrder);
+app.post('/api/api/create-order', handleCreateRazorpayOrder);
 
 // 2. Verify Payment: POST /api/verify-payment, POST /verify-payment, POST /api/razorpay/verify-payment
 const handleVerifyRazorpayPayment = async (req, res) => {
@@ -2186,6 +2187,7 @@ const handleVerifyRazorpayPayment = async (req, res) => {
 app.post('/api/verify-payment', handleVerifyRazorpayPayment);
 app.post('/verify-payment', handleVerifyRazorpayPayment);
 app.post('/api/razorpay/verify-payment', handleVerifyRazorpayPayment);
+app.post('/api/api/verify-payment', handleVerifyRazorpayPayment);
 
 // Fetch reviews for a specific product
 app.get('/api/products/:id/reviews', async (req, res) => {

@@ -4,6 +4,7 @@ export default function CheckoutPage({
     cart = [],
     user,
     onSubmitBooking,
+    onRazorpaySuccess,
     onNavigate,
     settings = {},
     API_BASE_URL = 'http://localhost:5001/api'
@@ -14,6 +15,8 @@ export default function CheckoutPage({
     const [isAddingNewAddress, setIsAddingNewAddress] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [paymentError, setPaymentError] = useState('');
+
+    const cleanApiBase = (API_BASE_URL || '').replace(/\/api$/, '');
 
     const [savedAddresses, setSavedAddresses] = useState(() => {
         try {
@@ -73,6 +76,11 @@ export default function CheckoutPage({
     };
 
     const handlePlaceOrder = async () => {
+        if (!cart || cart.length === 0) {
+            setPaymentError('Your cart is empty. Please add items before placing an order.');
+            return;
+        }
+
         setIsSubmitting(true);
         setPaymentError('');
         const currentAddr = savedAddresses[selectedAddressIndex] || savedAddresses[0];
@@ -80,8 +88,8 @@ export default function CheckoutPage({
         const formattedItems = cart.map(item => ({
             id: item.id,
             title: item.title,
-            size: item.selectedSize || '8',
-            color: item.selectedColor || 'White',
+            size: item.selectedSize || item.size || '8',
+            color: item.selectedColor || item.color || 'White',
             price: item.price,
             quantity: item.quantity,
             image: item.image || (item.images && item.images[0])
@@ -91,10 +99,13 @@ export default function CheckoutPage({
             orderId: 'NTR' + Math.floor(100000 + Math.random() * 900000),
             items: formattedItems,
             customer: {
-                name: currentAddr?.name || 'Customer',
-                phone: currentAddr?.phone || '+91 9876543210',
+                name: currentAddr?.name || user?.name || 'Customer',
+                phone: currentAddr?.phone || user?.phone || '+91 9876543210',
+                whatsapp: currentAddr?.phone || user?.phone || '+91 9876543210',
+                email: user?.email || '',
                 address: currentAddr?.street || 'Kerala',
                 district: currentAddr?.city || 'Kozhikode',
+                city: currentAddr?.city || 'Kozhikode',
                 state: currentAddr?.state || 'Kerala',
                 pincode: currentAddr?.pincode || '673525'
             },
@@ -107,11 +118,9 @@ export default function CheckoutPage({
             date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
         };
 
-        // If Cash on Delivery, complete booking immediately
+        // If Cash on Delivery was selected, advise user that online payment is required
         if (paymentMethod === 'cod') {
-            if (onSubmitBooking) {
-                await onSubmitBooking(bookingPayload);
-            }
+            setPaymentError('Cash on Delivery (COD) is temporarily unavailable. Please select UPI, Card, or Net Banking to proceed.');
             setIsSubmitting(false);
             return;
         }
@@ -120,13 +129,15 @@ export default function CheckoutPage({
         try {
             const scriptLoaded = await loadRazorpayScript();
             if (!scriptLoaded) {
-                setPaymentError('Razorpay checkout script failed to load.');
+                setPaymentError('Razorpay checkout script failed to load. Please verify your connection.');
                 setIsSubmitting(false);
                 return;
             }
 
             const amountInPaise = Math.max(100, Math.round(Number(totalAmount) * 100));
-            const createOrderRes = await fetch(`${API_BASE_URL}/create-order`, {
+            const createOrderUrl = `${cleanApiBase}/api/create-order`;
+
+            const createOrderRes = await fetch(createOrderUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -144,7 +155,7 @@ export default function CheckoutPage({
             }
 
             const orderData = await createOrderRes.json();
-            const razorpayKey = orderData.key_id || orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+            const razorpayKey = orderData.key_id || orderData.keyId || (settings && settings.razorpayKeyId) || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TlpkVGUFJvf2lv';
             const razorpayOrderId = orderData.order_id || orderData.id;
 
             const options = {
@@ -156,14 +167,16 @@ export default function CheckoutPage({
                 image: '/assets/logo.png',
                 order_id: razorpayOrderId,
                 prefill: {
-                    name: currentAddr?.name || '',
-                    contact: currentAddr?.phone || '',
-                    email: user?.email || ''
+                    name: currentAddr?.name || user?.name || '',
+                    contact: currentAddr?.phone || user?.phone || '',
+                    email: user?.email || '',
+                    method: paymentMethod === 'cod' ? undefined : paymentMethod
                 },
                 theme: { color: '#f59e0b' },
                 handler: async function (response) {
                     try {
-                        const verifyRes = await fetch(`${API_BASE_URL}/verify-payment`, {
+                        const verifyPaymentUrl = `${cleanApiBase}/api/verify-payment`;
+                        const verifyRes = await fetch(verifyPaymentUrl, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
@@ -183,14 +196,18 @@ export default function CheckoutPage({
 
                         const verifyData = await verifyRes.json();
                         if (verifyRes.ok && verifyData.success !== false) {
-                            if (onSubmitBooking) {
-                                await onSubmitBooking({
-                                    ...bookingPayload,
-                                    ...verifyData,
-                                    status: 'Confirmed',
-                                    paymentMethod: 'RAZORPAY',
-                                    paymentStatus: 'Paid'
-                                });
+                            const confirmedOrderRecord = verifyData.booking || {
+                                ...bookingPayload,
+                                ...verifyData,
+                                status: 'Confirmed',
+                                paymentMethod: 'RAZORPAY',
+                                paymentStatus: 'Paid'
+                            };
+
+                            if (onRazorpaySuccess) {
+                                onRazorpaySuccess(confirmedOrderRecord);
+                            } else if (onSubmitBooking) {
+                                await onSubmitBooking(confirmedOrderRecord);
                             }
                         } else {
                             setPaymentError(verifyData.error || 'Payment verification failed on server.');
@@ -222,6 +239,37 @@ export default function CheckoutPage({
             setIsSubmitting(false);
         }
     };
+
+    if (!cart || cart.length === 0) {
+        return (
+            <div className="netrave-page-wrapper checkout-mobile-page">
+                <div className="checkout-top-header">
+                    <div className="checkout-header-inner">
+                        <button 
+                            type="button" 
+                            className="checkout-back-btn" 
+                            onClick={() => onNavigate && onNavigate('home')}
+                        >
+                            ← Back to Shop
+                        </button>
+                    </div>
+                </div>
+                <div className="netrave-container" style={{ textAlign: 'center', padding: '60px 20px' }}>
+                    <div style={{ fontSize: '50px', marginBottom: '16px' }}>🛍️</div>
+                    <h2 style={{ color: '#fff', fontSize: '24px', fontWeight: '800', marginBottom: '8px' }}>Your Shopping Bag is Empty</h2>
+                    <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '24px' }}>Add your favorite items from our latest collection before proceeding to checkout.</p>
+                    <button 
+                        type="button" 
+                        className="btn-primary-yellow"
+                        onClick={() => onNavigate && onNavigate('home')}
+                        style={{ padding: '12px 28px', borderRadius: '10px', fontWeight: '800', cursor: 'pointer' }}
+                    >
+                        Explore Trending Drops →
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="netrave-page-wrapper checkout-mobile-page">
@@ -393,25 +441,34 @@ export default function CheckoutPage({
 
                             <div className="payment-methods-mobile-list">
                                 {[
-                                    { key: 'upi', label: 'UPI (Google Pay, PhonePe, Paytm, QR)', icon: '🟢', badge: 'Fastest' },
-                                    { key: 'card', label: 'Credit / Debit Card (Visa, MasterCard, RuPay)', icon: '💳' },
-                                    { key: 'netbanking', label: 'Net Banking (All Indian Banks)', icon: '🏦' },
-                                    { key: 'cod', label: 'Cash on Delivery (COD)', icon: '💵' }
+                                    { key: 'upi', label: 'UPI (Google Pay, PhonePe, Paytm, QR)', icon: '⚡', badge: 'Instant • Live' },
+                                    { key: 'card', label: 'Credit / Debit Card (Visa, MasterCard, RuPay)', icon: '💳', badge: 'Secure 3DS' },
+                                    { key: 'netbanking', label: 'Net Banking & Wallets', icon: '🏦', badge: 'All Banks' },
+                                    { key: 'cod', label: 'Cash on Delivery (COD)', icon: '💵', badge: 'Unavailable', disabled: true }
                                 ].map(m => (
-                                    <label key={m.key} className={`payment-method-row ${paymentMethod === m.key ? 'selected' : ''}`}>
+                                    <label 
+                                        key={m.key} 
+                                        className={`payment-method-row ${paymentMethod === m.key ? 'selected' : ''}`}
+                                        style={m.disabled ? { opacity: 0.55, cursor: 'not-allowed' } : { cursor: 'pointer' }}
+                                    >
                                         <div className="payment-left-item">
                                             <input 
                                                 type="radio" 
                                                 name="paymentMethod" 
                                                 checked={paymentMethod === m.key} 
-                                                onChange={() => setPaymentMethod(m.key)} 
+                                                disabled={m.disabled}
+                                                onChange={() => {
+                                                    if (!m.disabled) setPaymentMethod(m.key);
+                                                }} 
                                             />
                                             <span className="payment-method-label-text">
                                                 <span>{m.icon}</span> {m.label}
                                             </span>
                                         </div>
                                         {m.badge && (
-                                            <span className="payment-option-badge">{m.badge}</span>
+                                            <span className="payment-option-badge" style={m.disabled ? { background: 'rgba(239, 68, 68, 0.2)', color: '#ef4444' } : {}}>
+                                                {m.badge}
+                                            </span>
                                         )}
                                     </label>
                                 ))}

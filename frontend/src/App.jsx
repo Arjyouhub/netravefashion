@@ -1142,6 +1142,25 @@ export default function App() {
                         cart={cart}
                         user={user}
                         onSubmitBooking={handlePlaceBooking}
+                        onRazorpaySuccess={(orderData) => {
+                            setCart([]);
+                            localStorage.setItem('netrave_cart', JSON.stringify([]));
+                            if (user?.phone) {
+                                try {
+                                    localStorage.setItem(`netrave_user_cart_${user.phone}`, JSON.stringify([]));
+                                } catch (e) {
+                                    console.error(e);
+                                }
+                            }
+                            setPlacedOrder(orderData);
+                            setIsSuccessOpen(true);
+                            navigate('home');
+                            fetchBookings();
+                            fetch(`${API_BASE_URL}/products`)
+                                .then(res => res.ok ? res.json() : null)
+                                .then(data => { if (data) setProducts(data); })
+                                .catch(console.error);
+                        }}
                         onNavigate={navigate}
                         settings={settings}
                         API_BASE_URL={API_BASE_URL}
@@ -1281,7 +1300,7 @@ export default function App() {
                         setIsAuthOpen(true);
                         setIsCartOpen(false);
                     } else {
-                        setIsCheckoutOpen(true);
+                        navigate('checkout');
                         setIsCartOpen(false);
                     }
                 }}

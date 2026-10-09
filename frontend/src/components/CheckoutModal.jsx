@@ -60,6 +60,8 @@ export default function CheckoutModal({
     // Errors map
     const [errors, setErrors] = useState({});
 
+    const cleanApiBase = (API_BASE_URL || '').replace(/\/api$/, '');
+
     // Reset validations and prefill user on modal open
     useEffect(() => {
         if (!isOpen) return;
@@ -147,7 +149,7 @@ export default function CheckoutModal({
         setCouponLoading(true);
 
         try {
-            const response = await fetch(`${API_BASE_URL || ''}/api/coupons/validate`, {
+            const response = await fetch(`${cleanApiBase}/api/coupons/validate`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ code: couponCode.trim(), subtotal })
@@ -178,7 +180,7 @@ export default function CheckoutModal({
         setRazorpayError('');
 
         try {
-            const verifyRes = await fetch(`${API_BASE_URL || ''}/api/verify-payment`, {
+            const verifyRes = await fetch(`${cleanApiBase}/api/verify-payment`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -246,7 +248,7 @@ export default function CheckoutModal({
             // Amount in paise (minimum 100 paise = 1 INR)
             const amountInPaise = Math.max(100, Math.round(Number(total) * 100));
 
-            const orderRes = await fetch(`${API_BASE_URL || ''}/api/create-order`, {
+            const orderRes = await fetch(`${cleanApiBase}/api/create-order`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ 
@@ -265,7 +267,7 @@ export default function CheckoutModal({
 
             const orderData = await orderRes.json();
 
-            const razorpayKey = orderData.key_id || orderData.keyId || import.meta.env.VITE_RAZORPAY_KEY_ID;
+            const razorpayKey = orderData.key_id || orderData.keyId || (settings && settings.razorpayKeyId) || import.meta.env.VITE_RAZORPAY_KEY_ID || 'rzp_live_TlpkVGUFJvf2lv';
             const razorpayOrderId = orderData.order_id || orderData.id;
 
             if (!window.Razorpay) {
