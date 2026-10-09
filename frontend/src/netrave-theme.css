@@ -5631,39 +5631,52 @@ html, body {
 .category-breadcrumb-row {
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 6px;
-    font-size: 11px;
+    font-size: 12px;
     color: #888888;
     margin-bottom: 12px;
+    line-height: 1.4;
 }
 .cat-bc-link {
     background: none;
     border: none;
     padding: 0;
-    font-size: 11px;
+    font-size: 12px;
     color: #666666;
     cursor: pointer;
+    font-weight: 500;
+    transition: color 0.15s ease;
+}
+.cat-bc-link:hover {
+    color: #111111;
 }
 .cat-bc-sep {
     color: #bbbbbb;
-    font-size: 10px;
+    font-size: 11px;
 }
 .cat-bc-current {
     color: #111111;
-    font-weight: 600;
+    font-weight: 700;
 }
 .category-header-mobile-row {
     display: flex;
     justify-content: space-between;
     align-items: flex-end;
     margin-bottom: 12px;
+    gap: 12px;
+}
+.cat-title-meta {
+    flex: 1;
+    min-width: 0;
 }
 .category-main-title {
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 800;
     color: #111111;
     margin: 0 0 2px 0;
-    line-height: 1.2;
+    line-height: 1.25;
+    word-break: break-word;
 }
 .category-items-count {
     font-size: 12px;
@@ -5675,12 +5688,19 @@ html, body {
     gap: 5px;
     background: #ffffff;
     border: 1px solid #e5e5e5;
-    border-radius: 6px;
-    padding: 5px 12px;
+    border-radius: 8px;
+    padding: 6px 12px;
     font-size: 12px;
     font-weight: 700;
     color: #111111;
     cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+    transition: all 0.15s ease;
+}
+.btn-open-sort-sheet:hover {
+    border-color: #111111;
+    background: #f8fafc;
 }
 .category-filter-pills-row {
     display: flex;
@@ -5689,6 +5709,7 @@ html, body {
     overflow-x: auto;
     padding-bottom: 4px;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 .category-filter-pills-row::-webkit-scrollbar {
     display: none;
@@ -5697,7 +5718,7 @@ html, body {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 14px;
+    padding: 7px 14px;
     background: #ffffff;
     border: 1px solid #e5e5e5;
     border-radius: 999px;
@@ -5707,6 +5728,7 @@ html, body {
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.15s ease;
+    flex-shrink: 0;
 }
 .pill-filter-btn.active {
     background: #111111;
@@ -5726,6 +5748,7 @@ html, body {
     padding-bottom: 6px;
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
 }
 .category-nav-chips-row::-webkit-scrollbar {
     display: none;
@@ -5744,6 +5767,7 @@ html, body {
     cursor: pointer;
     white-space: nowrap;
     transition: all 0.18s ease;
+    flex-shrink: 0;
 }
 .cat-nav-chip:hover {
     background: #f1f5f9;
@@ -5775,6 +5799,59 @@ html, body {
 }
 .clear-pills-btn:hover {
     background: #fee2e2 !important;
+}
+
+/* Category Mobile Enhancements */
+@media (max-width: 768px) {
+    .category-mobile-page {
+        overflow-x: hidden;
+    }
+    .category-nav-chips-row {
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-bottom: 8px;
+        margin-bottom: 12px;
+        scroll-padding: 0 16px;
+    }
+    .cat-nav-chip {
+        padding: 6px 14px;
+        font-size: 12.5px;
+    }
+    .category-filter-pills-row {
+        margin-left: -16px;
+        margin-right: -16px;
+        padding-left: 16px;
+        padding-right: 16px;
+        padding-bottom: 6px;
+        margin-bottom: 12px;
+        scroll-padding: 0 16px;
+    }
+    .pill-filter-btn {
+        padding: 6px 12px;
+        font-size: 11.5px;
+    }
+    .category-header-mobile-row {
+        align-items: center;
+        gap: 8px;
+    }
+    .category-main-title {
+        font-size: 18px;
+    }
+}
+@media (max-width: 420px) {
+    .category-breadcrumb-row {
+        font-size: 11.5px;
+        gap: 4px;
+    }
+    .category-header-mobile-row {
+        flex-wrap: wrap;
+    }
+    .btn-open-sort-sheet {
+        padding: 5px 10px;
+        font-size: 11px;
+    }
 }
 
 /* --- Bottom Sheet Filter & Sort (Mobile UX) --- */

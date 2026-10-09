@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import ProductCard from './ProductCard';
 
 const DEFAULT_CATEGORIES = [
@@ -39,6 +39,21 @@ export default function CategoryPage({
     const [isFilterSheetOpen, setIsFilterSheetOpen] = useState(false);
     const [isSortSheetOpen, setIsSortSheetOpen] = useState(false);
     const [searchLocalQuery, setSearchLocalQuery] = useState('');
+    const activeChipRef = useRef(null);
+
+    // Auto-scroll active category chip into view smoothly on mobile
+    useEffect(() => {
+        if (activeChipRef.current) {
+            const timer = setTimeout(() => {
+                activeChipRef.current?.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'nearest',
+                    inline: 'center'
+                });
+            }, 80);
+            return () => clearTimeout(timer);
+        }
+    }, [selectedCategory]);
 
     // Keep state in sync if prop changes (e.g. from header nav click)
     useEffect(() => {
@@ -207,6 +222,7 @@ export default function CategoryPage({
                         return (
                             <button
                                 key={cat.slug}
+                                ref={isSelected ? activeChipRef : null}
                                 type="button"
                                 className={`cat-nav-chip ${isSelected ? 'active' : ''}`}
                                 onClick={() => handleCategorySelect(cat.slug)}
