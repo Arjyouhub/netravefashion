@@ -3863,7 +3863,7 @@ export default function AdminPanel({
 
                                         {/* Existing Color Variants List */}
                                         {prodColorVariants.length > 0 && (
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '10px', marginBottom: '14px' }}>
+                                            <div className="admin-color-variants-grid" style={{ marginBottom: '14px' }}>
                                                 {prodColorVariants.map((cVar, cIdx) => (
                                                     <div key={cIdx} style={{ 
                                                         background: '#12141c', 
@@ -3920,7 +3920,7 @@ export default function AdminPanel({
                                             <div style={{ fontSize: '12px', fontWeight: '700', color: 'var(--primary)', marginBottom: '8px' }}>
                                                 + Add a Color Variant with Photo:
                                             </div>
-                                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '8px', marginBottom: '8px' }}>
+                                            <div className="admin-color-input-grid" style={{ marginBottom: '8px' }}>
                                                 <div>
                                                     <label style={{ fontSize: '11px', color: '#cbd5e1', display: 'block', marginBottom: '3px' }}>Color Name *</label>
                                                     <input 
@@ -4970,7 +4970,7 @@ export default function AdminPanel({
                         <h3>Active Discount Coupons</h3>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '30px', marginTop: '20px' }}>
+                    <div className="admin-coupons-grid-layout">
                         {/* Form: Create Coupon */}
                         <div className="admin-modal-content" style={{ position: 'relative', top: 0, margin: 0, maxWidth: '100%', border: '1px solid var(--border-color)', borderRadius: '8px', background: 'var(--bg-card)' }}>
                             <div className="modal-header">
@@ -5880,7 +5880,7 @@ export default function AdminPanel({
                                     </span>
                                 </div>
 
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px', marginBottom: '12px' }}>
+                                <div className="admin-courier-grid" style={{ marginBottom: '12px' }}>
                                     {/* Courier Partner */}
                                     <div>
                                         <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Courier Carrier</label>
