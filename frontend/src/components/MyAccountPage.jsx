@@ -139,15 +139,15 @@ export default function MyAccountPage({
         return getStatusCategory(b.status) === statusFilter;
     });
 
-    // Filter pills list
+    // Filter tabs with status colors & counts
     const filterTabs = [
-        { key: 'all', label: 'All', fullLabel: 'All Orders', count: allCount },
-        { key: 'pending', label: 'Pending', fullLabel: 'Pending', count: pendingCount },
-        { key: 'confirmed', label: 'Confirmed', fullLabel: 'Confirmed', count: confirmedCount },
-        { key: 'processing', label: 'Processing', fullLabel: 'Processing', count: processingCount },
-        { key: 'shipped', label: 'Shipped', fullLabel: 'Shipped', count: shippedCount },
-        { key: 'delivered', label: 'Delivered', fullLabel: 'Delivered', count: deliveredCount },
-        { key: 'cancelled', label: 'Cancelled', fullLabel: 'Cancelled', count: cancelledCount }
+        { key: 'all', label: 'All Orders', count: allCount, color: '#f59e0b' },
+        { key: 'pending', label: 'Pending', count: pendingCount, color: '#eab308' },
+        { key: 'confirmed', label: 'Confirmed', count: confirmedCount, color: '#3b82f6' },
+        { key: 'processing', label: 'Processing', count: processingCount, color: '#f97316' },
+        { key: 'shipped', label: 'Shipped', count: shippedCount, color: '#6366f1' },
+        { key: 'delivered', label: 'Delivered', count: deliveredCount, color: '#10b981' },
+        { key: 'cancelled', label: 'Cancelled', count: cancelledCount, color: '#ef4444' }
     ];
 
     const currentTabObj = filterTabs.find(t => t.key === statusFilter) || filterTabs[0];
@@ -615,55 +615,77 @@ export default function MyAccountPage({
                                     </div>
                                 </div>
 
-                                {/* Custom Dropdown Filter */}
+                                {/* Modern Dropdown Filter */}
                                 <div className="orders-filter-dropdown-container" ref={dropdownRef}>
                                     <button
                                         type="button"
-                                        className="orders-filter-dropdown-btn"
+                                        className={`modern-status-dropdown-btn ${isDropdownOpen ? 'active' : ''}`}
                                         onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                                        aria-haspopup="true"
+                                        aria-haspopup="listbox"
                                         aria-expanded={isDropdownOpen}
                                     >
-                                        <span className="dropdown-box-icon desktop-only-inline">📦</span>
-                                        <span className="dropdown-label-text">
-                                            {currentTabObj.fullLabel || currentTabObj.label} ({currentTabObj.count})
+                                        <span className="status-dropdown-dot" style={{ backgroundColor: currentTabObj.color }} />
+                                        <span className="status-dropdown-label">
+                                            {currentTabObj.label}
                                         </span>
-                                        <span className={`dropdown-chevron ${isDropdownOpen ? 'open' : ''}`}>⌄</span>
+                                        <span className="status-dropdown-count-badge">
+                                            {currentTabObj.count}
+                                        </span>
+                                        <svg 
+                                            className={`status-dropdown-chevron ${isDropdownOpen ? 'open' : ''}`}
+                                            viewBox="0 0 24 24" 
+                                            width="15" 
+                                            height="15" 
+                                            fill="none" 
+                                            stroke="currentColor" 
+                                            strokeWidth="2.5" 
+                                            strokeLinecap="round" 
+                                            strokeLinejoin="round"
+                                        >
+                                            <polyline points="6 9 12 15 18 9" />
+                                        </svg>
                                     </button>
 
                                     {isDropdownOpen && (
-                                        <div className="orders-filter-dropdown-menu">
-                                            {filterTabs.map(tab => (
-                                                <button
-                                                    key={tab.key}
-                                                    type="button"
-                                                    className={`dropdown-menu-item ${statusFilter === tab.key ? 'active' : ''}`}
-                                                    onClick={() => {
-                                                        setStatusFilter(tab.key);
-                                                        setIsDropdownOpen(false);
-                                                    }}
-                                                >
-                                                    <span>{tab.fullLabel || tab.label}</span>
-                                                    <span className="dropdown-item-count">({tab.count})</span>
-                                                </button>
-                                            ))}
+                                        <div className="modern-status-dropdown-menu" role="listbox">
+                                            <div className="dropdown-menu-header-title">
+                                                <span>Filter Orders</span>
+                                                <span className="dropdown-menu-total-count">{allCount} Total</span>
+                                            </div>
+                                            <div className="dropdown-menu-items-list">
+                                                {filterTabs.map(tab => {
+                                                    const isSelected = statusFilter === tab.key;
+                                                    return (
+                                                        <button
+                                                            key={tab.key}
+                                                            type="button"
+                                                            role="option"
+                                                            aria-selected={isSelected}
+                                                            className={`modern-dropdown-menu-item ${isSelected ? 'selected' : ''}`}
+                                                            onClick={() => {
+                                                                setStatusFilter(tab.key);
+                                                                setIsDropdownOpen(false);
+                                                            }}
+                                                        >
+                                                            <div className="dropdown-item-left-block">
+                                                                <span className="dropdown-item-color-dot" style={{ backgroundColor: tab.color }} />
+                                                                <span className="dropdown-item-name">{tab.label}</span>
+                                                            </div>
+                                                            <div className="dropdown-item-right-block">
+                                                                <span className="dropdown-item-pill-badge">{tab.count}</span>
+                                                                {isSelected && (
+                                                                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#f59e0b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="dropdown-item-check-svg">
+                                                                        <polyline points="20 6 9 17 4 12" />
+                                                                    </svg>
+                                                                )}
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
-                            </div>
-
-                            {/* Status Filter Chips Row */}
-                            <div className="orders-filter-chips-row">
-                                {filterTabs.map(tab => (
-                                    <button
-                                        key={tab.key}
-                                        type="button"
-                                        className={`filter-chip-pill ${statusFilter === tab.key ? 'active' : ''}`}
-                                        onClick={() => setStatusFilter(tab.key)}
-                                    >
-                                        {tab.label} ({tab.count})
-                                    </button>
-                                ))}
                             </div>
 
                             {/* Orders Content Area */}
