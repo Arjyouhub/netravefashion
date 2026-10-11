@@ -7,6 +7,7 @@ export default function CartDrawer({
     onRemoveItem,
     onUpdateQuantity,
     onCheckoutTrigger,
+    onNavigate,
     API_BASE_URL
 }) {
     const [couponCode, setCouponCode] = useState('');
@@ -323,24 +324,58 @@ export default function CartDrawer({
                             )}
                         </div>
 
-                        <button 
-                            className="cta-btn primary-cta checkout-btn" 
-                            onClick={onCheckoutTrigger}
-                            style={{
-                                width: '100%',
-                                padding: '14px',
-                                borderRadius: '12px',
-                                fontSize: '14.5px',
-                                fontWeight: '800',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px'
-                            }}
-                        >
-                            <span>Proceed to Secure Checkout</span>
-                            <span>→</span>
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <button 
+                                type="button"
+                                className="cta-btn primary-cta checkout-btn" 
+                                onClick={onCheckoutTrigger}
+                                style={{
+                                    width: '100%',
+                                    padding: '14px',
+                                    borderRadius: '12px',
+                                    fontSize: '14.5px',
+                                    fontWeight: '800',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px',
+                                    background: 'var(--netrave-yellow, #f59e0b)',
+                                    color: '#0f172a',
+                                    border: 'none',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                <span>⚡ Buy Now & Checkout</span>
+                                <span>→</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (onClose) onClose();
+                                    if (onNavigate) onNavigate('cart');
+                                }}
+                                style={{
+                                    width: '100%',
+                                    padding: '11px',
+                                    borderRadius: '12px',
+                                    fontSize: '13px',
+                                    fontWeight: '700',
+                                    background: 'rgba(255, 255, 255, 0.06)',
+                                    border: '1.5px solid rgba(255, 255, 255, 0.15)',
+                                    color: '#ffffff',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '6px',
+                                    transition: 'all 0.15s ease'
+                                }}
+                            >
+                                <span>🛒 View Full Shopping Bag</span>
+                                <span>›</span>
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>

@@ -17,10 +17,10 @@ export default function SuccessModal({ isOpen, order, onClose, whatsappNumber, o
 *Date:* ${orderRecord.date}
  
 *Customer Details:*
-👤 Name: ${orderRecord.customer.name}
-📞 Mobile: ${orderRecord.customer.phone}
-💬 WhatsApp: ${orderRecord.customer.whatsapp}
-📍 Address: ${orderRecord.customer.address}
+Name: ${orderRecord.customer.name}
+Mobile: ${orderRecord.customer.phone}
+WhatsApp: ${orderRecord.customer.whatsapp}
+Address: ${orderRecord.customer.address}
 Town/District: ${orderRecord.customer.district}
 Pincode: ${orderRecord.customer.pincode}
  
@@ -29,12 +29,12 @@ Pincode: ${orderRecord.customer.pincode}
 ${itemsText}
  
 -----------------------------------------
-*Subtotal:* ₹${orderRecord.subtotal}
+*Subtotal:* Rs. ${orderRecord.subtotal}
 *Delivery Fee:* ${deliveryFee}
-*GRAND TOTAL:* ₹${orderRecord.total}
+*GRAND TOTAL:* Rs. ${orderRecord.total}
 *PAYMENT METHOD:* ${paymentText}
 -----------------------------------------
-💡 _Please confirm my booking order. Thank you!_`;
+Please confirm my booking order. Thank you!`;
  
         const targetNumber = whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, '') : '919946550713';
         return `https://wa.me/${targetNumber}?text=${encodeURIComponent(textTemplate)}`;
@@ -203,45 +203,19 @@ ${itemsText}
                 </div>
  
                 <div className="success-body">
-                    {/* Live Courier Tracking Callout Banner */}
-                    <div className="success-telemetry-banner">
+                    {/* Direct Courier Dispatch Confirmation Banner */}
+                    <div className="success-telemetry-banner" style={{ background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12) 0%, rgba(16, 185, 129, 0.08) 100%)', borderColor: 'rgba(245, 158, 11, 0.25)' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <span style={{ fontSize: '24px' }}>🚚</span>
+                            <span style={{ fontSize: '24px' }}>📦</span>
                             <div>
                                 <div className="telemetry-title" style={{ fontSize: '13.5px', fontWeight: '800', color: '#fff' }}>
-                                    Express Courier Telemetry Active
+                                    Order Confirmed for Courier Dispatch
                                 </div>
                                 <div className="telemetry-sub" style={{ fontSize: '11.5px', color: '#94a3b8', marginTop: '2px' }}>
-                                    Partner: <strong style={{ color: 'var(--primary)' }}>{order.courierPartner || 'Delhivery Express'}</strong> • Expected in 2-3 Days
+                                    Your order has been sent to the seller. The seller will pack and dispatch the courier directly to your address.
                                 </div>
                             </div>
                         </div>
-
-                        <button
-                            type="button"
-                            className="telemetry-btn"
-                            onClick={() => {
-                                onClose();
-                                if (onTrackOrder) onTrackOrder(order.orderId);
-                            }}
-                            style={{
-                                background: 'var(--primary)',
-                                color: '#0a0b0e',
-                                border: 'none',
-                                padding: '8px 16px',
-                                borderRadius: '20px',
-                                fontWeight: '800',
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)',
-                                flexShrink: 0
-                            }}
-                        >
-                            Track Live Now →
-                        </button>
                     </div>
 
                     <div className="whatsapp-prompt-box">

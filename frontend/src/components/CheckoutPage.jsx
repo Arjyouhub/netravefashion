@@ -442,9 +442,9 @@ export default function CheckoutPage({
 
                             <div className="payment-methods-mobile-list">
                                 {[
-                                    { key: 'upi', label: 'UPI (Google Pay, PhonePe, Paytm, QR)', icon: '⚡', badge: 'Instant • Live' },
-                                    { key: 'card', label: 'Credit / Debit Card (Visa, MasterCard, RuPay)', icon: '💳', badge: 'Secure 3DS' },
-                                    { key: 'netbanking', label: 'Net Banking & Wallets', icon: '🏦', badge: 'All Banks' },
+                                    { key: 'upi', label: 'UPI (Google Pay, PhonePe, Paytm, QR)', icon: '⚡' },
+                                    { key: 'card', label: 'Credit / Debit Card (Visa, MasterCard, RuPay)', icon: '💳' },
+                                    { key: 'netbanking', label: 'Net Banking & Wallets', icon: '🏦' },
                                     { key: 'cod', label: 'Cash on Delivery (COD)', icon: '💵', badge: 'Unavailable', disabled: true }
                                 ].map(m => (
                                     <label 
@@ -474,13 +474,6 @@ export default function CheckoutPage({
                                     </label>
                                 ))}
                             </div>
-
-                            {paymentMethod !== 'cod' && (
-                                <div className="checkout-razorpay-notice-box">
-                                    <span className="razorpay-badge-shield">⚡</span>
-                                    <span>Powered by Razorpay Standard Checkout • Verified &amp; Encrypted</span>
-                                </div>
-                            )}
 
                             {paymentError && (
                                 <div className="checkout-error-banner">

@@ -174,7 +174,8 @@ export default function AdminPanel({
     // 4. Settings Tab States
     const [bookingsList, setBookingsList] = useState([]);
     const [selectedAdminBooking, setSelectedAdminBooking] = useState(null);
-    const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919876543210');
+    const [whatsappNum, setWhatsappNum] = useState(settings?.whatsappNumber || '919946550713');
+    const [sellerWhatsappNum, setSellerWhatsappNum] = useState(settings?.sellerWhatsappNumber || settings?.whatsappNumber || '919946550713');
     const [newUsername, setNewUsername] = useState(settings?.adminUsername || 'admin');
     const [maintMode, setMaintMode] = useState(settings?.maintenanceMode || false);
     const [maintMsg, setMaintMsg] = useState(settings?.maintenanceMessage || 'We are currently performing scheduled maintenance.');
@@ -251,7 +252,8 @@ export default function AdminPanel({
 
     useEffect(() => {
         if (settings) {
-            setWhatsappNum(settings.whatsappNumber);
+            setWhatsappNum(settings.whatsappNumber || '919946550713');
+            setSellerWhatsappNum(settings.sellerWhatsappNumber || settings.whatsappNumber || '919946550713');
             setNewUsername(settings.adminUsername || 'admin');
             setMaintMode(settings.maintenanceMode || false);
             setMaintMsg(settings.maintenanceMessage || 'We are currently performing scheduled maintenance.');
@@ -1329,24 +1331,25 @@ export default function AdminPanel({
 
         if (isRazorpay) {
             return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', whiteSpace: 'nowrap' }}>
                     <span style={{ 
                         display: 'inline-flex', 
                         alignItems: 'center', 
                         gap: '4px', 
-                        background: 'rgba(16, 185, 129, 0.15)', 
-                        border: '1px solid rgba(16, 185, 129, 0.35)', 
-                        color: '#34d399', 
+                        background: '#ecfdf5', 
+                        border: '1px solid #a7f3d0', 
+                        color: '#065f46', 
                         padding: '3px 8px', 
                         borderRadius: '6px', 
                         fontSize: '11px', 
                         fontWeight: '700',
-                        width: 'fit-content'
+                        width: 'fit-content',
+                        whiteSpace: 'nowrap'
                     }}>
                         ⚡ Razorpay (Paid)
                     </span>
                     {payId && (
-                        <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }} title={`Payment ID: ${payId}`}>
+                        <span style={{ fontSize: '10.5px', color: '#64748b', fontFamily: 'monospace', whiteSpace: 'nowrap' }} title={`Payment ID: ${payId}`}>
                             {payId.length > 14 ? `${payId.slice(0, 14)}...` : payId}
                         </span>
                     )}
@@ -1356,14 +1359,14 @@ export default function AdminPanel({
 
         if (isUpi) {
             return (
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#60a5fa', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#eff6ff', border: '1px solid #bfdbfe', color: '#1e40af', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
                     📱 UPI Direct
                 </span>
             );
         }
 
         return (
-            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(239, 68, 68, 0.12)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '3px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap' }}>
                 ⚠️ COD (Disabled)
             </span>
         );
@@ -1392,6 +1395,7 @@ export default function AdminPanel({
         e.preventDefault();
         onSaveSettings({ 
             whatsappNumber: whatsappNum,
+            sellerWhatsappNumber: sellerWhatsappNum,
             maintenanceMode: maintMode,
             maintenanceMessage: maintMsg,
             maintenanceExpiry: maintExpiry ? new Date(maintExpiry).getTime() : 0,
@@ -1401,6 +1405,80 @@ export default function AdminPanel({
             razorpayEnabled,
             googleClientId
         });
+    };
+
+    // =========================================================================
+    // SELLER WHATSAPP DISPATCH MESSAGE GENERATION
+    // =========================================================================
+    const generateSellerWhatsAppMessage = (booking) => {
+        if (!booking) return '';
+        const cust = booking.customer || {};
+        const items = booking.items || [];
+        
+        const itemsText = items.map((item, idx) => {
+            return `${idx + 1}. *${item.title}*\n   - Size: *${item.size || 'Standard'}* | Qty: *${item.quantity}*\n   - Price: Rs. ${item.price} (Total: Rs. ${(item.price || 0) * (item.quantity || 1)})`;
+        }).join('\n\n');
+
+        const totalQty = items.reduce((sum, item) => sum + (item.quantity || 1), 0);
+        const subtotal = booking.subtotal || (booking.total - (booking.delivery || 0));
+        const deliveryText = booking.delivery === 0 ? 'FREE' : `Rs. ${booking.delivery || 60}`;
+        const paymentDesc = cust.payment?.includes('Razorpay') || booking.paymentMethod === 'RAZORPAY' || booking.paymentStatus === 'Paid'
+            ? `Paid Online via Razorpay ${cust.razorpayPaymentId ? `(Ref: ${cust.razorpayPaymentId})` : ''}`
+            : (cust.payment === 'COD' || booking.paymentMethod === 'COD' ? 'Cash on Delivery (COD)' : (cust.payment || 'Online Payment'));
+
+        const fullAddress = [
+            cust.address,
+            cust.district ? `District: ${cust.district}` : null,
+            cust.state ? `State: ${cust.state}` : 'State: Kerala',
+            cust.pincode ? `PIN Code: ${cust.pincode}` : null
+        ].filter(Boolean).join('\n');
+
+        return `*NETRAVE STORE -- NEW ORDER FOR DISPATCH*
+----------------------------------------
+*Order ID:* #${booking.orderId}
+*Order Date:* ${booking.date}
+*Status:* ${booking.status || 'Confirmed'}
+*Payment:* ${paymentDesc}
+
+*CUSTOMER DETAILS:*
+- *Name:* ${cust.name || 'Customer'}
+- *Mobile (Call):* ${cust.phone || 'N/A'}
+- *WhatsApp:* ${cust.whatsapp || cust.phone || 'N/A'}
+
+*FULL DELIVERY ADDRESS:*
+${fullAddress}
+
+*ORDERED PRODUCTS FOR PACKING (${totalQty} Qty):*
+${itemsText}
+
+*PAYMENT SUMMARY:*
+- Subtotal: Rs. ${subtotal}
+- Delivery Fee: ${deliveryText}
+${cust.couponCode ? `- Coupon Applied: ${cust.couponCode}\n` : ''}- *GRAND TOTAL: Rs. ${booking.total}*
+${booking.internalNotes ? `\n*Order Notes:* ${booking.internalNotes}` : ''}
+----------------------------------------
+*Seller Notice: Please pack the items in the specified size and dispatch the courier to this delivery address promptly.*`;
+    };
+
+    const handleSendToSellerWhatsApp = (booking) => {
+        if (!booking) return;
+        const msg = generateSellerWhatsAppMessage(booking);
+        const targetPhone = (sellerWhatsappNum || settings?.sellerWhatsappNumber || settings?.whatsappNumber || '919946550713').replace(/[^0-9]/g, '');
+        const url = `https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`;
+        window.open(url, '_blank', 'noopener,noreferrer');
+        showSuccess?.(`Opening WhatsApp dispatch chat for Order #${booking.orderId}`);
+    };
+
+    const handleCopyOrderDetails = (booking) => {
+        if (!booking) return;
+        const msg = generateSellerWhatsAppMessage(booking);
+        if (navigator?.clipboard?.writeText) {
+            navigator.clipboard.writeText(msg)
+                .then(() => showSuccess('Full order dispatch details copied to clipboard!'))
+                .catch(() => showError('Failed to copy to clipboard.'));
+        } else {
+            showSuccess('Order details ready!');
+        }
     };
 
     // =========================================================================
@@ -4883,60 +4961,70 @@ export default function AdminPanel({
                         <table className="admin-table">
                             <thead>
                                 <tr>
-                                    <th>Booking ID</th>
-                                    <th>Date</th>
-                                    <th>Customer Name</th>
-                                    <th>Phone / WhatsApp</th>
-                                    <th>Items (Qty)</th>
-                                    <th>Payment</th>
-                                    <th>Total Price</th>
-                                    <th>Status</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Booking ID</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Date</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Customer Name</th>
+                                    <th style={{ whiteSpace: 'nowrap', minWidth: '170px' }}>Items (Qty)</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Payment</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Total Price</th>
+                                    <th style={{ whiteSpace: 'nowrap' }}>Status</th>
+                                    <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {currentBookings.length === 0 ? (
                                     <tr>
-                                        <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                                        <td colSpan="8" style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                                             No matching bookings found.
                                         </td>
                                     </tr>
                                 ) : (
                                     currentBookings.map(book => (
                                         <tr key={book.orderId}>
-                                            <td className="bold-td highlight-order-id">
+                                            <td className="bold-td highlight-order-id" style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                                                 <span 
                                                     className="order-id-badge" 
-                                                    style={{ cursor: 'pointer', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px' }}
                                                     onClick={() => setSelectedAdminBooking(book)}
                                                     title="Click to view full order details"
                                                 >
                                                     {book.orderId}
                                                 </span>
                                             </td>
-                                            <td style={{ fontSize: '13px' }}>{book.date}</td>
-                                            <td className="bold-td">{book.customer.name}</td>
-                                            <td>
-                                                <div style={{ fontSize: '13px' }}>📞 {book.customer.phone}</div>
-                                                <div style={{ fontSize: '13px', color: 'var(--accent)' }}>💬 {book.customer.whatsapp}</div>
+                                            <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a', whiteSpace: 'nowrap' }}>
+                                                    {book.date && book.date.includes(',') ? book.date.split(',')[0].trim() : (book.date || 'N/A')}
+                                                </div>
+                                                {book.date && book.date.includes(',') && (
+                                                    <div style={{ fontSize: '11.5px', color: '#64748b', fontWeight: '500', marginTop: '2px', whiteSpace: 'nowrap' }}>
+                                                        {book.date.split(',').slice(1).join(',').trim()}
+                                                    </div>
+                                                )}
                                             </td>
-                                            <td>
+                                            <td className="bold-td" style={{ color: '#0f172a', fontWeight: '700', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>{book.customer?.name}</td>
+                                            <td style={{ minWidth: '170px', maxWidth: '300px', verticalAlign: 'middle' }}>
                                                 <div className="items-list-cell">
-                                                    {book.items.map((item, idx) => (
-                                                        <div key={idx} className="order-item-desc">
-                                                            • {item.title} ({item.size}) x{item.quantity}
+                                                    {book.items?.map((item, idx) => (
+                                                        <div key={idx} className="order-item-desc" style={{ color: '#1e293b', fontSize: '12.5px', fontWeight: '500', lineHeight: '1.4', marginBottom: idx < book.items.length - 1 ? '4px' : '0' }}>
+                                                            <span style={{ color: '#64748b', marginRight: '3px' }}>•</span>
+                                                            <strong style={{ color: '#0f172a' }}>{item.title}</strong>{' '}
+                                                            <span style={{ color: '#b45309', background: '#fef3c7', border: '1px solid #fde68a', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '700', whiteSpace: 'nowrap', display: 'inline-block' }}>{item.size || 'Standard'}</span>{' '}
+                                                            <span style={{ color: '#64748b', fontWeight: '600', whiteSpace: 'nowrap', display: 'inline-block' }}>x{item.quantity}</span>
                                                         </div>
                                                     ))}
                                                 </div>
                                             </td>
-                                            <td>
+                                            <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                                                 {getOrderPaymentBadge(book)}
                                             </td>
-                                            <td className="bold-td">₹{book.total}</td>
-                                            <td>
+                                            <td className="bold-td" style={{ color: '#0f172a', fontWeight: '800', fontSize: '14.5px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                                ₹{book.total}
+                                            </td>
+                                            <td style={{ whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                                                 <select 
                                                     value={book.status || 'Confirmed'} 
                                                     className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
                                                     onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
+                                                    style={{ background: '#ffffff', color: '#0f172a', border: '1.5px solid #cbd5e1', fontWeight: '600', borderRadius: '8px', padding: '5px 8px', fontSize: '12px', minWidth: '135px' }}
                                                 >
                                                     <option value="Pending">⏳ Pending</option>
                                                     <option value="Confirmed">✅ Confirmed</option>
@@ -4953,6 +5041,26 @@ export default function AdminPanel({
                                                     <option value="Refunded">💰 Refunded</option>
                                                 </select>
                                             </td>
+                                            <td style={{ textAlign: 'center', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                                                <div className="admin-order-actions-cell">
+                                                    <button
+                                                        type="button"
+                                                        className="admin-btn-seller-wa"
+                                                        onClick={() => handleSendToSellerWhatsApp(book)}
+                                                        title="Send full order details to Seller on WhatsApp"
+                                                    >
+                                                        <span>📲</span> Seller WA
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="admin-btn-order-view"
+                                                        onClick={() => setSelectedAdminBooking(book)}
+                                                        title="View full order details"
+                                                    >
+                                                        <span>👁️</span> View
+                                                    </button>
+                                                </div>
+                                            </td>
                                         </tr>
                                     ))
                                 )}
@@ -4963,55 +5071,66 @@ export default function AdminPanel({
                     {/* Mobile Bookings Cards View (< 768px) */}
                     <div className="admin-mobile-cards-list">
                         {currentBookings.length === 0 ? (
-                            <div style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                            <div style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
                                 No matching bookings found.
                             </div>
                         ) : (
                             currentBookings.map(book => (
-                                <div key={book.orderId} className="admin-mobile-card">
+                                <div key={book.orderId} className="admin-mobile-card" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px', marginBottom: '14px', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
                                         <div>
                                             <span 
                                                 className="order-id-badge" 
-                                                style={{ cursor: 'pointer', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', padding: '4px 8px', borderRadius: '6px', fontSize: '12px', fontWeight: 'bold' }}
                                                 onClick={() => setSelectedAdminBooking(book)}
+                                                style={{ cursor: 'pointer', background: '#fef3c7', border: '1px solid #fde68a', color: '#b45309', padding: '4px 10px', borderRadius: '6px', fontSize: '12.5px', fontWeight: '800' }}
+                                                title="View Details"
                                             >
                                                 {book.orderId}
                                             </span>
-                                            <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px' }}>{book.date}</div>
+                                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px', fontWeight: '500' }}>{book.date}</div>
                                         </div>
                                         <div>
                                             {getOrderPaymentBadge(book)}
                                         </div>
                                     </div>
 
-                                    <div style={{ marginBottom: '10px' }}>
-                                        <div style={{ fontWeight: '700', fontSize: '14px', color: '#fff' }}>{book.customer.name}</div>
-                                        <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                                            {book.customer.district || 'Kerala'}{book.customer.state ? `, ${book.customer.state}` : ''}, PIN: {book.customer.pincode}
+                                    <div style={{ marginBottom: '12px' }}>
+                                        <div style={{ fontWeight: '800', fontSize: '15px', color: '#0f172a' }}>{book.customer.name}</div>
+                                        <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px', fontWeight: '500' }}>
+                                            📍 {book.customer.district || 'Kerala'}{book.customer.state ? `, ${book.customer.state}` : ''}, PIN: {book.customer.pincode}
+                                        </div>
+                                        <div style={{ fontSize: '12.5px', color: '#0f172a', marginTop: '4px', display: 'flex', gap: '12px' }}>
+                                            <span>📞 {book.customer.phone}</span>
+                                            <span style={{ color: '#16a34a', fontWeight: '600' }}>💬 {book.customer.whatsapp}</span>
                                         </div>
                                     </div>
 
-                                    <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.05)', borderRadius: '8px', padding: '10px 12px', marginBottom: '12px', fontSize: '12.5px' }}>
-                                        <div style={{ color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '6px' }}>Items Ordered</div>
+                                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '12px', marginBottom: '12px', fontSize: '13px' }}>
+                                        <div style={{ color: '#475569', fontSize: '11.5px', textTransform: 'uppercase', fontWeight: '700', marginBottom: '8px', letterSpacing: '0.5px' }}>Items Ordered</div>
                                         {book.items.map((item, idx) => (
-                                            <div key={idx} style={{ color: '#e2e8f0', marginBottom: '3px' }}>
-                                                • {item.title} ({item.size}) x{item.quantity}
+                                            <div key={idx} style={{ color: '#1e293b', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                <span>
+                                                    • <strong>{item.title}</strong>{' '}
+                                                    <span style={{ color: '#b45309', background: '#fef3c7', padding: '1px 6px', borderRadius: '4px', fontSize: '11px', fontWeight: '700' }}>
+                                                        {item.size || 'Standard'}
+                                                    </span>
+                                                </span>
+                                                <span style={{ color: '#64748b', fontWeight: '600' }}>x{item.quantity}</span>
                                             </div>
                                         ))}
-                                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: '8px', paddingTop: '6px', display: 'flex', justifyContent: 'space-between', fontWeight: '700' }}>
-                                            <span>Total Amount:</span>
-                                            <span style={{ color: 'var(--primary)', fontSize: '14px' }}>₹{book.total}</span>
+                                        <div style={{ borderTop: '1px solid #e2e8f0', marginTop: '8px', paddingTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: '800' }}>
+                                            <span style={{ color: '#0f172a' }}>Total Amount:</span>
+                                            <span style={{ color: '#d97706', fontSize: '15px' }}>₹{book.total}</span>
                                         </div>
                                     </div>
 
                                     <div style={{ marginBottom: '12px' }}>
-                                        <label style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: '600', display: 'block', marginBottom: '4px' }}>Status:</label>
+                                        <label style={{ fontSize: '11.5px', color: '#475569', textTransform: 'uppercase', fontWeight: '700', display: 'block', marginBottom: '5px' }}>Order Status:</label>
                                         <select 
                                             value={book.status || 'Confirmed'} 
                                             className={`status-select-dropdown ${book.status ? book.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
                                             onChange={e => handleUpdateStatusLocal(book.orderId, e.target.value)}
-                                            style={{ width: '100%' }}
+                                            style={{ width: '100%', background: '#ffffff', color: '#0f172a', border: '1.5px solid #cbd5e1', fontWeight: '600', padding: '8px 10px', borderRadius: '8px' }}
                                         >
                                             <option value="Pending">⏳ Pending</option>
                                             <option value="Confirmed">✅ Confirmed</option>
@@ -5029,23 +5148,92 @@ export default function AdminPanel({
                                         </select>
                                     </div>
 
-                                    <div className="admin-mobile-card-actions">
-                                        <a 
-                                            href={`tel:${book.customer.phone}`}
-                                            className="cta-btn secondary-cta"
-                                            style={{ flex: 1, padding: '8px 10px', fontSize: '12px', minHeight: 'unset', textDecoration: 'none', justifyContent: 'center' }}
+                                    {/* Mobile Actions */}
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleSendToSellerWhatsApp(book)}
+                                            style={{
+                                                width: '100%',
+                                                background: '#16a34a',
+                                                color: '#ffffff',
+                                                border: 'none',
+                                                borderRadius: '8px',
+                                                padding: '10px 14px',
+                                                fontWeight: '800',
+                                                fontSize: '13px',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: '8px',
+                                                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.25)'
+                                            }}
                                         >
-                                            📞 Call
-                                        </a>
-                                        <a 
-                                            href={`https://wa.me/91${book.customer.whatsapp || book.customer.phone}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="cta-btn primary-cta"
-                                            style={{ flex: 1, padding: '8px 10px', fontSize: '12px', minHeight: 'unset', textDecoration: 'none', justifyContent: 'center', background: '#25d366', borderColor: '#25d366', color: '#fff' }}
-                                        >
-                                            💬 WhatsApp
-                                        </a>
+                                            <span>📲</span> Send to Seller on WhatsApp
+                                        </button>
+
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <button 
+                                                type="button"
+                                                onClick={() => setSelectedAdminBooking(book)}
+                                                style={{
+                                                    flex: 1,
+                                                    background: '#f8fafc',
+                                                    border: '1px solid #cbd5e1',
+                                                    color: '#0f172a',
+                                                    borderRadius: '8px',
+                                                    padding: '8px 10px',
+                                                    fontWeight: '700',
+                                                    fontSize: '12px',
+                                                    cursor: 'pointer'
+                                                }}
+                                            >
+                                                👁️ Details
+                                            </button>
+                                            <a 
+                                                href={`tel:${book.customer.phone}`}
+                                                style={{
+                                                    flex: 1,
+                                                    background: '#e0f2fe',
+                                                    border: '1px solid #bae6fd',
+                                                    color: '#0369a1',
+                                                    borderRadius: '8px',
+                                                    padding: '8px 10px',
+                                                    fontWeight: '700',
+                                                    fontSize: '12px',
+                                                    textDecoration: 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                📞 Call
+                                            </a>
+                                            <a 
+                                                href={`https://wa.me/91${book.customer.whatsapp || book.customer.phone}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    flex: 1,
+                                                    background: '#dcfce7',
+                                                    border: '1px solid #bbf7d0',
+                                                    color: '#15803d',
+                                                    borderRadius: '8px',
+                                                    padding: '8px 10px',
+                                                    fontWeight: '700',
+                                                    fontSize: '12px',
+                                                    textDecoration: 'none',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    gap: '4px'
+                                                }}
+                                            >
+                                                💬 Chat
+                                            </a>
+                                        </div>
                                     </div>
                                 </div>
                             ))
@@ -5354,7 +5542,7 @@ export default function AdminPanel({
 
                         <form onSubmit={handleSaveSettingsSubmit} className="admin-settings-form">
                             <div className="form-field" style={{ maxWidth: '400px' }}>
-                                <label>Target WhatsApp Notification Number *</label>
+                                <label>Customer Support WhatsApp Number *</label>
                                 <input 
                                     type="text" 
                                     required 
@@ -5363,7 +5551,24 @@ export default function AdminPanel({
                                     placeholder="e.g. 919876543210 (include country code)"
                                 />
                                 <small style={{ color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>
-                                    Customers will automatically redirect to this WhatsApp contact to confirm order details after booking.
+                                    Customers will redirect to this WhatsApp contact to chat with support or verify order details.
+                                </small>
+                            </div>
+
+                            <div className="form-field" style={{ maxWidth: '400px', marginTop: '16px' }}>
+                                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                    <span>Seller / Warehouse WhatsApp Number *</span>
+                                    <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '12px', fontWeight: '700' }}>Order Dispatch</span>
+                                </label>
+                                <input 
+                                    type="text" 
+                                    required 
+                                    value={sellerWhatsappNum} 
+                                    onChange={e => setSellerWhatsappNum(e.target.value)} 
+                                    placeholder="e.g. 919946550713 (include country code)"
+                                />
+                                <small style={{ color: 'var(--text-muted)', marginTop: '6px', display: 'block' }}>
+                                    Full order details (Customer address, phone, item sizes, quantity, and payment status) will be sent to this WhatsApp number for packing and fulfillment.
                                 </small>
                             </div>
 
@@ -6246,146 +6451,129 @@ export default function AdminPanel({
 
             {/* ADMIN BOOKING DETAIL MODAL */}
             {selectedAdminBooking && (
-                <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) setSelectedAdminBooking(null); }} style={{ zIndex: 1200 }}>
-                    <div className="modal-content admin-modal-content" style={{ maxWidth: '650px', background: '#12141c', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '20px', padding: '24px', overflowY: 'auto', maxHeight: '90vh' }}>
-                        <button className="close-btn modal-close" onClick={() => setSelectedAdminBooking(null)}>&times;</button>
+                <div className="modal open" onClick={(e) => { if (e.target.classList.contains('modal')) setSelectedAdminBooking(null); }} style={{ zIndex: 1200, background: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(3px)' }}>
+                    <div className="modal-content admin-modal-content" style={{ maxWidth: '680px', background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '24px', overflowY: 'auto', maxHeight: '90vh', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', position: 'relative' }}>
+                        <button 
+                            type="button" 
+                            className="admin-modal-close-light" 
+                            onClick={() => setSelectedAdminBooking(null)} 
+                            title="Close"
+                        >
+                            &times;
+                        </button>
                         
-                        <div style={{ borderBottom: '1px solid rgba(255,255,255,0.08)', paddingBottom: '16px', marginBottom: '20px' }}>
-                            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fff', marginBottom: '6px' }}>Order Details</h2>
-                            <p style={{ color: '#94a3b8', fontSize: '13px', margin: 0 }}>
-                                Booking ID: <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{selectedAdminBooking.orderId}</span>
-                            </p>
+                        <div style={{ borderBottom: '1px solid #e2e8f0', paddingBottom: '16px', marginBottom: '20px', paddingRight: '48px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
+                                <div>
+                                    <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#0f172a', margin: '0 0 6px' }}>Order Details</h2>
+                                    <p style={{ color: '#64748b', fontSize: '13px', margin: 0 }}>
+                                        Booking ID: <span style={{ color: '#b45309', background: '#fef3c7', padding: '3px 8px', borderRadius: '6px', fontWeight: '800', fontFamily: 'monospace' }}>{selectedAdminBooking.orderId}</span>
+                                    </p>
+                                </div>
+                                <div>
+                                    {getOrderPaymentBadge(selectedAdminBooking)}
+                                </div>
+                            </div>
                         </div>
 
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '20px' }}>
-                            {/* Courier Logistics & Live Dispatch Telemetry Section */}
-                            <div style={{ background: 'rgba(245, 158, 11, 0.04)', border: '1px solid rgba(245, 158, 11, 0.25)', padding: '18px', borderRadius: '14px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-                                    <h3 style={{ fontSize: '15px', fontWeight: '800', color: 'var(--primary)', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <span>🚚</span> Courier Logistics & Live Telemetry
-                                    </h3>
-                                    <span style={{ fontSize: '11px', color: '#10b981', background: 'rgba(16,185,129,0.1)', padding: '2px 8px', borderRadius: '10px', fontWeight: '700' }}>
-                                        Live Push API Active
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '18px' }}>
+                            {/* Prominent WhatsApp Dispatch Bar to Seller */}
+                            <div style={{ background: '#f0fdf4', border: '1.5px solid #86efac', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        <span style={{ fontSize: '20px' }}>📦</span>
+                                        <strong style={{ color: '#166534', fontSize: '14.5px' }}>Seller Order Dispatch (WhatsApp)</strong>
+                                    </div>
+                                    <span style={{ fontSize: '11.5px', color: '#15803d', background: '#dcfce7', padding: '3px 10px', borderRadius: '12px', fontWeight: '700' }}>
+                                        Seller WA: +{sellerWhatsappNum}
                                     </span>
                                 </div>
-
-                                <div className="admin-courier-grid" style={{ marginBottom: '12px' }}>
-                                    {/* Courier Partner */}
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Courier Carrier</label>
-                                        <select
-                                            value={courierCarrier}
-                                            onChange={e => setCourierCarrier(e.target.value)}
-                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                                        >
-                                            <option value="Delhivery Express">Delhivery Express</option>
-                                            <option value="BlueDart Aviation">BlueDart Aviation</option>
-                                            <option value="DTDC Express">DTDC Express</option>
-                                            <option value="India Post Speed Post">India Post Speed Post</option>
-                                            <option value="XpressBees Logistics">XpressBees Logistics</option>
-                                            <option value="Shiprocket Fulfillment">Shiprocket Fulfillment</option>
-                                            <option value="Shadowfax Express">Shadowfax Express</option>
-                                        </select>
-                                    </div>
-
-                                    {/* AWB Number with Auto-generate */}
-                                    <div>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '5px' }}>
-                                            <label style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: '600' }}>AWB Tracking No.</label>
-                                            <button
-                                                type="button"
-                                                onClick={handleAutoGenerateAwb}
-                                                style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '11px', cursor: 'pointer', fontWeight: '700', padding: 0 }}
-                                            >
-                                                ⚡ Generate
-                                            </button>
-                                        </div>
-                                        <input
-                                            type="text"
-                                            value={courierAwb}
-                                            onChange={e => setCourierAwb(e.target.value)}
-                                            placeholder="e.g. DEL92837190"
-                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box', fontFamily: 'monospace' }}
-                                        />
-                                    </div>
-
-                                    {/* Current Hub / Transit Location */}
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Current Transit Hub / City</label>
-                                        <input
-                                            type="text"
-                                            value={courierLocation}
-                                            onChange={e => setCourierLocation(e.target.value)}
-                                            placeholder="e.g. Kochi Sorting Hub, Kerala"
-                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box' }}
-                                        />
-                                    </div>
-
-                                    {/* Dispatch Status */}
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>Order & Transit Status</label>
-                                        <select
-                                            value={courierStatus}
-                                            onChange={e => setCourierStatus(e.target.value)}
-                                            style={{ width: '100%', padding: '8px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px' }}
-                                        >
-                                            <option value="Confirmed">✅ Confirmed</option>
-                                            <option value="Processing">⚙️ Processing</option>
-                                            <option value="Shipped">📦 Shipped</option>
-                                            <option value="Dispatched">🚚 Dispatched</option>
-                                            <option value="In Transit">🚛 In Transit</option>
-                                            <option value="Out for Delivery">🛵 Out for Delivery</option>
-                                            <option value="Delivered">🎉 Delivered</option>
-                                            <option value="Cancelled">❌ Cancelled</option>
-                                            <option value="Returned">🔄 Returned</option>
-                                            <option value="Refunded">💰 Refunded</option>
-                                        </select>
-                                    </div>
+                                <p style={{ margin: 0, fontSize: '12.5px', color: '#166534', lineHeight: 1.4 }}>
+                                    Click below to send the complete order details (Customer address, phone, item sizes, quantity, payment status, and dispatch notes) directly to the seller via WhatsApp.
+                                </p>
+                                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', marginTop: '4px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleSendToSellerWhatsApp(selectedAdminBooking)}
+                                        style={{
+                                            flex: 1,
+                                            minWidth: '220px',
+                                            background: '#16a34a',
+                                            color: '#ffffff',
+                                            border: 'none',
+                                            borderRadius: '8px',
+                                            padding: '11px 18px',
+                                            fontWeight: '800',
+                                            fontSize: '13.5px',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            gap: '8px',
+                                            boxShadow: '0 4px 12px rgba(22, 163, 74, 0.3)'
+                                        }}
+                                    >
+                                        <span>📲</span> Send Full Order to Seller on WhatsApp
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => handleCopyOrderDetails(selectedAdminBooking)}
+                                        style={{
+                                            background: '#ffffff',
+                                            border: '1.5px solid #cbd5e1',
+                                            color: '#0f172a',
+                                            borderRadius: '8px',
+                                            padding: '11px 16px',
+                                            fontWeight: '700',
+                                            fontSize: '13px',
+                                            cursor: 'pointer',
+                                            display: 'inline-flex',
+                                            alignItems: 'center',
+                                            gap: '6px'
+                                        }}
+                                    >
+                                        <span>📋</span> Copy Details
+                                    </button>
                                 </div>
+                            </div>
 
-                                {/* Custom Checkpoint Note */}
-                                <div style={{ marginBottom: '14px' }}>
-                                    <label style={{ display: 'block', fontSize: '11.5px', color: '#94a3b8', marginBottom: '5px', fontWeight: '600' }}>
-                                        Push New Telemetry Checkpoint Note (Optional)
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={courierCheckpoint}
-                                        onChange={e => setCourierCheckpoint(e.target.value)}
-                                        placeholder="e.g. Arrived at Calicut Delivery Hub. Out for delivery today with executive."
-                                        style={{ width: '100%', padding: '8px 10px', background: '#0a0d16', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '6px', color: '#fff', fontSize: '13px', boxSizing: 'border-box' }}
-                                    />
+                            {/* Order Status & Fulfillment Section */}
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px 18px', borderRadius: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+                                <div>
+                                    <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', margin: '0 0 3px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span>⚙️</span> Order Status
+                                    </h3>
+                                    <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                                        Update order status as seller packs and sends the courier
+                                    </span>
                                 </div>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSaveCourierUpdate}
-                                    disabled={courierSaving}
-                                    style={{
-                                        background: 'var(--primary)',
-                                        color: '#0a0b0e',
-                                        border: 'none',
-                                        padding: '10px 18px',
-                                        borderRadius: '8px',
-                                        fontWeight: '800',
-                                        fontSize: '13px',
-                                        cursor: courierSaving ? 'wait' : 'pointer',
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px'
-                                    }}
-                                >
-                                    {courierSaving ? 'Pushing Live Telemetry...' : '⚡ Save & Push Live Courier Update'}
-                                </button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <select
+                                        value={selectedAdminBooking.status || 'Confirmed'}
+                                        onChange={e => handleUpdateStatusLocal(selectedAdminBooking.orderId, e.target.value)}
+                                        className={`status-select-dropdown ${selectedAdminBooking.status ? selectedAdminBooking.status.toLowerCase().replace(/\s+/g, '-') : 'confirmed'}`}
+                                        style={{ padding: '9px 14px', background: '#ffffff', border: '1.5px solid #cbd5e1', borderRadius: '8px', color: '#0f172a', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer' }}
+                                    >
+                                        <option value="Pending">⏳ Pending</option>
+                                        <option value="Confirmed">✅ Confirmed</option>
+                                        <option value="Payment Confirmed">💳 Payment Confirmed</option>
+                                        <option value="Processing">⚙️ Processing / Packing</option>
+                                        <option value="Dispatched">📦 Dispatched (Courier Sent)</option>
+                                        <option value="Delivered">🎉 Delivered</option>
+                                        <option value="Cancelled">❌ Cancelled</option>
+                                        <option value="Returned">🔄 Returned</option>
+                                        <option value="Refunded">💰 Refunded</option>
+                                    </select>
+                                </div>
                             </div>
 
                             {/* Internal Order Notes (Admin Only) */}
-                            <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', padding: '16px', borderRadius: '14px' }}>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '16px', borderRadius: '14px' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                                    <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#fff', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <h3 style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', margin: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <span>📝</span> Internal Order Notes (Staff / Admin Only)
                                     </h3>
-                                    <span style={{ fontSize: '11px', color: '#94a3b8' }}>Never visible to customer</span>
+                                    <span style={{ fontSize: '11px', color: '#64748b' }}>Never visible to customer</span>
                                 </div>
                                 <textarea
                                     value={internalNotesInput}
@@ -6395,10 +6583,10 @@ export default function AdminPanel({
                                     style={{
                                         width: '100%',
                                         padding: '10px 12px',
-                                        background: '#0a0d16',
-                                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                                        background: '#ffffff',
+                                        border: '1px solid #cbd5e1',
                                         borderRadius: '8px',
-                                        color: '#fff',
+                                        color: '#0f172a',
                                         fontSize: '13px',
                                         boxSizing: 'border-box',
                                         resize: 'vertical',
@@ -6411,9 +6599,9 @@ export default function AdminPanel({
                                     onClick={handleSaveInternalNotes}
                                     disabled={savingNotes}
                                     style={{
-                                        background: 'rgba(245, 158, 11, 0.15)',
-                                        border: '1px solid rgba(245, 158, 11, 0.35)',
-                                        color: 'var(--primary)',
+                                        background: '#fef3c7',
+                                        border: '1px solid #fde68a',
+                                        color: '#b45309',
                                         padding: '8px 16px',
                                         borderRadius: '6px',
                                         fontWeight: '700',
@@ -6426,30 +6614,83 @@ export default function AdminPanel({
                             </div>
 
                             {/* Customer & Shipping Section */}
-                            <div>
-                                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
-                                    Customer & Shipping Details
-                                </h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px', color: '#cbd5e1' }}>
-                                    <div><strong>Name:</strong> {selectedAdminBooking.customer?.name}</div>
-                                    <div>
-                                        <strong>Phone (Calling):</strong>{' '}
-                                        <a href={`tel:${selectedAdminBooking.customer?.phone}`} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
-                                            {selectedAdminBooking.customer?.phone}
-                                        </a>
-                                    </div>
-                                    <div>
-                                        <strong>WhatsApp:</strong>{' '}
-                                        <a href={`https://wa.me/91${selectedAdminBooking.customer?.whatsapp}`} target="_blank" rel="noopener noreferrer" style={{ color: '#25d366', textDecoration: 'none', fontWeight: '600' }}>
-                                            {selectedAdminBooking.customer?.whatsapp} (Chat)
-                                        </a>
-                                    </div>
-                                    <div><strong>State:</strong> {selectedAdminBooking.customer?.state || 'Kerala'}</div>
-                                    <div><strong>District:</strong> {selectedAdminBooking.customer?.district}</div>
-                                    <div><strong>Pincode:</strong> {selectedAdminBooking.customer?.pincode}</div>
-                                    <div style={{ marginTop: '4px', background: 'rgba(255,255,255,0.03)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                        <strong>Full Delivery Address:</strong>
-                                        <p style={{ margin: '4px 0 0', color: '#94a3b8', lineHeight: '1.4', whiteSpace: 'pre-wrap' }}>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '18px', borderRadius: '14px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                                    <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+                                        👤 Customer &amp; Contact Details
+                                    </h3>
+                                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+                                        Verified Buyer
+                                    </span>
+                                </div>
+
+                                {/* Customer Contact Action Cards */}
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px', marginBottom: '16px' }}>
+                                    {/* Call Customer Card */}
+                                    <a
+                                        href={`tel:${selectedAdminBooking.customer?.phone}`}
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            padding: '12px 14px',
+                                            background: '#ffffff',
+                                            border: '1.5px solid #0284c7',
+                                            borderRadius: '10px',
+                                            textDecoration: 'none',
+                                            color: '#0f172a',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                            transition: 'transform 0.15s ease'
+                                        }}
+                                        title="Click to call customer directly"
+                                    >
+                                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#e0f2fe', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                                            📞
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '11px', color: '#0284c7', fontWeight: '700', textTransform: 'uppercase' }}>Phone Call</div>
+                                            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>{selectedAdminBooking.customer?.phone || 'No phone'}</div>
+                                        </div>
+                                    </a>
+
+                                    {/* WhatsApp Customer Card */}
+                                    <a
+                                        href={`https://wa.me/91${selectedAdminBooking.customer?.whatsapp || selectedAdminBooking.customer?.phone}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '10px',
+                                            padding: '12px 14px',
+                                            background: '#ffffff',
+                                            border: '1.5px solid #16a34a',
+                                            borderRadius: '10px',
+                                            textDecoration: 'none',
+                                            color: '#0f172a',
+                                            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                            transition: 'transform 0.15s ease'
+                                        }}
+                                        title="Click to chat with customer on WhatsApp"
+                                    >
+                                        <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', flexShrink: 0 }}>
+                                            💬
+                                        </div>
+                                        <div>
+                                            <div style={{ fontSize: '11px', color: '#16a34a', fontWeight: '700', textTransform: 'uppercase' }}>WhatsApp Chat</div>
+                                            <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>{selectedAdminBooking.customer?.whatsapp || selectedAdminBooking.customer?.phone || 'No WhatsApp'}</div>
+                                        </div>
+                                    </a>
+                                </div>
+
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px', color: '#334155' }}>
+                                    <div><strong style={{ color: '#0f172a' }}>Customer Name:</strong> {selectedAdminBooking.customer?.name}</div>
+                                    <div><strong style={{ color: '#0f172a' }}>State:</strong> {selectedAdminBooking.customer?.state || 'Kerala'}</div>
+                                    <div><strong style={{ color: '#0f172a' }}>District:</strong> {selectedAdminBooking.customer?.district}</div>
+                                    <div><strong style={{ color: '#0f172a' }}>Pincode:</strong> {selectedAdminBooking.customer?.pincode}</div>
+                                    <div style={{ marginTop: '4px', background: '#ffffff', padding: '12px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                                        <strong style={{ color: '#0f172a' }}>Full Delivery Address:</strong>
+                                        <p style={{ margin: '4px 0 0', color: '#1e293b', lineHeight: '1.5', whiteSpace: 'pre-wrap', fontWeight: '500' }}>
                                             {selectedAdminBooking.customer?.address}
                                         </p>
                                     </div>
@@ -6457,18 +6698,18 @@ export default function AdminPanel({
                             </div>
 
                             {/* Items Section */}
-                            <div>
-                                <h3 style={{ fontSize: '15px', fontWeight: '700', color: '#fff', marginBottom: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '6px' }}>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '18px', borderRadius: '14px' }}>
+                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', marginBottom: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
                                     Items Ordered ({selectedAdminBooking.items?.reduce((sum, item) => sum + item.quantity, 0)})
                                 </h3>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                                     {selectedAdminBooking.items?.map((item, idx) => (
-                                        <div key={idx} style={{ display: 'flex', gap: '12px', background: 'rgba(255,255,255,0.02)', padding: '10px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                                            <div style={{ width: '50px', height: '50px', borderRadius: '6px', overflow: 'hidden', background: '#1b1e2a', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div key={idx} style={{ display: 'flex', gap: '12px', background: '#ffffff', padding: '12px', borderRadius: '10px', border: '1px solid #e2e8f0', alignItems: 'center' }}>
+                                            <div style={{ width: '54px', height: '54px', borderRadius: '8px', overflow: 'hidden', background: '#f1f5f9', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                                 {item.image ? (
                                                     <img src={item.image} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                                 ) : (
-                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: '#1e293b' }}>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', background: '#e2e8f0' }}>
                                                         <svg style={{ width: '20px', height: '20px', stroke: '#64748b', strokeWidth: 1.5, fill: 'none' }} viewBox="0 0 24 24">
                                                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                                                             <circle cx="8.5" cy="8.5" r="1.5"/>
@@ -6478,10 +6719,17 @@ export default function AdminPanel({
                                                 )}
                                             </div>
                                             <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                                <span style={{ fontSize: '13.5px', fontWeight: '600', color: '#fff' }}>{item.title}</span>
-                                                <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Size: {item.size} | Qty: {item.quantity}</span>
+                                                <span style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a' }}>{item.title}</span>
+                                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px' }}>
+                                                    <span style={{ fontSize: '11.5px', background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '4px', fontWeight: '700' }}>
+                                                        Size: {item.size || 'Standard'}
+                                                    </span>
+                                                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+                                                        Qty: {item.quantity}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <div style={{ display: 'flex', alignItems: 'center', fontWeight: '700', color: '#fff', fontSize: '13.5px' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', fontWeight: '800', color: '#0f172a', fontSize: '14px' }}>
                                                 ₹{item.price * item.quantity}
                                             </div>
                                         </div>
@@ -6490,47 +6738,90 @@ export default function AdminPanel({
                             </div>
 
                             {/* Summary & Metadata Section */}
-                            <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '16px', marginTop: '10px' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#94a3b8' }}>
+                            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '18px', borderRadius: '14px' }}>
+                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#0f172a', marginBottom: '12px', borderBottom: '1px solid #e2e8f0', paddingBottom: '6px' }}>
+                                    Payment & Cost Breakdown
+                                </h3>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13.5px', color: '#475569' }}>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>Booking Date/Time:</span>
-                                        <span style={{ color: '#fff' }}>{selectedAdminBooking.date}</span>
+                                        <span style={{ color: '#0f172a', fontWeight: '600' }}>{selectedAdminBooking.date}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                                         <span>Payment Details:</span>
                                         <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px' }}>
                                             {getOrderPaymentBadge(selectedAdminBooking)}
                                             {selectedAdminBooking.customer?.razorpayPaymentId && (
-                                                <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                                                <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>
                                                     Pay ID: {selectedAdminBooking.customer.razorpayPaymentId}
                                                 </div>
                                             )}
                                             {selectedAdminBooking.customer?.razorpayOrderId && (
-                                                <div style={{ fontSize: '11px', color: '#64748b', fontFamily: 'monospace' }}>
+                                                <div style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
                                                     Order: {selectedAdminBooking.customer.razorpayOrderId}
                                                 </div>
                                             )}
                                         </div>
                                     </div>
                                     {selectedAdminBooking.customer?.couponCode && (
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--primary)' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', color: '#15803d', fontWeight: '600' }}>
                                             <span>Coupon Applied:</span>
                                             <span>{selectedAdminBooking.customer.couponCode}</span>
                                         </div>
                                     )}
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>Subtotal:</span>
-                                        <span style={{ color: '#fff' }}>₹{selectedAdminBooking.subtotal || selectedAdminBooking.total - (selectedAdminBooking.delivery || 0)}</span>
+                                        <span style={{ color: '#0f172a', fontWeight: '600' }}>₹{selectedAdminBooking.subtotal || selectedAdminBooking.total - (selectedAdminBooking.delivery || 0)}</span>
                                     </div>
                                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                         <span>Delivery Fee:</span>
-                                        <span style={{ color: '#fff' }}>{selectedAdminBooking.delivery === 0 ? 'FREE' : `₹${selectedAdminBooking.delivery || 60}`}</span>
+                                        <span style={{ color: '#0f172a', fontWeight: '600' }}>{selectedAdminBooking.delivery === 0 ? 'FREE' : `₹${selectedAdminBooking.delivery || 60}`}</span>
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: '800', color: '#fff', marginTop: '6px', borderTop: '1px dashed rgba(255,255,255,0.05)', paddingTop: '8px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '17px', fontWeight: '800', color: '#0f172a', marginTop: '6px', borderTop: '1px dashed #cbd5e1', paddingTop: '10px' }}>
                                         <span>Grand Total:</span>
-                                        <span style={{ color: 'var(--primary)' }}>₹{selectedAdminBooking.total}</span>
+                                        <span style={{ color: '#d97706' }}>₹{selectedAdminBooking.total}</span>
                                     </div>
                                 </div>
+                            </div>
+
+                            {/* Modal Bottom Actions */}
+                            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedAdminBooking(null)}
+                                    style={{
+                                        background: '#f8fafc',
+                                        border: '1px solid #cbd5e1',
+                                        color: '#0f172a',
+                                        borderRadius: '8px',
+                                        padding: '10px 18px',
+                                        fontWeight: '700',
+                                        fontSize: '13px',
+                                        cursor: 'pointer'
+                                    }}
+                                >
+                                    Close
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => handleSendToSellerWhatsApp(selectedAdminBooking)}
+                                    style={{
+                                        background: '#16a34a',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        padding: '10px 20px',
+                                        fontWeight: '800',
+                                        fontSize: '13.5px',
+                                        cursor: 'pointer',
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        gap: '8px',
+                                        boxShadow: '0 4px 12px rgba(22, 163, 74, 0.25)'
+                                    }}
+                                >
+                                    <span>📲</span> Forward to Seller on WhatsApp
+                                </button>
                             </div>
                         </div>
                     </div>

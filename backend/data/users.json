@@ -2,13 +2,17 @@
   {
     "phone": "9633380198",
     "name": "josfin",
-    "mpin": "963338",
+    "mpin": "fc5bbaa8b0d0ec32238ddf274290b34da0de792ebe29ffce17ec748cc024d31ecde9b10f2c9133ec6824bfa807ed03e5e19cdf52a84f5b883bf843955f345b1a",
     "loginAttempts": 0,
-    "lockUntil": 0
+    "lockUntil": 0,
+    "lastActiveAt": 1791695978394
   },
   {
     "phone": "9633380194",
     "name": "admin",
-    "mpin": "123456"
+    "mpin": "3f0fc62e2b212d9a6a56971fa0031c9aa02f9b1ee49f8b8dc010d4c19f2a1be9d885ccb7d22f4180a81c462002db96ef5ad16e592acdbbbe3be52b4ee5d55bf3",
+    "loginAttempts": 0,
+    "lockUntil": 0,
+    "lastActiveAt": 1791696036867
   }
 ]

@@ -209,6 +209,7 @@ const BookingModel = mongoose.models.Booking || mongoose.model('Booking', Bookin
 const SettingsSchema = new mongoose.Schema({
     key: { type: String, default: 'main' },
     whatsappNumber: { type: String, default: '919946550713' },
+    sellerWhatsappNumber: { type: String, default: '919946550713' },
     adminUsername: { type: String, default: 'admin' },
     adminPassword: { type: String, default: 'admin123' },
     developerPassword: { type: String, default: 'developer123' },
@@ -239,8 +240,13 @@ const ReviewModel = mongoose.models.Review || mongoose.model('Review', ReviewSch
 
 // Secure MPIN Hashing Helper (PBKDF2 with unique salt per user)
 function hashMpin(mpin, phone) {
-    const salt = phone + 'netravefashion_salt_2026';
+    const salt = (phone || '') + 'netravefashion_salt_2026';
     return crypto.pbkdf2Sync(mpin, salt, 1000, 64, 'sha512').toString('hex');
+}
+
+function escapeRegex(string) {
+    if (!string) return '';
+    return string.toString().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 // User Schema
@@ -592,6 +598,7 @@ app.get('/api/settings', async (req, res) => {
             const cleanKeyId = sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_ID) || sanitizeRazorpayCredential(settings.razorpayKeyId) || 'rzp_live_TlpkVGUFJvf2lv';
             res.json({
                 whatsappNumber: settings.whatsappNumber,
+                sellerWhatsappNumber: settings.sellerWhatsappNumber || settings.whatsappNumber || '919946550713',
                 maintenanceMode: settings.maintenanceMode || false,
                 maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: settings.maintenanceExpiry || 0,
@@ -605,7 +612,8 @@ app.get('/api/settings', async (req, res) => {
             const data = Array.isArray(settings) ? settings[0] : settings;
             const cleanKeyId = sanitizeRazorpayCredential(process.env.RAZORPAY_KEY_ID) || sanitizeRazorpayCredential(data?.razorpayKeyId) || 'rzp_live_TlpkVGUFJvf2lv';
             res.json({
-                whatsappNumber: data?.whatsappNumber || '919876543210',
+                whatsappNumber: data?.whatsappNumber || '919946550713',
+                sellerWhatsappNumber: data?.sellerWhatsappNumber || data?.whatsappNumber || '919946550713',
                 maintenanceMode: data?.maintenanceMode || false,
                 maintenanceMessage: data?.maintenanceMessage || 'We are currently performing scheduled maintenance.',
                 maintenanceExpiry: data?.maintenanceExpiry || 0,
@@ -625,6 +633,7 @@ app.post('/api/settings', async (req, res) => {
     try {
         const { 
             whatsappNumber, 
+            sellerWhatsappNumber,
             maintenanceMode, 
             maintenanceMessage, 
             maintenanceExpiry, 
@@ -646,6 +655,7 @@ app.post('/api/settings', async (req, res) => {
                 maintenanceExpiry: maintenanceExpiry !== undefined ? Number(maintenanceExpiry) : undefined,
                 offerNotification: offerNotification !== undefined ? offerNotification : undefined
             };
+            if (sellerWhatsappNumber !== undefined) updateFields.sellerWhatsappNumber = sellerWhatsappNumber;
             if (razorpayKeyId !== undefined) updateFields.razorpayKeyId = razorpayKeyId;
             if (razorpayKeySecret !== undefined) updateFields.razorpayKeySecret = razorpayKeySecret;
             if (razorpayEnabled !== undefined) updateFields.razorpayEnabled = Boolean(razorpayEnabled);
@@ -658,6 +668,7 @@ app.post('/api/settings', async (req, res) => {
             );
             res.json({
                 whatsappNumber: settings.whatsappNumber,
+                sellerWhatsappNumber: settings.sellerWhatsappNumber || settings.whatsappNumber,
                 maintenanceMode: settings.maintenanceMode,
                 maintenanceMessage: settings.maintenanceMessage,
                 maintenanceExpiry: settings.maintenanceExpiry,
@@ -671,6 +682,7 @@ app.post('/api/settings', async (req, res) => {
             let data = Array.isArray(fileSettings) ? fileSettings[0] : fileSettings;
             if (!data) data = { adminPassword: 'admin123' };
             data.whatsappNumber = whatsappNumber;
+            if (sellerWhatsappNumber !== undefined) data.sellerWhatsappNumber = sellerWhatsappNumber;
             if (maintenanceMode !== undefined) data.maintenanceMode = Boolean(maintenanceMode);
             if (maintenanceMessage !== undefined) data.maintenanceMessage = maintenanceMessage;
             if (maintenanceExpiry !== undefined) data.maintenanceExpiry = Number(maintenanceExpiry);
@@ -683,6 +695,7 @@ app.post('/api/settings', async (req, res) => {
             await writeJson(settingsPath, [data]);
             res.json({
                 whatsappNumber: data.whatsappNumber,
+                sellerWhatsappNumber: data.sellerWhatsappNumber || data.whatsappNumber,
                 maintenanceMode: data.maintenanceMode || false,
                 maintenanceMessage: data.maintenanceMessage || '',
                 maintenanceExpiry: data.maintenanceExpiry || 0,
@@ -692,6 +705,7 @@ app.post('/api/settings', async (req, res) => {
                 googleClientId: data.googleClientId || ''
             });
         }
+
     } catch (err) {
         res.status(500).json({ error: 'Failed to save settings.' });
     }
@@ -2318,201 +2332,293 @@ app.post('/api/reviews', async (req, res) => {
 // USER AUTHENTICATION & LOGIN ENDPOINTS
 // --------------------------------------------------------------------------
 
-// Register User (OTP-less 6-digit MPIN setup)
+// Register User
 app.post('/api/auth/register', async (req, res) => {
     try {
-        const { phone, name, mpin } = req.body;
-        if (!phone || !name || !mpin) {
-            return res.status(400).json({ error: 'Phone, Name, and MPIN are required.' });
+        const { phone, name, email, identifier, password, mpin } = req.body;
+        const trimmedName = (name || '').trim();
+        const rawSecret = (password !== undefined && password !== '' ? password : (mpin || '')).toString().trim();
+
+        let rawPhone = (phone || '').toString().trim();
+        let rawEmail = (email || '').toString().trim();
+
+        if (!rawPhone && !rawEmail && identifier) {
+            if (identifier.includes('@')) {
+                rawEmail = identifier.trim();
+            } else {
+                rawPhone = identifier.trim();
+            }
         }
-        if (!/^[0-9]{10}$/.test(phone)) {
-            return res.status(400).json({ error: 'Enter a valid 10-digit mobile number.' });
+
+        const cleanPhoneDigits = rawPhone.replace(/\D/g, '');
+        const normalizedPhone = (cleanPhoneDigits.length === 12 && cleanPhoneDigits.startsWith('91'))
+            ? cleanPhoneDigits.slice(2)
+            : (cleanPhoneDigits.length === 10 ? cleanPhoneDigits : '');
+
+        if (!trimmedName) {
+            return res.status(400).json({ error: 'Please enter your full name.' });
         }
-        if (!/^[0-9]{6}$/.test(mpin)) {
-            return res.status(400).json({ error: 'MPIN must be exactly 6 digits.' });
+        if (!normalizedPhone && !rawEmail) {
+            return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number or email address.' });
         }
-        if (/\d/.test(name)) {
-            return res.status(400).json({ error: 'Name cannot contain numbers.' });
+        if (rawPhone && !normalizedPhone) {
+            return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
+        }
+        if (rawEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail)) {
+            return res.status(400).json({ error: 'Please enter a valid email address.' });
+        }
+        if (!rawSecret || rawSecret.length < 4) {
+            return res.status(400).json({ error: 'Password or MPIN must be at least 4 characters.' });
+        }
+
+        // Check if user already exists
+        const orConditions = [];
+        if (normalizedPhone) {
+            orConditions.push({ phone: normalizedPhone });
+        }
+        if (rawEmail) {
+            orConditions.push({ email: new RegExp(`^${escapeRegex(rawEmail)}$`, 'i') });
         }
 
         if (useMongo) {
-            const existingUser = await UserModel.findOne({ phone });
+            const existingUser = await UserModel.findOne({ $or: orConditions });
             if (existingUser) {
-                return res.status(400).json({ error: 'User already registered with this mobile number.' });
+                return res.status(400).json({ error: 'An account with this mobile number or email already exists. Please log in.' });
             }
-            const hashedPassword = hashMpin(mpin, phone);
-            const newUser = new UserModel({ phone, name, mpin: hashedPassword, lastActiveAt: Date.now() });
+            const saltKey = normalizedPhone || rawEmail || trimmedName;
+            const hashedPassword = hashMpin(rawSecret, saltKey);
+            const newUser = new UserModel({
+                phone: normalizedPhone,
+                email: rawEmail,
+                name: trimmedName,
+                mpin: hashedPassword,
+                password: rawSecret,
+                lastActiveAt: Date.now()
+            });
             await newUser.save();
-            res.status(201).json({ success: true, user: { phone: newUser.phone, name: newUser.name } });
+            return res.status(201).json({
+                success: true,
+                user: {
+                    phone: newUser.phone,
+                    name: newUser.name,
+                    email: newUser.email
+                }
+            });
         } else {
             const users = await readJson(usersPath);
-            const existingUser = users.find(u => u.phone === phone);
+            const existingUser = users.find(u => {
+                const uPhone = (u.phone || '').replace(/\D/g, '');
+                const uEmail = (u.email || '').toLowerCase().trim();
+                if (normalizedPhone && uPhone === normalizedPhone) return true;
+                if (rawEmail && uEmail === rawEmail.toLowerCase()) return true;
+                return false;
+            });
             if (existingUser) {
-                return res.status(400).json({ error: 'User already registered with this mobile number.' });
+                return res.status(400).json({ error: 'An account with this mobile number or email already exists. Please log in.' });
             }
-            const hashedPassword = hashMpin(mpin, phone);
-            const newUser = { phone, name, mpin: hashedPassword, lastActiveAt: Date.now() };
+            const saltKey = normalizedPhone || rawEmail || trimmedName;
+            const hashedPassword = hashMpin(rawSecret, saltKey);
+            const newUser = {
+                phone: normalizedPhone,
+                email: rawEmail,
+                name: trimmedName,
+                mpin: hashedPassword,
+                password: rawSecret,
+                loginAttempts: 0,
+                lockUntil: 0,
+                lastActiveAt: Date.now()
+            };
             users.push(newUser);
             await writeJson(usersPath, users);
-            res.status(201).json({ success: true, user: { phone, name } });
+            return res.status(201).json({
+                success: true,
+                user: {
+                    phone: newUser.phone,
+                    name: newUser.name,
+                    email: newUser.email
+                }
+            });
         }
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Registration failed.' });
+        console.error('[Netrave Backend] Registration failed:', err);
+        return res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
 });
 
 // Login User
 app.post('/api/auth/login', async (req, res) => {
     try {
-        const { phone, mpin } = req.body;
-        if (!phone || !mpin) {
-            return res.status(400).json({ error: 'Phone and MPIN are required.' });
+        const { identifier, phone, email, username, mpin, password } = req.body;
+        const rawIdentifier = (identifier || phone || email || username || '').toString().trim();
+        const rawSecret = (password !== undefined && password !== '' ? password : (mpin || '')).toString().trim();
+
+        if (!rawIdentifier || !rawSecret) {
+            return res.status(400).json({ error: 'Please enter your username, phone or email, and password.' });
         }
 
+        const digitsOnly = rawIdentifier.replace(/\D/g, '');
+        const normalizedPhone = (digitsOnly.length === 12 && digitsOnly.startsWith('91'))
+            ? digitsOnly.slice(2)
+            : (digitsOnly.length === 10 ? digitsOnly : '');
+
+        let user = null;
+        let isMongoUser = false;
+        let jsonUserIndex = -1;
+        let jsonUsers = [];
+
+        // 1. Try finding in MongoDB
         if (useMongo) {
-            const user = await UserModel.findOne({ phone });
-            if (!user) {
-                await logUserLogin(phone, 'Unknown', 'failed (user not found)', req);
-                return res.status(400).json({ error: 'Invalid mobile number or MPIN.' });
+            const orConditions = [
+                { name: new RegExp(`^${escapeRegex(rawIdentifier)}$`, 'i') },
+                { email: new RegExp(`^${escapeRegex(rawIdentifier)}$`, 'i') }
+            ];
+            if (normalizedPhone) {
+                orConditions.push({ phone: normalizedPhone });
+            }
+            if (rawIdentifier.length >= 8 && /^\+?[0-9\s\-]+$/.test(rawIdentifier)) {
+                orConditions.push({ phone: rawIdentifier });
             }
 
-            // 1. Check if permanently blocked
-            if (user.isBlocked) {
-                await logUserLogin(phone, user.name, 'failed (blocked)', req);
-                return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
+            user = await UserModel.findOne({ $or: orConditions });
+            if (user) {
+                isMongoUser = true;
             }
-
-            // 2. Check if temporarily locked
-            if (user.lockUntil && user.lockUntil > Date.now()) {
-                await logUserLogin(phone, user.name, 'failed (locked)', req);
-                const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
-                return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
-            }
-
-            // 3. Verify MPIN (support auto-migration for plain text to hash)
-            const incomingHash = hashMpin(mpin, phone);
-            let isMpinValid = false;
-            let needsMigration = false;
-
-            if (/^\d{6}$/.test(user.mpin)) {
-                if (user.mpin === mpin) {
-                    isMpinValid = true;
-                    needsMigration = true;
-                }
-            } else {
-                isMpinValid = (user.mpin === incomingHash);
-            }
-
-            if (!isMpinValid) {
-                const attempts = (user.loginAttempts || 0) + 1;
-                let errMsg = 'Incorrect MPIN.';
-                
-                user.loginAttempts = attempts;
-                if (attempts === 5) {
-                    user.lockUntil = Date.now() + 5 * 60 * 1000; // 5 mins
-                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account locked for 5 minutes.';
-                } else if (attempts >= 7) {
-                    user.isBlocked = true;
-                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account has been permanently blocked. Contact Admin.';
-                } else {
-                    const remaining = attempts < 5 ? 5 - attempts : 7 - attempts;
-                    const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
-                    errMsg = `Incorrect MPIN. Remaining attempts before ${type}: ${remaining}`;
-                }
-                await logUserLogin(phone, user.name, 'failed (incorrect MPIN)', req);
-                await user.save();
-                return res.status(400).json({ error: errMsg });
-            }
-
-            // 4. Success: Reset retries and upgrade credentials to secure hash if necessary
-            user.loginAttempts = 0;
-            user.lockUntil = 0;
-            if (needsMigration) {
-                user.mpin = incomingHash;
-            }
-            user.lastActiveAt = Date.now();
-            await user.save();
-
-            await logUserLogin(user.phone, user.name, 'success', req);
-            res.json({ success: true, user: { phone: user.phone, name: user.name } });
-        } else {
-            const users = await readJson(usersPath);
-            const userIndex = users.findIndex(u => u.phone === phone);
-            if (userIndex === -1) {
-                await logUserLogin(phone, 'Unknown', 'failed (user not found)', req);
-                return res.status(400).json({ error: 'Invalid mobile number or MPIN.' });
-            }
-
-            const user = users[userIndex];
-
-            // 1. Check if permanently blocked
-            if (user.isBlocked) {
-                await logUserLogin(phone, user.name, 'failed (blocked)', req);
-                return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
-            }
-
-            // 2. Check if temporarily locked
-            if (user.lockUntil && user.lockUntil > Date.now()) {
-                await logUserLogin(phone, user.name, 'failed (locked)', req);
-                const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
-                return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
-            }
-
-            // 3. Verify MPIN (support auto-migration for plain text to hash)
-            const incomingHash = hashMpin(mpin, phone);
-            let isMpinValid = false;
-            let needsMigration = false;
-
-            if (/^\d{6}$/.test(user.mpin)) {
-                if (user.mpin === mpin) {
-                    isMpinValid = true;
-                    needsMigration = true;
-                }
-            } else {
-                isMpinValid = (user.mpin === incomingHash);
-            }
-
-            if (!isMpinValid) {
-                const attempts = (user.loginAttempts || 0) + 1;
-                let errMsg = 'Incorrect MPIN.';
-                
-                user.loginAttempts = attempts;
-                if (attempts === 5) {
-                    user.lockUntil = Date.now() + 5 * 60 * 1000;
-                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account locked for 5 minutes.';
-                } else if (attempts >= 7) {
-                    user.isBlocked = true;
-                    errMsg = 'Incorrect MPIN. Too many failed attempts. Account has been permanently blocked. Contact Admin.';
-                } else {
-                    const remaining = attempts < 5 ? 5 - attempts : 7 - attempts;
-                    const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
-                    errMsg = `Incorrect MPIN. Remaining attempts before ${type}: ${remaining}`;
-                }
-                await logUserLogin(phone, user.name, 'failed (incorrect MPIN)', req);
-                users[userIndex] = user;
-                await writeJson(usersPath, users);
-                return res.status(400).json({ error: errMsg });
-            }
-
-            // 4. Success: Reset retries and upgrade credentials to secure hash if necessary
-            user.loginAttempts = 0;
-            user.lockUntil = 0;
-            if (needsMigration) {
-                user.mpin = incomingHash;
-            }
-            user.lastActiveAt = Date.now();
-            users[userIndex] = user;
-            await writeJson(usersPath, users);
-
-            await logUserLogin(user.phone, user.name, 'success', req);
-            res.json({ success: true, user: { phone: user.phone, name: user.name } });
         }
+
+        // 2. Fallback / check local users.json if not found in MongoDB
+        if (!user) {
+            jsonUsers = await readJson(usersPath);
+            jsonUserIndex = jsonUsers.findIndex(u => {
+                const uPhone = (u.phone || '').replace(/\D/g, '');
+                const uEmail = (u.email || '').toLowerCase().trim();
+                const uName = (u.name || '').toLowerCase().trim();
+                const idLower = rawIdentifier.toLowerCase();
+
+                if (normalizedPhone && (uPhone === normalizedPhone || u.phone === normalizedPhone)) return true;
+                if (u.phone && u.phone === rawIdentifier) return true;
+                if (uEmail && uEmail === idLower) return true;
+                if (uName && uName === idLower) return true;
+                return false;
+            });
+
+            if (jsonUserIndex !== -1) {
+                user = jsonUsers[jsonUserIndex];
+            }
+        }
+
+        // If user not found anywhere
+        if (!user) {
+            await logUserLogin(rawIdentifier, 'Unknown', 'failed (user not found)', req);
+            return res.status(401).json({ error: 'No account found with this username, email or mobile number.' });
+        }
+
+        // Check if permanently blocked
+        if (user.isBlocked) {
+            await logUserLogin(user.phone || rawIdentifier, user.name || 'Unknown', 'failed (blocked)', req);
+            return res.status(403).json({ error: 'This account is permanently blocked. Contact Admin to unblock.' });
+        }
+
+        // Check if temporarily locked
+        if (user.lockUntil && user.lockUntil > Date.now()) {
+            await logUserLogin(user.phone || rawIdentifier, user.name || 'Unknown', 'failed (locked)', req);
+            const remainingMins = Math.ceil((user.lockUntil - Date.now()) / 60000);
+            return res.status(403).json({ error: `Account temporarily locked. Try again in ${remainingMins} minute(s).` });
+        }
+
+        // Verify Password / MPIN
+        let isSecretValid = false;
+        let needsMigration = false;
+
+        // Check A: Plain match against MPIN or password
+        if (user.mpin && user.mpin === rawSecret) {
+            isSecretValid = true;
+            if (/^\d{6}$/.test(rawSecret)) {
+                needsMigration = true;
+            }
+        } else if (user.password && user.password === rawSecret) {
+            isSecretValid = true;
+        } else if (user.mpin) {
+            // Check B: PBKDF2 hash match with phone, email, name or identifier
+            const phoneHash = user.phone ? hashMpin(rawSecret, user.phone) : null;
+            const emailHash = user.email ? hashMpin(rawSecret, user.email) : null;
+            const nameHash = user.name ? hashMpin(rawSecret, user.name) : null;
+            const rawIdHash = hashMpin(rawSecret, rawIdentifier);
+
+            if (
+                (phoneHash && user.mpin === phoneHash) ||
+                (emailHash && user.mpin === emailHash) ||
+                (nameHash && user.mpin === nameHash) ||
+                (user.mpin === rawIdHash)
+            ) {
+                isSecretValid = true;
+            }
+        }
+
+        // If credentials do not match
+        if (!isSecretValid) {
+            const attempts = (user.loginAttempts || 0) + 1;
+            user.loginAttempts = attempts;
+            let errMsg = 'Incorrect password or MPIN.';
+
+            if (attempts === 5) {
+                user.lockUntil = Date.now() + 5 * 60 * 1000; // 5 mins lockout
+                errMsg = 'Incorrect password. Too many failed attempts. Account locked for 5 minutes.';
+            } else if (attempts >= 7) {
+                user.isBlocked = true;
+                errMsg = 'Incorrect password. Too many failed attempts. Account has been permanently blocked. Contact Admin.';
+            } else {
+                const remaining = attempts < 5 ? 5 - attempts : 7 - attempts;
+                const type = attempts < 5 ? 'temporary lockout' : 'permanent block';
+                errMsg = `Incorrect password or MPIN. Remaining attempts before ${type}: ${remaining}`;
+            }
+
+            await logUserLogin(user.phone || rawIdentifier, user.name || 'Unknown', 'failed (incorrect password)', req);
+
+            if (isMongoUser && user.save) {
+                await user.save();
+            } else if (jsonUserIndex !== -1) {
+                jsonUsers[jsonUserIndex] = user;
+                await writeJson(usersPath, jsonUsers);
+            }
+
+            return res.status(401).json({ error: errMsg });
+        }
+
+        // Credentials are valid -> reset retries & upgrade plain MPIN if needed
+        user.loginAttempts = 0;
+        user.lockUntil = 0;
+        user.lastActiveAt = Date.now();
+        if (needsMigration && user.phone) {
+            user.mpin = hashMpin(rawSecret, user.phone);
+        }
+
+        if (isMongoUser && user.save) {
+            await user.save();
+        } else if (jsonUserIndex !== -1) {
+            jsonUsers[jsonUserIndex] = user;
+            await writeJson(usersPath, jsonUsers);
+        }
+
+        await logUserLogin(user.phone || rawIdentifier, user.name || 'Unknown', 'success', req);
+
+        return res.json({
+            success: true,
+            user: {
+                phone: user.phone || '',
+                name: user.name || '',
+                email: user.email || '',
+                address: user.address || '',
+                district: user.district || '',
+                pincode: user.pincode || '',
+                whatsapp: user.whatsapp || ''
+            }
+        });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: 'Login failed.' });
+        console.error('[Netrave Backend] Login error:', err);
+        return res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 });
+
 
 // Google OAuth Sign-In & Register
 app.post('/api/auth/google', async (req, res) => {

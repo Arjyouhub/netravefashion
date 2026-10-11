@@ -23,6 +23,7 @@ export default function MyAccountPage({
     const [editCity, setEditCity] = useState('');
     const [editPincode, setEditPincode] = useState('');
     const [isSaving, setIsSaving] = useState(false);
+    const [saveStatus, setSaveStatus] = useState('idle'); // 'idle' | 'saving' | 'success'
     const [editError, setEditError] = useState('');
 
     useEffect(() => {
@@ -71,10 +72,12 @@ export default function MyAccountPage({
         setEditCity(currentUser?.city || currentUser?.district || 'Ernakulam');
         setEditPincode(currentUser?.pincode || '');
         setEditError('');
+        setSaveStatus('idle');
+        setIsSaving(false);
         setIsEditModalOpen(true);
     };
 
-    // Save profile details
+    // Save profile details - Instant optimistic update with zero lag & resilient background sync
     const handleSaveProfile = async (e) => {
         e.preventDefault();
         setEditError('');
@@ -85,49 +88,72 @@ export default function MyAccountPage({
         }
 
         setIsSaving(true);
+        setSaveStatus('saving');
+
+        const updated = {
+            ...(currentUser || {}),
+            name: editName.trim(),
+            phone: editPhone.trim(),
+            email: editEmail.trim(),
+            whatsapp: editWhatsapp.trim() || editPhone.trim(),
+            address: editAddress.trim(),
+            city: editCity.trim(),
+            district: editCity.trim(),
+            pincode: editPincode.trim(),
+            isPhoneVerified: currentUser?.isPhoneVerified !== undefined ? currentUser.isPhoneVerified : true
+        };
+
+        // 1. Instant optimistic local update (eliminates perceptible UI lag)
+        setCurrentUser(updated);
         try {
-            const updated = {
-                ...(currentUser || {}),
-                name: editName.trim(),
-                phone: editPhone.trim(),
-                email: editEmail.trim(),
-                whatsapp: editWhatsapp.trim() || editPhone.trim(),
-                address: editAddress.trim(),
-                city: editCity.trim(),
-                district: editCity.trim(),
-                pincode: editPincode.trim(),
-                isPhoneVerified: true
-            };
-
-            // Backend sync if user identifier exists
-            if (currentUser && (currentUser.phone || currentUser.email || currentUser._id)) {
-                try {
-                    const currentIdentifier = currentUser.phone || currentUser.email || currentUser._id;
-                    const res = await fetch(`${API_BASE_URL}/users/profile`, {
-                        method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ currentIdentifier, ...updated })
-                    });
-                    const data = await res.json();
-                    if (res.ok && data.user) {
-                        Object.assign(updated, data.user);
-                    }
-                } catch (apiErr) {
-                    console.warn('Backend update failed, saving locally:', apiErr);
-                }
-            }
-
-            setCurrentUser(updated);
             localStorage.setItem('netrave_user', JSON.stringify(updated));
-            if (onUpdateUser) onUpdateUser(updated);
-            if (showToast) showToast('Profile details updated successfully!', 'success');
-            setIsEditModalOpen(false);
-        } catch (err) {
-            console.error('Error saving profile:', err);
-            setEditError('Failed to save changes. Please try again.');
-        } finally {
-            setIsSaving(false);
+        } catch (storageErr) {
+            console.warn('LocalStorage error:', storageErr);
         }
+        if (onUpdateUser) {
+            onUpdateUser(updated);
+        }
+
+        // 2. Non-blocking resilient backend sync with AbortController timeout protection
+        if (currentUser && (currentUser.phone || currentUser.email || currentUser._id)) {
+            const currentIdentifier = currentUser.phone || currentUser.email || currentUser._id;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+            fetch(`${API_BASE_URL}/users/profile`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ currentIdentifier, ...updated }),
+                signal: controller.signal
+            })
+            .then(res => res.json())
+            .then(data => {
+                clearTimeout(timeoutId);
+                if (data && data.user) {
+                    const synced = { ...updated, ...data.user };
+                    setCurrentUser(synced);
+                    try {
+                        localStorage.setItem('netrave_user', JSON.stringify(synced));
+                    } catch (e) {}
+                    if (onUpdateUser) onUpdateUser(synced);
+                }
+            })
+            .catch(apiErr => {
+                clearTimeout(timeoutId);
+                console.warn('Backend update saved locally with fallback:', apiErr);
+            });
+        }
+
+        // 3. Crisp, satisfying micro-animation transition to Success state (200ms)
+        setTimeout(() => {
+            setSaveStatus('success');
+            if (showToast) showToast('Profile details updated successfully!', 'success');
+            setTimeout(() => {
+                setIsEditModalOpen(false);
+                setIsSaving(false);
+                setSaveStatus('idle');
+            }, 350);
+        }, 220);
     };
 
     const handleNav = (page, params = {}) => {
@@ -368,111 +394,250 @@ export default function MyAccountPage({
                 </div>
             </div>
 
-            {/* Edit Profile Modal */}
+            {/* Modern Edit Profile Modal */}
             {isEditModalOpen && (
-                <div className="netrave-modal-backdrop" onClick={() => setIsEditModalOpen(false)}>
+                <div className="netrave-modal-backdrop" onClick={() => !isSaving && setIsEditModalOpen(false)}>
                     <div
                         className="netrave-modal-card profile-edit-modal-box"
                         onClick={(e) => e.stopPropagation()}
                         role="dialog"
                         aria-modal="true"
                     >
-                        <div className="modal-card-header">
-                            <div>
-                                <h3 className="modal-title">Edit Profile</h3>
-                                <p className="modal-subtitle">Update your personal contact details</p>
+                        {/* Top Header Card */}
+                        <div className="edit-modal-header">
+                            <div className="edit-modal-header-top">
+                                <div className="edit-modal-badge">
+                                    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
+                                    <span>ACCOUNT PROFILE</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    className="edit-modal-close-btn"
+                                    onClick={() => setIsEditModalOpen(false)}
+                                    disabled={isSaving}
+                                    aria-label="Close modal"
+                                >
+                                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                                    </svg>
+                                </button>
                             </div>
-                            <button
-                                type="button"
-                                className="modal-close-icon-btn"
-                                onClick={() => setIsEditModalOpen(false)}
-                                aria-label="Close"
-                            >
-                                ✕
-                            </button>
+
+                            <div className="edit-modal-profile-strip">
+                                <div className="edit-modal-avatar-preview">
+                                    <span>{getInitials(editName || displayName)}</span>
+                                    <div className="edit-avatar-live-dot" title="Active Account" />
+                                </div>
+                                <div className="edit-modal-titles">
+                                    <h3 className="edit-modal-title">Edit Details</h3>
+                                    <p className="edit-modal-subtitle">Keep your contact & delivery address updated for seamless ordering</p>
+                                </div>
+                            </div>
                         </div>
 
                         {editError && (
-                            <div className="modal-alert-error">{editError}</div>
+                            <div className="edit-modal-alert-error">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="10"></circle>
+                                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                                </svg>
+                                <span>{editError}</span>
+                            </div>
                         )}
 
-                        <form onSubmit={handleSaveProfile} className="profile-edit-modal-form">
-                            <div className="form-grid-2col">
-                                <div className="form-field-unit">
-                                    <label htmlFor="edit-name">Full Name *</label>
-                                    <input
-                                        id="edit-name"
-                                        type="text"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        placeholder="e.g. Arjun K K"
-                                        required
-                                    />
+                        <form onSubmit={handleSaveProfile} className="profile-edit-modern-form">
+                            {/* SECTION 1: PERSONAL & CONTACT */}
+                            <div className="edit-form-section">
+                                <div className="edit-section-header">
+                                    <span className="edit-section-pill">1</span>
+                                    <h4 className="edit-section-label">Personal & Contact Info</h4>
                                 </div>
 
-                                <div className="form-field-unit">
-                                    <label htmlFor="edit-phone">Mobile Number</label>
-                                    <input
-                                        id="edit-phone"
-                                        type="tel"
-                                        value={editPhone}
-                                        onChange={(e) => setEditPhone(e.target.value.replace(/[^0-9+]/g, ''))}
-                                        placeholder="+91 9876543210"
-                                    />
+                                <div className="edit-form-grid">
+                                    {/* Full Name */}
+                                    <div className="edit-field-group">
+                                        <label htmlFor="edit-name" className="edit-field-label">
+                                            Full Name <span className="edit-field-req">*</span>
+                                        </label>
+                                        <div className="edit-input-wrapper">
+                                            <span className="edit-input-icon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                                    <circle cx="12" cy="7" r="4" />
+                                                </svg>
+                                            </span>
+                                            <input
+                                                id="edit-name"
+                                                type="text"
+                                                className="edit-field-input"
+                                                value={editName}
+                                                onChange={(e) => setEditName(e.target.value)}
+                                                placeholder="e.g. Arjun K K"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile Number */}
+                                    <div className="edit-field-group">
+                                        <label htmlFor="edit-phone" className="edit-field-label">Mobile Number</label>
+                                        <div className="edit-input-wrapper">
+                                            <span className="edit-input-icon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                                </svg>
+                                            </span>
+                                            <input
+                                                id="edit-phone"
+                                                type="tel"
+                                                className="edit-field-input"
+                                                value={editPhone}
+                                                onChange={(e) => setEditPhone(e.target.value.replace(/[^0-9+]/g, ''))}
+                                                placeholder="+91 9876543210"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Email */}
+                                    <div className="edit-field-group">
+                                        <label htmlFor="edit-email" className="edit-field-label">Email Address</label>
+                                        <div className="edit-input-wrapper">
+                                            <span className="edit-input-icon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                                    <polyline points="22,6 12,13 2,6" />
+                                                </svg>
+                                            </span>
+                                            <input
+                                                id="edit-email"
+                                                type="email"
+                                                className="edit-field-input"
+                                                value={editEmail}
+                                                onChange={(e) => setEditEmail(e.target.value)}
+                                                placeholder="customer@netrave.in"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* WhatsApp Number */}
+                                    <div className="edit-field-group">
+                                        <div className="edit-field-label-row">
+                                            <label htmlFor="edit-whatsapp" className="edit-field-label">WhatsApp Number</label>
+                                            {editPhone && editWhatsapp !== editPhone && (
+                                                <button
+                                                    type="button"
+                                                    className="edit-same-phone-pill"
+                                                    onClick={() => setEditWhatsapp(editPhone)}
+                                                    title="Use mobile number for WhatsApp"
+                                                >
+                                                    Same as Mobile
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="edit-input-wrapper">
+                                            <span className="edit-input-icon edit-whatsapp-icon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                                    <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2m.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.27-2.42 5.82-1.56 1.55-3.63 2.41-5.83 2.41-1.43 0-2.83-.38-4.06-1.11l-.29-.17-3.02.79.81-2.94-.19-.3A8.188 8.188 0 0 1 3.8 11.91c0-4.54 3.7-8.24 8.25-8.24m4.52 11.64c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.34-.76-1.84-.2-.49-.4-.42-.56-.43h-.47c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.29 3.78.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.12-.23-.19-.48-.31z"/>
+                                                </svg>
+                                            </span>
+                                            <input
+                                                id="edit-whatsapp"
+                                                type="tel"
+                                                className="edit-field-input"
+                                                value={editWhatsapp}
+                                                onChange={(e) => setEditWhatsapp(e.target.value.replace(/[^0-9+]/g, ''))}
+                                                placeholder="+91 9876543210"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="form-grid-2col">
-                                <div className="form-field-unit">
-                                    <label htmlFor="edit-email">Email Address</label>
-                                    <input
-                                        id="edit-email"
-                                        type="email"
-                                        value={editEmail}
-                                        onChange={(e) => setEditEmail(e.target.value)}
-                                        placeholder="customer@netrave.in"
-                                    />
+                            {/* SECTION 2: SHIPPING & DELIVERY */}
+                            <div className="edit-form-section">
+                                <div className="edit-section-header">
+                                    <span className="edit-section-pill">2</span>
+                                    <h4 className="edit-section-label">Default Shipping Address</h4>
                                 </div>
 
-                                <div className="form-field-unit">
-                                    <label htmlFor="edit-city">City / District</label>
-                                    <input
-                                        id="edit-city"
-                                        type="text"
-                                        value={editCity}
-                                        onChange={(e) => setEditCity(e.target.value)}
-                                        placeholder="e.g. Kozhikode"
-                                    />
+                                <div className="edit-field-group">
+                                    <label htmlFor="edit-address" className="edit-field-label">Street / House No / Landmark</label>
+                                    <div className="edit-input-wrapper textarea-wrapper">
+                                        <span className="edit-input-icon textarea-icon">
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                                <circle cx="12" cy="10" r="3" />
+                                            </svg>
+                                        </span>
+                                        <textarea
+                                            id="edit-address"
+                                            rows="2"
+                                            className="edit-field-input edit-field-textarea"
+                                            value={editAddress}
+                                            onChange={(e) => setEditAddress(e.target.value)}
+                                            placeholder="House number, flat, apartment, street address"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="edit-form-grid">
+                                    {/* City / District */}
+                                    <div className="edit-field-group">
+                                        <label htmlFor="edit-city" className="edit-field-label">City / District</label>
+                                        <div className="edit-input-wrapper">
+                                            <span className="edit-input-icon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <circle cx="12" cy="12" r="10"></circle>
+                                                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                                                </svg>
+                                            </span>
+                                            <input
+                                                id="edit-city"
+                                                type="text"
+                                                className="edit-field-input"
+                                                value={editCity}
+                                                onChange={(e) => setEditCity(e.target.value)}
+                                                placeholder="e.g. Kozhikode"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Pincode */}
+                                    <div className="edit-field-group">
+                                        <label htmlFor="edit-pincode" className="edit-field-label">Postal Pincode</label>
+                                        <div className="edit-input-wrapper">
+                                            <span className="edit-input-icon">
+                                                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                    <line x1="4" y1="9" x2="20" y2="9"></line>
+                                                    <line x1="4" y1="15" x2="20" y2="15"></line>
+                                                    <line x1="10" y1="3" x2="8" y2="21"></line>
+                                                    <line x1="16" y1="3" x2="14" y2="21"></line>
+                                                </svg>
+                                            </span>
+                                            <input
+                                                id="edit-pincode"
+                                                type="text"
+                                                maxLength="6"
+                                                className="edit-field-input"
+                                                value={editPincode}
+                                                onChange={(e) => setEditPincode(e.target.value.replace(/[^0-9]/g, ''))}
+                                                placeholder="673525"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            <div className="form-field-unit">
-                                <label htmlFor="edit-address">Street / Door No / Landmark</label>
-                                <textarea
-                                    id="edit-address"
-                                    rows="2"
-                                    value={editAddress}
-                                    onChange={(e) => setEditAddress(e.target.value)}
-                                    placeholder="Enter your street address"
-                                />
-                            </div>
-
-                            <div className="form-field-unit">
-                                <label htmlFor="edit-pincode">Pincode</label>
-                                <input
-                                    id="edit-pincode"
-                                    type="text"
-                                    maxLength="6"
-                                    value={editPincode}
-                                    onChange={(e) => setEditPincode(e.target.value.replace(/[^0-9]/g, ''))}
-                                    placeholder="673525"
-                                />
-                            </div>
-
-                            <div className="modal-actions-row">
+                            {/* Bottom Actions */}
+                            <div className="edit-modal-actions-bar">
                                 <button
                                     type="button"
-                                    className="netrave-btn-secondary"
+                                    className="edit-btn-cancel"
                                     onClick={() => setIsEditModalOpen(false)}
                                     disabled={isSaving}
                                 >
@@ -480,10 +645,31 @@ export default function MyAccountPage({
                                 </button>
                                 <button
                                     type="submit"
-                                    className="netrave-btn-primary"
+                                    className={`edit-btn-save ${saveStatus === 'success' ? 'is-success' : ''} ${saveStatus === 'saving' ? 'is-saving' : ''}`}
                                     disabled={isSaving}
                                 >
-                                    {isSaving ? 'Saving...' : 'Save Changes'}
+                                    {saveStatus === 'saving' ? (
+                                        <>
+                                            <span className="edit-btn-spinner" />
+                                            <span>Saving Changes...</span>
+                                        </>
+                                    ) : saveStatus === 'success' ? (
+                                        <>
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                <polyline points="20 6 9 17 4 12"></polyline>
+                                            </svg>
+                                            <span>Saved!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                                <polyline points="7 3 7 8 15 8"></polyline>
+                                            </svg>
+                                            <span>Save Changes</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>

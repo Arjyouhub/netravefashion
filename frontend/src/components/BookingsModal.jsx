@@ -27,7 +27,7 @@ export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess,
 
     // 1. WhatsApp Support Link Generator
     const generateSupportLink = (order) => {
-        const textTemplate = `👋 *Hi Netrave Support*,\nI need help with my Order ID: *${order.orderId}*.\n\n*Order Details:*\n- Total: ₹${order.total}\n- Date: ${order.date}\n- Status: ${order.status}`;
+        const textTemplate = `*Hi Netrave Support*,\nI need help with my Order ID: *${order.orderId}*.\n\n*Order Details:*\n- Total: Rs. ${order.total}\n- Date: ${order.date}\n- Status: ${order.status}`;
         const targetNumber = whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, '') : '919946550713';
         return `https://wa.me/${targetNumber}?text=${encodeURIComponent(textTemplate)}`;
     };
@@ -36,7 +36,7 @@ export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess,
     const generateWhatsAppLink = (orderRecord) => {
         const itemsText = orderRecord.items.map((item, i) => {
             const variantDetails = [item.color ? `Color: ${item.color}` : '', item.size ? `Size: ${item.size}` : ''].filter(Boolean).join(', ');
-            return `${i + 1}. ${item.title}${variantDetails ? ` (${variantDetails})` : ''} x ${item.quantity} - ₹${item.price * item.quantity}`;
+            return `${i + 1}. ${item.title}${variantDetails ? ` (${variantDetails})` : ''} x ${item.quantity} - Rs. ${item.price * item.quantity}`;
         }).join('\n');
 
         const isRazorpay = (orderRecord.customer?.payment || orderRecord.paymentMethod || '').toLowerCase().includes('razorpay') 
@@ -44,33 +44,33 @@ export default function BookingsModal({ isOpen, bookings, user, onCancelSuccess,
         const paymentText = isRazorpay 
             ? `Paid Online (Razorpay - ${orderRecord.customer?.razorpayPaymentId || 'Verified'})` 
             : (orderRecord.customer?.payment === 'COD' ? 'Cash on Delivery (COD)' : 'Razorpay Online');
-        const deliveryFee = orderRecord.delivery === 0 ? 'FREE' : `₹${orderRecord.delivery}`;
+        const deliveryFee = orderRecord.delivery === 0 ? 'FREE' : `Rs. ${orderRecord.delivery}`;
 
-        const textTemplate = `⚡ *NETRAVE STORE - BOOKING RECEIPT* ⚡
+        const textTemplate = `*NETRAVE STORE - BOOKING RECEIPT*
 -----------------------------------------
 *Order ID:* ${orderRecord.orderId}
 *Date:* ${orderRecord.date}
 
 *Customer Details:*
-👤 Name: ${orderRecord.customer.name}
-📞 Mobile: ${orderRecord.customer.phone}
-💬 WhatsApp: ${orderRecord.customer.whatsapp}
-📍 Address: ${orderRecord.customer.address}
-🏘️ District: ${orderRecord.customer.district}
-🏛️ State: ${orderRecord.customer.state || 'Kerala'}
-📌 Pincode: ${orderRecord.customer.pincode}
+Name: ${orderRecord.customer.name}
+Mobile: ${orderRecord.customer.phone}
+WhatsApp: ${orderRecord.customer.whatsapp}
+Address: ${orderRecord.customer.address}
+District: ${orderRecord.customer.district}
+State: ${orderRecord.customer.state || 'Kerala'}
+Pincode: ${orderRecord.customer.pincode}
 
 -----------------------------------------
 *ITEMS BOOKED:*
 ${itemsText}
 
 -----------------------------------------
-*Subtotal:* ₹${orderRecord.subtotal}
+*Subtotal:* Rs. ${orderRecord.subtotal}
 *Delivery Fee:* ${deliveryFee}
-*GRAND TOTAL:* ₹${orderRecord.total}
+*GRAND TOTAL:* Rs. ${orderRecord.total}
 *PAYMENT METHOD:* ${paymentText}
 -----------------------------------------
-${isRazorpay ? '✅ _Payment verified & received via Razorpay. Order confirmed!_' : '💡 _Please confirm my booking order. Thank you!_'}`;
+${isRazorpay ? 'Payment verified and received via Razorpay. Order confirmed.' : 'Please confirm my booking order. Thank you.'}`;
 
         const targetNumber = whatsappNumber ? whatsappNumber.replace(/[^0-9]/g, '') : '919946550713';
         return `https://wa.me/${targetNumber}?text=${encodeURIComponent(textTemplate)}`;

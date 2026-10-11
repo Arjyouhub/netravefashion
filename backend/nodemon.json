@@ -1,0 +1,4 @@
+{
+  "watch": ["server.js", "dns-setup.js"],
+  "ignore": ["data/*", "public/*", "*.json"]
+}

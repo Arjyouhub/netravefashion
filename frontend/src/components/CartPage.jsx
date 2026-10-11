@@ -1,28 +1,5 @@
 import React, { useState } from 'react';
 
-const DEMO_CART = [
-    {
-        id: 101,
-        title: "Nike Air Zoom Pegasus Running Shoes",
-        price: 2599,
-        originalPrice: 4499,
-        quantity: 1,
-        selectedSize: "8",
-        selectedColor: "White",
-        image: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80"
-    },
-    {
-        id: 102,
-        title: "Classic Chronograph Black Dial Watch",
-        price: 1599,
-        originalPrice: 3499,
-        quantity: 1,
-        selectedSize: "Standard",
-        selectedColor: "Black",
-        image: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80"
-    }
-];
-
 export default function CartPage({
     cart = [],
     onUpdateQuantity,
@@ -34,15 +11,14 @@ export default function CartPage({
     const [couponCode, setCouponCode] = useState('');
     const [appliedDiscount, setAppliedDiscount] = useState(0);
     const [couponMsg, setCouponMsg] = useState(null);
-    const [clearedDemo, setClearedDemo] = useState(false);
 
-    // If real cart has items, use real cart. If empty and not cleared, show 2 demo items from reference.
-    const activeCart = cart.length > 0 ? cart : (clearedDemo ? [] : DEMO_CART);
+    // Use active real cart
+    const activeCart = Array.isArray(cart) ? cart : [];
 
-    const subtotal = activeCart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const subtotal = activeCart.reduce((sum, item) => sum + ((Number(item.price) || 0) * (item.quantity || 1)), 0);
     const shippingCharge = subtotal >= 999 || subtotal === 0 ? 0 : 100;
     const finalTotal = Math.max(0, subtotal - appliedDiscount + shippingCharge);
-    const totalItemsCount = activeCart.reduce((s, i) => s + i.quantity, 0);
+    const totalItemsCount = activeCart.reduce((s, i) => s + (i.quantity || 1), 0);
 
     const handleApplyCoupon = (e) => {
         e.preventDefault();
@@ -65,29 +41,25 @@ export default function CartPage({
 
     const handleClearAll = () => {
         if (window.confirm && window.confirm('Are you sure you want to clear all items from your cart?')) {
-            if (cart.length > 0) {
-                cart.forEach(item => {
-                    onRemoveItem(item.id, item.selectedSize);
-                });
-            } else {
-                setClearedDemo(true);
+            if (activeCart.length > 0) {
+                for (let i = activeCart.length - 1; i >= 0; i--) {
+                    if (onRemoveItem) onRemoveItem(i);
+                }
             }
         }
     };
 
-    const handleItemRemove = (item) => {
-        if (cart.length > 0) {
-            onRemoveItem(item.id, item.selectedSize);
-        } else {
-            setClearedDemo(true);
+    const handleItemRemove = (item, idx) => {
+        if (onRemoveItem) {
+            onRemoveItem(idx !== undefined ? idx : item.id, item.selectedSize || item.size);
         }
     };
 
-    const handleMoveWishlistAndRemove = (item) => {
+    const handleMoveWishlistAndRemove = (item, idx) => {
         if (onMoveToWishlist) {
             onMoveToWishlist(item.id);
         }
-        handleItemRemove(item);
+        handleItemRemove(item, idx);
     };
 
     if (activeCart.length === 0) {
@@ -139,78 +111,94 @@ export default function CartPage({
                     {/* Left: Cart Items (approx 68-70%) */}
                     <div className="cart-items-column">
                         <div className="cart-items-list-wrap">
-                            {activeCart.map((item, idx) => (
-                                <div key={`${item.id}-${item.selectedSize}-${idx}`} className="cart-item-card-row">
-                                    <div className="cart-item-thumb-box">
-                                        <img 
-                                            src={item.image || (item.images && item.images[0])} 
-                                            alt={item.title} 
-                                            className="cart-item-thumb-img" 
-                                        />
+                            {activeCart.map((item, idx) => {
+                                const itemSize = item.size || item.selectedSize || 'M';
+                                const itemColor = item.color || item.selectedColor || 'Default';
+                                const itemQty = item.quantity || 1;
+                                const itemPrice = Number(item.price) || 0;
+                                const itemOrigPrice = Number(item.originalPrice) || 0;
+
+                                return (
+                                    <div key={`${item.id}-${itemSize}-${idx}`} className="cart-item-card-row">
+                                        <div className="cart-item-thumb-box">
+                                            <img 
+                                                src={item.image || (item.images && item.images[0])} 
+                                                alt={item.title} 
+                                                className="cart-item-thumb-img" 
+                                            />
+                                        </div>
+
+                                        <div className="cart-item-details-box">
+                                            <div className="cart-item-info-top">
+                                                <h3 className="cart-item-name">{item.title}</h3>
+                                                <div className="cart-item-price-display">
+                                                    <span className="cart-item-price-bold">₹{(itemPrice * itemQty).toLocaleString()}</span>
+                                                    {itemOrigPrice > itemPrice && (
+                                                        <span className="cart-item-price-cut">₹{(itemOrigPrice * itemQty).toLocaleString()}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            <div className="cart-item-meta-badges">
+                                                <span className="cart-meta-pill">Size: <strong>{itemSize}</strong></span>
+                                                <span className="cart-meta-pill">Color: <strong>{itemColor}</strong></span>
+                                                <span className="cart-stock-status">✓ In Stock</span>
+                                            </div>
+
+                                            <div className="cart-item-controls-row">
+                                                {/* Quantity Stepper */}
+                                                <div className="cart-item-qty-stepper">
+                                                    <button 
+                                                        type="button" 
+                                                        className="stepper-btn"
+                                                        onClick={() => onUpdateQuantity && onUpdateQuantity(idx, -1)}
+                                                        disabled={itemQty <= 1}
+                                                        aria-label="Decrease quantity"
+                                                    >
+                                                        -
+                                                    </button>
+                                                    <span className="stepper-val">{itemQty}</span>
+                                                    <button 
+                                                        type="button" 
+                                                        className="stepper-btn"
+                                                        onClick={() => onUpdateQuantity && onUpdateQuantity(idx, 1)}
+                                                        aria-label="Increase quantity"
+                                                    >
+                                                        +
+                                                    </button>
+                                                </div>
+
+                                                {/* Action Links & Quick Buy */}
+                                                <div className="cart-item-actions-group">
+                                                    <button 
+                                                        type="button" 
+                                                        className="cart-action-link-btn"
+                                                        onClick={() => handleMoveWishlistAndRemove(item, idx)}
+                                                    >
+                                                        <span>♡</span> Move to Wishlist
+                                                    </button>
+                                                    <span className="cart-action-sep">|</span>
+                                                    <button 
+                                                        type="button" 
+                                                        className="cart-action-link-btn text-danger"
+                                                        onClick={() => handleItemRemove(item, idx)}
+                                                    >
+                                                        <span>🗑️</span> Remove
+                                                    </button>
+                                                    <button 
+                                                        type="button" 
+                                                        className="cart-action-buy-item-btn"
+                                                        onClick={onProceedToCheckout}
+                                                        title="Buy directly now"
+                                                    >
+                                                        ⚡ Buy Now
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-
-                                    <div className="cart-item-details-box">
-                                        <div className="cart-item-info-top">
-                                            <h3 className="cart-item-name">{item.title}</h3>
-                                            <div className="cart-item-price-display">
-                                                <span className="cart-item-price-bold">₹{(item.price * item.quantity).toLocaleString()}</span>
-                                                {item.originalPrice && item.originalPrice > item.price && (
-                                                    <span className="cart-item-price-cut">₹{(item.originalPrice * item.quantity).toLocaleString()}</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="cart-item-meta-badges">
-                                            <span className="cart-meta-pill">Size: <strong>{item.selectedSize || 'M'}</strong></span>
-                                            <span className="cart-meta-pill">Color: <strong>{item.selectedColor || 'Default'}</strong></span>
-                                            <span className="cart-stock-status">✓ In Stock</span>
-                                        </div>
-
-                                        <div className="cart-item-controls-row">
-                                            {/* Quantity Stepper */}
-                                            <div className="cart-item-qty-stepper">
-                                                <button 
-                                                    type="button" 
-                                                    className="stepper-btn"
-                                                    onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedSize, item.quantity - 1)}
-                                                    disabled={item.quantity <= 1}
-                                                    aria-label="Decrease quantity"
-                                                >
-                                                    -
-                                                </button>
-                                                <span className="stepper-val">{item.quantity}</span>
-                                                <button 
-                                                    type="button" 
-                                                    className="stepper-btn"
-                                                    onClick={() => onUpdateQuantity && onUpdateQuantity(item.id, item.selectedSize, item.quantity + 1)}
-                                                    aria-label="Increase quantity"
-                                                >
-                                                    +
-                                                </button>
-                                            </div>
-
-                                            {/* Action Links */}
-                                            <div className="cart-item-actions-group">
-                                                <button 
-                                                    type="button" 
-                                                    className="cart-action-link-btn"
-                                                    onClick={() => handleMoveWishlistAndRemove(item)}
-                                                >
-                                                    <span>♡</span> Move to Wishlist
-                                                </button>
-                                                <span className="cart-action-sep">|</span>
-                                                <button 
-                                                    type="button" 
-                                                    className="cart-action-link-btn text-danger"
-                                                    onClick={() => handleItemRemove(item)}
-                                                >
-                                                    <span>🗑️</span> Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         {/* Back to Shopping Button */}
@@ -235,7 +223,7 @@ export default function CartPage({
                                     <input 
                                         type="text" 
                                         className="cart-coupon-field" 
-                                        placeholder="Enter promo code (e.g. FESTIVE)"
+                                        placeholder="Enter promo code (e.g. FESTIVE70)"
                                         value={couponCode}
                                         onChange={(e) => setCouponCode(e.target.value)}
                                     />
@@ -282,13 +270,14 @@ export default function CartPage({
 
                                 <p className="summary-tax-note">Inclusive of all applicable GST taxes</p>
 
-                                {/* Prominent Proceed to Checkout CTA */}
+                                {/* Prominent Proceed to Checkout / Buy Now CTA */}
                                 <button 
                                     type="button" 
                                     className="btn-primary-yellow btn-checkout-desktop"
                                     onClick={onProceedToCheckout}
                                 >
-                                    Proceed to Checkout →
+                                    <span>⚡ Buy Now / Proceed to Checkout</span>
+                                    <span>→</span>
                                 </button>
 
                                 {/* Trust & Security Badges */}
@@ -310,6 +299,22 @@ export default function CartPage({
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Mobile Fixed Sticky Buy Bar - Docked right above bottom navigation */}
+            <div className="cart-mobile-sticky-checkout-bar">
+                <div className="cart-mobile-checkout-price-info">
+                    <span className="cart-mobile-checkout-label">Total Amount:</span>
+                    <span className="cart-mobile-checkout-amount">₹{finalTotal.toLocaleString()}</span>
+                </div>
+                <button
+                    type="button"
+                    className="cart-mobile-checkout-btn"
+                    onClick={onProceedToCheckout}
+                >
+                    <span>⚡ Buy Now</span>
+                    <span>→</span>
+                </button>
             </div>
         </div>
     );

@@ -396,9 +396,16 @@ export default function App() {
             params = {};
         }
 
+        // Close any open drawers or modals when navigating so they never block the screen
+        setIsCartOpen(false);
+        setIsWishlistOpen(false);
+        setIsTrackingOpen(false);
+        setIsBookingsOpen(false);
+        setIsCheckoutOpen(false);
+
         setCurrentPage(page);
         setPageParams(params);
-        if (page === 'category') {
+        if (page === 'category' || page === 'categories') {
             if (params.category) {
                 setActiveCategory(params.category);
             }
@@ -413,7 +420,7 @@ export default function App() {
         }
         const hash = page === 'home' 
             ? '' 
-            : page === 'category' 
+            : (page === 'category' || page === 'categories')
                 ? (params.category && params.category !== 'all' ? `#/category/${params.category}` : '#/category')
                 : `#/${page}${params.id ? '/' + params.id : ''}`;
         window.history.pushState({}, '', hash || '/');
@@ -442,15 +449,17 @@ export default function App() {
                     return;
                 }
 
-                setCurrentPage(p);
                 if (p === 'product' && id) {
-                    setSelectedProductId(Number(id));
-                } else if (p === 'category') {
+                    setCurrentPage('product');
+                    setSelectedProductId(Number(id) || id);
+                } else if (p === 'category' || p === 'categories') {
+                    setCurrentPage('category');
                     setSelectedProductId(null);
                     if (id) {
                         setActiveCategory(id);
                     }
                 } else {
+                    setCurrentPage(p);
                     setSelectedProductId(null);
                 }
             }
@@ -708,18 +717,60 @@ export default function App() {
         setIsCartOpen(true);
     };
 
-    const handleRemoveCartItem = (index) => {
-        const updatedCart = cart.filter((_, idx) => idx !== index);
+    const handleRemoveCartItem = (identifier, size) => {
+        let updatedCart;
+        if (typeof identifier === 'number' && size === undefined && identifier < cart.length) {
+            // Called with numeric index (from CartDrawer)
+            updatedCart = cart.filter((_, idx) => idx !== identifier);
+        } else {
+            // Called with itemId (from CartPage)
+            const targetIndex = cart.findIndex(item => 
+                (item.id === identifier || item._id === identifier) && 
+                (!size || item.size === size || item.selectedSize === size)
+            );
+            if (targetIndex > -1) {
+                updatedCart = cart.filter((_, idx) => idx !== targetIndex);
+            } else if (typeof identifier === 'number' && identifier < cart.length) {
+                updatedCart = cart.filter((_, idx) => idx !== identifier);
+            } else {
+                updatedCart = cart.filter(item => item.id !== identifier && item._id !== identifier);
+            }
+        }
         setCart(updatedCart);
         syncCartStorage(updatedCart);
     };
 
-    const handleUpdateCartQuantity = (index, delta) => {
+    const handleUpdateCartQuantity = (identifier, deltaOrSize, newQuantity) => {
         let updatedCart = [...cart];
-        updatedCart[index].quantity += delta;
+        
+        if (typeof identifier === 'number' && typeof deltaOrSize === 'number' && newQuantity === undefined && identifier < cart.length) {
+            // Called with (index, delta) from CartDrawer
+            const index = identifier;
+            const delta = deltaOrSize;
+            if (updatedCart[index]) {
+                updatedCart[index].quantity += delta;
+                if (updatedCart[index].quantity <= 0) {
+                    updatedCart = updatedCart.filter((_, idx) => idx !== index);
+                }
+            }
+        } else {
+            // Called with (itemId, size, newQty) from CartPage
+            const size = typeof deltaOrSize === 'string' ? deltaOrSize : null;
+            const targetIndex = updatedCart.findIndex(item => 
+                (item.id === identifier || item._id === identifier) && 
+                (!size || item.size === size || item.selectedSize === size)
+            );
 
-        if (updatedCart[index].quantity <= 0) {
-            updatedCart = updatedCart.filter((_, idx) => idx !== index);
+            if (targetIndex > -1) {
+                if (typeof newQuantity === 'number') {
+                    updatedCart[targetIndex].quantity = newQuantity;
+                } else if (typeof deltaOrSize === 'number') {
+                    updatedCart[targetIndex].quantity += deltaOrSize;
+                }
+                if (updatedCart[targetIndex].quantity <= 0) {
+                    updatedCart = updatedCart.filter((_, idx) => idx !== targetIndex);
+                }
+            }
         }
 
         setCart(updatedCart);
@@ -1323,19 +1374,19 @@ export default function App() {
                 onClose={() => setIsCartOpen(false)}
                 onRemoveItem={handleRemoveCartItem}
                 onUpdateQuantity={handleUpdateCartQuantity}
+                onNavigate={navigate}
                 onCheckoutTrigger={() => {
                     if (settings.maintenanceMode) {
                         showToast('Shop is currently undergoing maintenance. Checkout is temporarily disabled.', 'error');
                         return;
                     }
+                    setIsCartOpen(false);
                     if (!user) {
                         showToast('Please login or register to place your order.', 'info');
                         setPendingCheckout(true);
-                        setIsAuthOpen(true);
-                        setIsCartOpen(false);
+                        navigate('login');
                     } else {
                         navigate('checkout');
-                        setIsCartOpen(false);
                     }
                 }}
             />

@@ -7,7 +7,9 @@ export default function AuthPages({
     initialMode = 'login', // 'login', 'signup', 'forgot', 'otp'
     onAuthSuccess,
     onNavigate,
-    API_BASE_URL = 'http://localhost:5000/api',
+    API_BASE_URL = (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+        ? 'http://localhost:5001/api'
+        : 'https://netravefashion.onrender.com/api',
     settings = {}
 }) {
     const [mode, setMode] = useState(initialMode);
@@ -57,28 +59,19 @@ export default function AuthPages({
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload)
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (res.ok && data.success) {
                 if (onAuthSuccess) onAuthSuccess(data.user);
                 if (onNavigate) onNavigate('home');
                 return;
+            } else {
+                setError(data.error || 'Google sign-in failed. Please try again.');
             }
         } catch {
-            // Backend offline fallback for development/demo
+            setError('Unable to reach server for Google sign-in. Please check your connection.');
         } finally {
             setGoogleLoading(false);
         }
-
-        // Demo fallback if backend offline
-        const profile = payload?.profile || {};
-        const fallbackUser = {
-            name: profile.name || 'Netrave Customer',
-            email: profile.email || 'customer@netrave.in',
-            phone: '+91 9876543210',
-            avatar: profile.picture || ''
-        };
-        if (onAuthSuccess) onAuthSuccess(fallbackUser);
-        if (onNavigate) onNavigate('home');
     };
 
     const triggerGoogleSignIn = () => {
@@ -115,13 +108,8 @@ export default function AuthPages({
             }
         }
 
-        // Fast fallback for instant seamless login
-        handleGoogleAuth({
-            profile: {
-                name: 'Netrave Customer',
-                email: 'customer@netrave.in'
-            }
-        });
+        setError('Google Sign-In is unavailable or popup was closed. Please sign in with your credentials.');
+        setGoogleLoading(false);
     };
 
     // Handle Login Submit
@@ -130,7 +118,7 @@ export default function AuthPages({
         setError('');
 
         if (!identifier.trim()) {
-            setError('Please enter your email or phone number.');
+            setError('Please enter your email, phone number or username.');
             return;
         }
         if (!password) {
@@ -139,42 +127,40 @@ export default function AuthPages({
         }
 
         setLoading(true);
-        const isPhoneOnly = /^[0-9]{10}$/.test(identifier.trim());
+        const cleanIdentifier = identifier.trim();
+        const digitsOnly = cleanIdentifier.replace(/\D/g, '');
+        const isPhoneOnly = digitsOnly.length === 10 || (digitsOnly.length === 12 && digitsOnly.startsWith('91'));
+        const phoneFormatted = digitsOnly.length === 12 && digitsOnly.startsWith('91') ? digitsOnly.slice(2) : digitsOnly;
 
         try {
-            // Attempt backend API login if available
             const res = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: isPhoneOnly ? identifier.trim() : '9876543210',
-                    mpin: password.length === 6 && /^\d+$/.test(password) ? password : '123456',
-                    email: identifier.includes('@') ? identifier.trim() : undefined,
-                    password
+                    identifier: cleanIdentifier,
+                    phone: isPhoneOnly ? phoneFormatted : undefined,
+                    email: cleanIdentifier.includes('@') ? cleanIdentifier : undefined,
+                    username: cleanIdentifier,
+                    password: password,
+                    mpin: password
                 })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (res.ok && data.success) {
                 if (onAuthSuccess) onAuthSuccess(data.user);
                 if (onNavigate) onNavigate('home');
                 setLoading(false);
                 return;
+            } else {
+                setError(data.error || 'Invalid credentials. Please check your username and password.');
+                setLoading(false);
+                return;
             }
         } catch {
-            // Backend offline - use local authentication
-        }
-
-        // Smooth instant login fallback
-        setTimeout(() => {
-            const userObj = {
-                name: identifier.includes('@') ? identifier.split('@')[0] : 'Arjun K K',
-                phone: isPhoneOnly ? identifier : '+91 9876543210',
-                email: identifier.includes('@') ? identifier : 'customer@netrave.in'
-            };
-            if (onAuthSuccess) onAuthSuccess(userObj);
-            if (onNavigate) onNavigate('home');
+            setError('Unable to reach server. Please check your network connection.');
             setLoading(false);
-        }, 400);
+            return;
+        }
     };
 
     // Handle Signup Submit
@@ -204,41 +190,42 @@ export default function AuthPages({
         }
 
         setLoading(true);
-        const isPhoneOnly = /^[0-9]{10}$/.test(signupEmailOrPhone.trim());
+        const cleanTarget = signupEmailOrPhone.trim();
+        const digitsOnly = cleanTarget.replace(/\D/g, '');
+        const isPhone = digitsOnly.length === 10 || (digitsOnly.length === 12 && digitsOnly.startsWith('91'));
+        const phoneFormatted = digitsOnly.length === 12 && digitsOnly.startsWith('91') ? digitsOnly.slice(2) : digitsOnly;
 
         try {
             const res = await fetch(`${API_BASE_URL}/auth/register`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    phone: isPhoneOnly ? signupEmailOrPhone.trim() : '9876543210',
                     name: fullName.trim(),
-                    mpin: signupPassword.length === 6 && /^\d+$/.test(signupPassword) ? signupPassword : '123456',
-                    email: signupEmailOrPhone.includes('@') ? signupEmailOrPhone.trim() : undefined
+                    phone: isPhone ? phoneFormatted : undefined,
+                    email: cleanTarget.includes('@') ? cleanTarget : undefined,
+                    identifier: cleanTarget,
+                    password: signupPassword,
+                    mpin: signupPassword
                 })
             });
-            const data = await res.json();
+            const data = await res.json().catch(() => ({}));
             if (res.ok && data.success) {
                 if (onAuthSuccess) onAuthSuccess(data.user);
                 if (onNavigate) onNavigate('home');
                 setLoading(false);
                 return;
+            } else {
+                setError(data.error || 'Registration failed. Please check your details and try again.');
+                setLoading(false);
+                return;
             }
         } catch {
-            // Local fallback
-        }
-
-        setTimeout(() => {
-            const userObj = {
-                name: fullName.trim(),
-                phone: isPhoneOnly ? signupEmailOrPhone.trim() : '+91 9876543210',
-                email: signupEmailOrPhone.includes('@') ? signupEmailOrPhone.trim() : 'customer@netrave.in'
-            };
-            if (onAuthSuccess) onAuthSuccess(userObj);
-            if (onNavigate) onNavigate('home');
+            setError('Unable to reach server. Please check your network connection.');
             setLoading(false);
-        }, 400);
+            return;
+        }
     };
+
 
     // Handle Forgot Password Submit
     const handleForgotSubmit = (e) => {
@@ -278,10 +265,11 @@ export default function AuthPages({
         setTimeout(() => {
             setLoading(false);
             if (onAuthSuccess) {
+                const targetIsEmail = forgotTarget.includes('@');
                 onAuthSuccess({
-                    name: 'Arjun K K',
-                    phone: forgotTarget.includes('@') ? '+91 9876543210' : forgotTarget,
-                    email: forgotTarget.includes('@') ? forgotTarget : 'customer@netrave.in'
+                    name: targetIsEmail ? forgotTarget.split('@')[0] : 'Customer',
+                    phone: targetIsEmail ? '' : forgotTarget,
+                    email: targetIsEmail ? forgotTarget : ''
                 });
             }
             if (onNavigate) onNavigate('home');
