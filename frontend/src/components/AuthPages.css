@@ -610,14 +610,59 @@
   background: #fef2f2;
   border: 1px solid #fecaca;
   color: #dc2626;
-  padding: 10px 14px;
+  padding: 11px 15px;
   border-radius: 10px;
   font-size: 13px;
   margin-bottom: 16px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-weight: 500;
+  line-height: 1.4;
+  animation: authFadeIn 0.2s ease;
+}
+
+/* Success Alert Box */
+.auth-success-alert {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  padding: 11px 15px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  line-height: 1.4;
+  animation: authFadeIn 0.2s ease;
+}
+
+@keyframes authFadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.auth-sub-instruction {
+  font-size: 13.5px;
+  color: #475569;
+  text-align: center;
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.auth-sub-instruction strong {
+  color: #0f172a;
+  word-break: break-all;
+}
+
+.auth-input-helper-text {
+  font-size: 11.5px;
+  color: #64748b;
+  margin-top: -6px;
+  margin-bottom: 14px;
+  padding-left: 4px;
 }
 
 /* Bottom mobile switch paragraph (visible on mobile) */

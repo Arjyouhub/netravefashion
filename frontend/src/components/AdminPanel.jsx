@@ -956,8 +956,9 @@ export default function AdminPanel({
         setProdImage(product.image || '');
         setProdImages(Array.isArray(product.images) && product.images.length > 0 ? product.images : (product.image ? [product.image] : []));
         setNewImageInput('');
-        setProdDesc(product.description || '');
-        setProdShortDesc(product.shortDescription || '');
+        const existingDesc = product.description || (product.shortDescription ? `<p>${product.shortDescription}</p>` : '');
+        setProdDesc(existingDesc);
+        setProdShortDesc(product.shortDescription || (product.description ? product.description.replace(/<[^>]*>?/gm, '').trim().slice(0, 160) : ''));
         setProdBrand(product.brand || 'NETRAVE');
         setProdSku(product.sku || '');
         setProdSizes(product.sizes || ['M', 'L', 'XL']);
@@ -1229,6 +1230,13 @@ export default function AdminPanel({
         const mainImage = prodImages.length > 0 ? prodImages[0] : (prodImage || 'https://images.unsplash.com/photo-1521572267360-ee0c2909d518?w=600');
         const allImgs = prodImages.length > 0 ? prodImages : (mainImage ? [mainImage] : []);
 
+        const cleanedDesc = prodDesc && prodDesc.trim() !== '' && prodDesc !== '<br>' && prodDesc !== '<p><br></p>'
+            ? prodDesc.trim()
+            : (prodShortDesc?.trim() ? `<p>${prodShortDesc.trim()}</p>` : '');
+        const cleanedShortDesc = prodShortDesc && prodShortDesc.trim() !== ''
+            ? prodShortDesc.trim()
+            : (cleanedDesc ? cleanedDesc.replace(/<[^>]*>?/gm, '').trim().slice(0, 160) : '');
+
         const productPayload = {
             title: prodTitle,
             category: prodCategory,
@@ -1238,8 +1246,8 @@ export default function AdminPanel({
             originalPrice: prodOriginalPrice ? parseFloat(prodOriginalPrice) : undefined,
             image: mainImage,
             images: allImgs,
-            description: prodDesc,
-            shortDescription: prodShortDesc,
+            description: cleanedDesc,
+            shortDescription: cleanedShortDesc,
             brand: prodBrand,
             sku: prodSku,
             sizes: prodSizes,
@@ -1274,6 +1282,8 @@ export default function AdminPanel({
             onEditProduct(editingProduct.id, productPayload);
         } else {
             onAddProduct(productPayload);
+            setProdCurrentPage(1);
+            setProdFilterSort('default');
         }
         setIsProductFormOpen(false);
         resetProductForm();
@@ -4467,7 +4477,9 @@ ${booking.internalNotes ? `\n*Order Notes:* ${booking.internalNotes}` : ''}
                                 const marginB = (Number(b.price) || 0) - (Number(b.costPrice) || 0);
                                 return marginB - marginA;
                             }
-                            return 0;
+                            if (prodFilterSort === 'oldest') return (Number(a.id) || 0) - (Number(b.id) || 0);
+                            // Default: Newest first (highest id first)
+                            return (Number(b.id) || 0) - (Number(a.id) || 0);
                         });
 
                         const PRODS_PER_PAGE = 8;
@@ -4518,10 +4530,11 @@ ${booking.internalNotes ? `\n*Order Notes:* ${booking.internalNotes}` : ''}
 
                                         <select 
                                             value={prodFilterSort} 
-                                            onChange={e => setProdFilterSort(e.target.value)}
+                                            onChange={e => { setProdFilterSort(e.target.value); setProdCurrentPage(1); }}
                                             className="admin-select-filter"
                                         >
-                                            <option value="default">Sort: Default</option>
+                                            <option value="default">Sort: Newest First</option>
+                                            <option value="oldest">Sort: Oldest First</option>
                                             <option value="price_asc">Price: Low to High</option>
                                             <option value="price_desc">Price: High to Low</option>
                                             <option value="stock_desc">Stock: High to Low</option>

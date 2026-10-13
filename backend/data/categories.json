@@ -10,10 +10,26 @@
     "status": "active",
     "displayOrder": 1,
     "subcategories": [
-      { "id": "oversized-tees", "name": "Oversized Tees", "slug": "oversized-tees" },
-      { "id": "graphic-tees", "name": "Graphic Backprint", "slug": "graphic-tees" },
-      { "id": "acid-wash", "name": "Acid Wash", "slug": "acid-wash" },
-      { "id": "basics", "name": "Essential Crewnecks", "slug": "basics" }
+      {
+        "id": "oversized-tees",
+        "name": "Oversized Tees",
+        "slug": "oversized-tees"
+      },
+      {
+        "id": "graphic-tees",
+        "name": "Graphic Backprint",
+        "slug": "graphic-tees"
+      },
+      {
+        "id": "acid-wash",
+        "name": "Acid Wash",
+        "slug": "acid-wash"
+      },
+      {
+        "id": "basics",
+        "name": "Essential Crewnecks",
+        "slug": "basics"
+      }
     ],
     "createdAt": "2026-01-10T10:00:00.000Z"
   },
@@ -28,9 +44,21 @@
     "status": "active",
     "displayOrder": 2,
     "subcategories": [
-      { "id": "linen-blend", "name": "Linen Blend", "slug": "linen-blend" },
-      { "id": "oxford-cotton", "name": "Oxford Cotton", "slug": "oxford-cotton" },
-      { "id": "cuban-collar", "name": "Cuban Collar", "slug": "cuban-collar" }
+      {
+        "id": "linen-blend",
+        "name": "Linen Blend",
+        "slug": "linen-blend"
+      },
+      {
+        "id": "oxford-cotton",
+        "name": "Oxford Cotton",
+        "slug": "oxford-cotton"
+      },
+      {
+        "id": "cuban-collar",
+        "name": "Cuban Collar",
+        "slug": "cuban-collar"
+      }
     ],
     "createdAt": "2026-01-15T10:00:00.000Z"
   },
@@ -45,9 +73,21 @@
     "status": "active",
     "displayOrder": 3,
     "subcategories": [
-      { "id": "bomber-jackets", "name": "Bomber Jackets", "slug": "bomber-jackets" },
-      { "id": "pullover-hoodies", "name": "Pullover Hoodies", "slug": "pullover-hoodies" },
-      { "id": "zip-jackets", "name": "Zip Track Jackets", "slug": "zip-jackets" }
+      {
+        "id": "bomber-jackets",
+        "name": "Bomber Jackets",
+        "slug": "bomber-jackets"
+      },
+      {
+        "id": "pullover-hoodies",
+        "name": "Pullover Hoodies",
+        "slug": "pullover-hoodies"
+      },
+      {
+        "id": "zip-jackets",
+        "name": "Zip Track Jackets",
+        "slug": "zip-jackets"
+      }
     ],
     "createdAt": "2026-01-20T10:00:00.000Z"
   },
@@ -62,9 +102,21 @@
     "status": "active",
     "displayOrder": 4,
     "subcategories": [
-      { "id": "tactical-cargo", "name": "Multi-Pocket Cargo", "slug": "tactical-cargo" },
-      { "id": "relaxed-chinos", "name": "Relaxed Chinos", "slug": "relaxed-chinos" },
-      { "id": "joggers", "name": "Street Joggers", "slug": "joggers" }
+      {
+        "id": "tactical-cargo",
+        "name": "Multi-Pocket Cargo",
+        "slug": "tactical-cargo"
+      },
+      {
+        "id": "relaxed-chinos",
+        "name": "Relaxed Chinos",
+        "slug": "relaxed-chinos"
+      },
+      {
+        "id": "joggers",
+        "name": "Street Joggers",
+        "slug": "joggers"
+      }
     ],
     "createdAt": "2026-01-18T10:00:00.000Z"
   },
@@ -79,9 +131,21 @@
     "status": "active",
     "displayOrder": 5,
     "subcategories": [
-      { "id": "sneakers", "name": "Streetwear Sneakers", "slug": "sneakers" },
-      { "id": "running-shoes", "name": "Sport & Running", "slug": "running-shoes" },
-      { "id": "casual-shoes", "name": "Casual Loafers & Slides", "slug": "casual-shoes" }
+      {
+        "id": "sneakers",
+        "name": "Streetwear Sneakers",
+        "slug": "sneakers"
+      },
+      {
+        "id": "running-shoes",
+        "name": "Sport & Running",
+        "slug": "running-shoes"
+      },
+      {
+        "id": "casual-shoes",
+        "name": "Casual Loafers & Slides",
+        "slug": "casual-shoes"
+      }
     ],
     "createdAt": "2026-02-01T10:00:00.000Z"
   },
@@ -96,10 +160,26 @@
     "status": "active",
     "displayOrder": 6,
     "subcategories": [
-      { "id": "kanjivaram-silk", "name": "Kanjivaram Silk", "slug": "kanjivaram-silk" },
-      { "id": "designer-chiffon", "name": "Designer Chiffon & Georgette", "slug": "designer-chiffon" },
-      { "id": "banarasi", "name": "Banarasi Weaves", "slug": "banarasi" },
-      { "id": "linen-cotton-saree", "name": "Linen & Handloom Cotton", "slug": "linen-cotton-saree" }
+      {
+        "id": "kanjivaram-silk",
+        "name": "Kanjivaram Silk",
+        "slug": "kanjivaram-silk"
+      },
+      {
+        "id": "designer-chiffon",
+        "name": "Designer Chiffon & Georgette",
+        "slug": "designer-chiffon"
+      },
+      {
+        "id": "banarasi",
+        "name": "Banarasi Weaves",
+        "slug": "banarasi"
+      },
+      {
+        "id": "linen-cotton-saree",
+        "name": "Linen & Handloom Cotton",
+        "slug": "linen-cotton-saree"
+      }
     ],
     "createdAt": "2026-02-02T10:00:00.000Z"
   },
@@ -114,9 +194,21 @@
     "status": "active",
     "displayOrder": 7,
     "subcategories": [
-      { "id": "anarkali-sets", "name": "Anarkali Suit Sets", "slug": "anarkali-sets" },
-      { "id": "straight-kurtis", "name": "Straight Cut Kurtis", "slug": "straight-kurtis" },
-      { "id": "festive-ethnic", "name": "Festive & Wedding Ethnic", "slug": "festive-ethnic" }
+      {
+        "id": "anarkali-sets",
+        "name": "Anarkali Suit Sets",
+        "slug": "anarkali-sets"
+      },
+      {
+        "id": "straight-kurtis",
+        "name": "Straight Cut Kurtis",
+        "slug": "straight-kurtis"
+      },
+      {
+        "id": "festive-ethnic",
+        "name": "Festive & Wedding Ethnic",
+        "slug": "festive-ethnic"
+      }
     ],
     "createdAt": "2026-02-03T10:00:00.000Z"
   },
@@ -131,9 +223,21 @@
     "status": "active",
     "displayOrder": 8,
     "subcategories": [
-      { "id": "breeze-tees", "name": "Breeze Cotton Tees", "slug": "breeze-tees" },
-      { "id": "pastel-collection", "name": "Pastel Tops", "slug": "pastel-collection" },
-      { "id": "beachwear", "name": "Resort & Beach", "slug": "beachwear" }
+      {
+        "id": "breeze-tees",
+        "name": "Breeze Cotton Tees",
+        "slug": "breeze-tees"
+      },
+      {
+        "id": "pastel-collection",
+        "name": "Pastel Tops",
+        "slug": "pastel-collection"
+      },
+      {
+        "id": "beachwear",
+        "name": "Resort & Beach",
+        "slug": "beachwear"
+      }
     ],
     "createdAt": "2026-01-12T10:00:00.000Z"
   }

@@ -1,25 +1,35 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 
-export default function RichTextEditor({ value, onChange, placeholder = 'Write rich product description...' }) {
+export default function RichTextEditor({ value = '', onChange, placeholder = 'Write rich product description...' }) {
     const editorRef = useRef(null);
+    const [mode, setMode] = useState('visual'); // 'visual' | 'code'
 
-    // Sync external value to contentEditable when value prop changes externally
+    // Sync external value to contentEditable ONLY when not actively focused
     useEffect(() => {
-        if (editorRef.current && editorRef.current.innerHTML !== value) {
-            editorRef.current.innerHTML = value || '';
+        if (mode === 'visual' && editorRef.current) {
+            if (document.activeElement === editorRef.current) return;
+            const currentHtml = editorRef.current.innerHTML;
+            const targetVal = value || '';
+            if (currentHtml !== targetVal) {
+                editorRef.current.innerHTML = targetVal;
+            }
         }
-    }, [value]);
+    }, [value, mode]);
 
     const handleInput = () => {
-        if (editorRef.current && onChange) {
-            onChange(editorRef.current.innerHTML);
-        }
+        if (!editorRef.current || !onChange) return;
+        const html = editorRef.current.innerHTML;
+        // Clean out empty browser artifacts
+        const isBlank = !html || html === '<br>' || html === '<p><br></p>' || html.trim() === '';
+        onChange(isBlank ? '' : html);
     };
 
     const executeCommand = (command, val = null) => {
         document.execCommand(command, false, val);
         if (editorRef.current && onChange) {
-            onChange(editorRef.current.innerHTML);
+            const html = editorRef.current.innerHTML;
+            const isBlank = !html || html === '<br>' || html === '<p><br></p>' || html.trim() === '';
+            onChange(isBlank ? '' : html);
         }
         editorRef.current?.focus();
     };
@@ -56,120 +66,205 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Write r
                 display: 'flex',
                 flexWrap: 'wrap',
                 gap: '4px',
-                alignItems: 'center'
+                alignItems: 'center',
+                justifyContent: 'space-between'
             }}>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('formatBlock', '<h2>')}
-                    title="Heading 2"
-                    style={toolbarBtnStyle}
-                >
-                    H2
-                </button>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('formatBlock', '<h3>')}
-                    title="Heading 3"
-                    style={toolbarBtnStyle}
-                >
-                    H3
-                </button>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('formatBlock', '<p>')}
-                    title="Paragraph"
-                    style={toolbarBtnStyle}
-                >
-                    ¶
-                </button>
-                <div style={separatorStyle} />
-                <button
-                    type="button"
-                    onClick={() => executeCommand('bold')}
-                    title="Bold"
-                    style={{ ...toolbarBtnStyle, fontWeight: '900' }}
-                >
-                    B
-                </button>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('italic')}
-                    title="Italic"
-                    style={{ ...toolbarBtnStyle, fontStyle: 'italic' }}
-                >
-                    I
-                </button>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('underline')}
-                    title="Underline"
-                    style={{ ...toolbarBtnStyle, textDecoration: 'underline' }}
-                >
-                    U
-                </button>
-                <div style={separatorStyle} />
-                <button
-                    type="button"
-                    onClick={() => executeCommand('insertUnorderedList')}
-                    title="Bullet List"
-                    style={toolbarBtnStyle}
-                >
-                    • List
-                </button>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('insertOrderedList')}
-                    title="Numbered List"
-                    style={toolbarBtnStyle}
-                >
-                    1. List
-                </button>
-                <div style={separatorStyle} />
-                <button
-                    type="button"
-                    onClick={handleInsertLink}
-                    title="Insert Link"
-                    style={toolbarBtnStyle}
-                >
-                    🔗 Link
-                </button>
-                <button
-                    type="button"
-                    onClick={handleInsertImage}
-                    title="Insert Image"
-                    style={toolbarBtnStyle}
-                >
-                    🖼️ Image
-                </button>
-                <button
-                    type="button"
-                    onClick={() => executeCommand('removeFormat')}
-                    title="Clear Formatting"
-                    style={{ ...toolbarBtnStyle, color: '#f87171' }}
-                >
-                    🧹 Clear
-                </button>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('formatBlock', '<h2>')}
+                        title="Heading 2"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        H2
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('formatBlock', '<h3>')}
+                        title="Heading 3"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        H3
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('formatBlock', '<p>')}
+                        title="Paragraph"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        ¶
+                    </button>
+                    <div style={separatorStyle} />
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('bold')}
+                        title="Bold"
+                        disabled={mode === 'code'}
+                        style={{ ...toolbarBtnStyle, fontWeight: '900' }}
+                    >
+                        B
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('italic')}
+                        title="Italic"
+                        disabled={mode === 'code'}
+                        style={{ ...toolbarBtnStyle, fontStyle: 'italic' }}
+                    >
+                        I
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('underline')}
+                        title="Underline"
+                        disabled={mode === 'code'}
+                        style={{ ...toolbarBtnStyle, textDecoration: 'underline' }}
+                    >
+                        U
+                    </button>
+                    <div style={separatorStyle} />
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('insertUnorderedList')}
+                        title="Bullet List"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        • List
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('insertOrderedList')}
+                        title="Numbered List"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        1. List
+                    </button>
+                    <div style={separatorStyle} />
+                    <button
+                        type="button"
+                        onClick={handleInsertLink}
+                        title="Insert Link"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        🔗 Link
+                    </button>
+                    <button
+                        type="button"
+                        onClick={handleInsertImage}
+                        title="Insert Image"
+                        disabled={mode === 'code'}
+                        style={toolbarBtnStyle}
+                    >
+                        🖼️ Image
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => executeCommand('removeFormat')}
+                        title="Clear Formatting"
+                        disabled={mode === 'code'}
+                        style={{ ...toolbarBtnStyle, color: '#f87171' }}
+                    >
+                        🧹 Clear
+                    </button>
+                </div>
+
+                {/* Mode Switcher: Visual vs Raw Text */}
+                <div style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                        type="button"
+                        onClick={() => setMode('visual')}
+                        style={{
+                            ...toolbarBtnStyle,
+                            background: mode === 'visual' ? 'var(--primary, #f59e0b)' : '#1c2234',
+                            color: mode === 'visual' ? '#000' : '#cbd5e1',
+                            fontWeight: '700'
+                        }}
+                        title="Rich Visual Editor"
+                    >
+                        Visual
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMode('code')}
+                        style={{
+                            ...toolbarBtnStyle,
+                            background: mode === 'code' ? 'var(--primary, #f59e0b)' : '#1c2234',
+                            color: mode === 'code' ? '#000' : '#cbd5e1',
+                            fontWeight: '700'
+                        }}
+                        title="Plain / HTML Text Editor"
+                    >
+                        Text/HTML
+                    </button>
+                </div>
             </div>
 
             {/* Editable Content Area */}
-            <div
-                ref={editorRef}
-                contentEditable
-                onInput={handleInput}
-                className="rich-editor-content"
-                data-placeholder={placeholder}
-                style={{
-                    minHeight: '140px',
-                    maxHeight: '320px',
-                    overflowY: 'auto',
-                    padding: '12px 14px',
-                    color: '#e2e8f0',
-                    fontSize: '13.5px',
-                    lineHeight: '1.6',
-                    outline: 'none',
-                    fontFamily: 'inherit'
-                }}
-            />
+            {mode === 'visual' ? (
+                <div style={{ position: 'relative' }}>
+                    <div
+                        ref={editorRef}
+                        contentEditable
+                        onInput={handleInput}
+                        onBlur={handleInput}
+                        className="rich-editor-content"
+                        style={{
+                            minHeight: '140px',
+                            maxHeight: '320px',
+                            overflowY: 'auto',
+                            padding: '12px 14px',
+                            color: '#e2e8f0',
+                            fontSize: '13.5px',
+                            lineHeight: '1.6',
+                            outline: 'none',
+                            fontFamily: 'inherit'
+                        }}
+                    />
+                    {(!value || value === '<br>' || value === '<p><br></p>') && (
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: '12px',
+                                left: '14px',
+                                color: '#64748b',
+                                fontSize: '13.5px',
+                                pointerEvents: 'none',
+                                userSelect: 'none'
+                            }}
+                        >
+                            {placeholder}
+                        </div>
+                    )}
+                </div>
+            ) : (
+                <textarea
+                    value={value || ''}
+                    onChange={(e) => onChange && onChange(e.target.value)}
+                    placeholder={placeholder}
+                    rows={6}
+                    style={{
+                        width: '100%',
+                        minHeight: '140px',
+                        maxHeight: '320px',
+                        padding: '12px 14px',
+                        background: '#0a0d14',
+                        color: '#f1f5f9',
+                        fontSize: '13px',
+                        fontFamily: 'monospace',
+                        lineHeight: '1.6',
+                        border: 'none',
+                        outline: 'none',
+                        resize: 'vertical',
+                        boxSizing: 'border-box'
+                    }}
+                />
+            )}
         </div>
     );
 }

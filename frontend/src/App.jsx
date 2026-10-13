@@ -525,14 +525,14 @@ export default function App() {
                 } else if (Array.isArray(data)) {
                     setProducts(data);
                 } else {
-                    setProducts(FALLBACK_PRODUCTS);
+                    setProducts(prev => (prev && prev.length > 0 ? prev : FALLBACK_PRODUCTS));
                 }
             } else {
-                setProducts(FALLBACK_PRODUCTS);
+                setProducts(prev => (prev && prev.length > 0 ? prev : FALLBACK_PRODUCTS));
             }
         } catch (err) {
-            console.warn('Backend server offline. Running with fallback product data.', err.message);
-            setProducts(FALLBACK_PRODUCTS);
+            console.warn('Backend server connection hiccup. Preserving existing product data:', err.message);
+            setProducts(prev => (prev && prev.length > 0 ? prev : FALLBACK_PRODUCTS));
         } finally {
             setLoadingProducts(false);
         }
@@ -885,7 +885,7 @@ export default function App() {
             });
             if (response.ok) {
                 const created = await response.json();
-                setProducts(prev => [created, ...prev]);
+                setProducts(prev => [created, ...prev.filter(p => p.id !== created.id)]);
                 showToast('Product added successfully!', 'success');
                 await fetchProducts();
             } else {

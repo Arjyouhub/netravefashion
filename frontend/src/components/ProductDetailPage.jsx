@@ -332,7 +332,16 @@ export default function ProductDetailPage({
                         {/* Product Details Section */}
                         <div className="pdp-info-block">
                             <h3>Product Description</h3>
-                            <p>{product.description || product.shortDescription || 'Designed for premium comfort and signature street-ready style. Crafted with high-grade breathable materials with refined finishing.'}</p>
+                            {product.description && /<\/?[a-z][\s\S]*>/i.test(product.description) ? (
+                                <div 
+                                    dangerouslySetInnerHTML={{ __html: product.description }} 
+                                    style={{ fontSize: '14.5px', color: '#475569', lineHeight: '1.7' }}
+                                />
+                            ) : (
+                                <p style={{ whiteSpace: 'pre-line', fontSize: '14.5px', color: '#475569', lineHeight: '1.7' }}>
+                                    {product.description || product.shortDescription || 'Designed for premium comfort and signature street-ready style. Crafted with high-grade breathable materials with refined finishing.'}
+                                </p>
+                            )}
                         </div>
                     </div>
                 </div>

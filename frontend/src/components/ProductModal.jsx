@@ -1458,7 +1458,7 @@ export default function ProductModal({
                         </div>
 
                         {/* 6. PRODUCT DESCRIPTION */}
-                        {product.description && (
+                        {(product.description || product.shortDescription) && (
                             <div style={{
                                 background: '#0d101a',
                                 border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -1469,10 +1469,16 @@ export default function ProductModal({
                                 <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#fff', margin: '0 0 12px' }}>
                                     Product Description
                                 </h3>
-                                <div 
-                                    dangerouslySetInnerHTML={{ __html: product.description }}
-                                    style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: '1.6' }}
-                                />
+                                {product.description && /<\/?[a-z][\s\S]*>/i.test(product.description) ? (
+                                    <div 
+                                        dangerouslySetInnerHTML={{ __html: product.description }}
+                                        style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: '1.6' }}
+                                    />
+                                ) : (
+                                    <div style={{ fontSize: '14px', color: '#cbd5e1', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
+                                        {product.description || product.shortDescription}
+                                    </div>
+                                )}
                             </div>
                         )}
 

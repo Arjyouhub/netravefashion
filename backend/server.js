@@ -9,6 +9,7 @@ import multer from 'multer';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
+import { sendOtpEmail, testSmtpConnection } from './email-service.js';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ const usersPath = path.join(__dirname, 'data', 'users.json');
 const couponsPath = path.join(__dirname, 'data', 'coupons.json');
 const loginLogsPath = path.join(__dirname, 'data', 'login_logs.json');
 const reviewsPath = path.join(__dirname, 'data', 'reviews.json');
+const otpsPath = path.join(__dirname, 'data', 'otps.json');
 
 // Ensure data folder and default JSON files exist to prevent log warnings on Render
 async function initDataFolder() {
@@ -59,6 +61,7 @@ async function initDataFolder() {
         await ensureFile(couponsPath, []);
         await ensureFile(loginLogsPath, []);
         await ensureFile(reviewsPath, []);
+        await ensureFile(otpsPath, []);
     } catch (err) {
         console.error('[Netrave Backend] Error initializing data folder:', err.message);
     }
@@ -97,12 +100,23 @@ async function writeJson(filePath, data) {
 let useMongo = false;
 try {
     const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/netravestore';
-    await mongoose.connect(mongoUri, { serverSelectionTimeoutMS: 2000 });
+    await mongoose.connect(mongoUri, { 
+        serverSelectionTimeoutMS: 15000,
+        connectTimeoutMS: 15000 
+    });
     console.log('[Netrave Backend] Connected to MongoDB Cloud Database Cluster');
     useMongo = true;
 } catch (err) {
     console.warn('[Netrave Backend] MongoDB connection failed. Falling back to local JSON database.', err.message);
 }
+
+mongoose.connection.on('connected', () => {
+    useMongo = true;
+    console.log('[Netrave Backend] MongoDB connected.');
+});
+mongoose.connection.on('disconnected', () => {
+    console.warn('[Netrave Backend] MongoDB disconnected. Falling back to local JSON database.');
+});
 
 // Category Schema
 const CategorySchema = new mongoose.Schema({
@@ -266,9 +280,33 @@ const UserSchema = new mongoose.Schema({
     lockUntil: { type: Number, default: 0 },
     isBlocked: { type: Boolean, default: false },
     blockedAt: { type: Number, default: 0 },
-    lastActiveAt: { type: Number, default: 0 }
+    lastActiveAt: { type: Number, default: 0 },
+    emailVerified: { type: Boolean, default: false }
 });
 const UserModel = mongoose.models.User || mongoose.model('User', UserSchema);
+
+// Email OTP Verification Schema
+const EmailOtpSchema = new mongoose.Schema({
+    email: { type: String, required: true, lowercase: true, trim: true, index: true },
+    otpHash: { type: String, required: true },
+    purpose: { type: String, required: true, enum: ['registration', 'forgot_password'] },
+    attempts: { type: Number, default: 0 },
+    resendCooldownUntil: { type: Number, default: 0 },
+    expiresAt: { type: Number, required: true },
+    isVerified: { type: Boolean, default: false },
+    resetToken: { type: String, default: '' },
+    registrationData: { type: mongoose.Schema.Types.Mixed, default: null },
+    createdAt: { type: Date, default: Date.now, expires: 600 }
+});
+const EmailOtpModel = mongoose.models.EmailOtp || mongoose.model('EmailOtp', EmailOtpSchema);
+
+function generate6DigitOtp() {
+    return crypto.randomInt(100000, 999999).toString();
+}
+
+function hashOtp(otp, email) {
+    return crypto.createHash('sha256').update(`${otp}:${(email || '').toLowerCase().trim()}:netrave_otp_salt_2026`).digest('hex');
+}
 
 // Drop obsolete unique phone index if present so Google logins without phone don't hit duplicate key errors
 if (useMongo) {
@@ -357,21 +395,37 @@ if (useMongo) {
     try {
         const productCount = await ProductModel.countDocuments();
         const fileProducts = await readJson(productsPath);
-        if (productCount !== fileProducts.length) {
-            await ProductModel.deleteMany({});
-            if (fileProducts && fileProducts.length > 0) {
-                await ProductModel.insertMany(fileProducts);
-                console.log('[Netrave Backend] Synchronized MongoDB products collection with products.json');
+        if (productCount === 0 && fileProducts && fileProducts.length > 0) {
+            await ProductModel.insertMany(fileProducts);
+            console.log('[Netrave Backend] Seeded MongoDB products collection from products.json');
+        } else if (productCount > 0) {
+            // Keep local products.json in sync with cloud MongoDB as persistent cache
+            const allDbProducts = await ProductModel.find().sort({ id: -1 }).lean();
+            if (allDbProducts && allDbProducts.length > 0) {
+                await writeJson(productsPath, allDbProducts.map(p => {
+                    const clean = { ...p };
+                    delete clean._id;
+                    delete clean.__v;
+                    return clean;
+                }));
             }
         }
-        // Seed Categories
+
+        // Seed Categories safely
         const categoryCount = await CategoryModel.countDocuments();
         const fileCategories = await readJson(categoriesPath);
-        if (categoryCount !== fileCategories.length) {
-            await CategoryModel.deleteMany({});
-            if (fileCategories && fileCategories.length > 0) {
-                await CategoryModel.insertMany(fileCategories);
-                console.log('[Netrave Backend] Synchronized MongoDB categories collection with categories.json');
+        if (categoryCount === 0 && fileCategories && fileCategories.length > 0) {
+            await CategoryModel.insertMany(fileCategories);
+            console.log('[Netrave Backend] Seeded MongoDB categories collection from categories.json');
+        } else if (categoryCount > 0) {
+            const allDbCategories = await CategoryModel.find().sort({ displayOrder: 1, id: 1 }).lean();
+            if (allDbCategories && allDbCategories.length > 0) {
+                await writeJson(categoriesPath, allDbCategories.map(c => {
+                    const clean = { ...c };
+                    delete clean._id;
+                    delete clean.__v;
+                    return clean;
+                }));
             }
         }
         const settingsCount = await SettingsModel.countDocuments();
@@ -910,10 +964,11 @@ app.get('/api/products', async (req, res) => {
     try {
         const isAdmin = await isRequestAdmin(req);
         let products = [];
-        if (useMongo) {
-            products = await ProductModel.find().sort({ id: 1 });
+        if (useMongo && mongoose.connection.readyState === 1) {
+            products = await ProductModel.find().sort({ id: -1 });
         } else {
             products = await readJson(productsPath);
+            products.sort((a, b) => (b.id || 0) - (a.id || 0));
         }
 
         if (isAdmin || req.query.adminView === 'true') {
@@ -921,22 +976,36 @@ app.get('/api/products', async (req, res) => {
         }
         res.json(products.map(sanitizeProductForCustomer));
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch products.' });
+        console.warn('Failed to query products from primary store, falling back to JSON:', err.message);
+        try {
+            const fallbackProds = await readJson(productsPath);
+            fallbackProds.sort((a, b) => (b.id || 0) - (a.id || 0));
+            res.json(fallbackProds.map(sanitizeProductForCustomer));
+        } catch {
+            res.status(500).json({ error: 'Failed to fetch products.' });
+        }
     }
 });
 
 // Admin Fetch Products (Always includes full supplier intel)
 app.get('/api/admin/products', async (req, res) => {
     try {
-        if (useMongo) {
-            const products = await ProductModel.find().sort({ id: 1 });
+        if (useMongo && mongoose.connection.readyState === 1) {
+            const products = await ProductModel.find().sort({ id: -1 });
             res.json(products);
         } else {
             const products = await readJson(productsPath);
+            products.sort((a, b) => (b.id || 0) - (a.id || 0));
             res.json(products);
         }
     } catch (err) {
-        res.status(500).json({ error: 'Failed to fetch products for admin.' });
+        try {
+            const products = await readJson(productsPath);
+            products.sort((a, b) => (b.id || 0) - (a.id || 0));
+            res.json(products);
+        } catch {
+            res.status(500).json({ error: 'Failed to fetch products for admin.' });
+        }
     }
 });
 
@@ -946,9 +1015,10 @@ app.get('/api/products/:id', async (req, res) => {
         const prodId = parseInt(req.params.id);
         const isAdmin = await isRequestAdmin(req);
         let prod = null;
-        if (useMongo) {
+        if (useMongo && mongoose.connection.readyState === 1) {
             prod = await ProductModel.findOne({ id: prodId });
-        } else {
+        }
+        if (!prod) {
             const list = await readJson(productsPath);
             prod = list.find(p => p.id === prodId);
         }
@@ -984,10 +1054,22 @@ app.post('/api/products', async (req, res) => {
         const imgList = Array.isArray(images) && images.length > 0 ? images : (image ? [image] : []);
         const primaryImage = image || (imgList[0] || '');
 
+        // Ensure clean descriptions (guarantee neither is completely empty if the other was filled)
+        const finalDesc = description && description.trim() !== '' 
+            ? description.trim() 
+            : (shortDescription && shortDescription.trim() !== '' ? `<p>${shortDescription.trim()}</p>` : '');
+        const finalShortDesc = shortDescription && shortDescription.trim() !== '' 
+            ? shortDescription.trim() 
+            : (finalDesc ? finalDesc.replace(/<[^>]*>?/gm, '').trim().slice(0, 160) : '');
+
+        const productsList = await readJson(productsPath);
+        const fileMaxId = productsList.reduce((max, p) => (p.id > max ? p.id : max), 0);
+
         let newProduct;
-        if (useMongo) {
+        if (useMongo && mongoose.connection.readyState === 1) {
             const lastProduct = await ProductModel.findOne().sort({ id: -1 });
-            const nextId = lastProduct ? lastProduct.id + 1 : 1;
+            const mongoMaxId = lastProduct ? lastProduct.id : 0;
+            const nextId = Math.max(mongoMaxId, fileMaxId) + 1;
 
             newProduct = new ProductModel({
                 id: nextId,
@@ -1000,9 +1082,9 @@ app.post('/api/products', async (req, res) => {
                 image: primaryImage,
                 images: imgList,
                 video: video || '',
-                shortDescription: shortDescription || '',
-                description: description || '',
-                sizes: Array.isArray(sizes) ? sizes : ['M', 'L', 'XL'],
+                shortDescription: finalShortDesc,
+                description: finalDesc,
+                sizes: Array.isArray(sizes) && sizes.length > 0 ? sizes : ['M', 'L', 'XL'],
                 colors: Array.isArray(colors) ? colors : [],
                 tags: Array.isArray(tags) ? tags : [],
                 stock: stock !== undefined ? Number(stock) : 50,
@@ -1032,10 +1114,19 @@ app.post('/api/products', async (req, res) => {
                 reviews: 0
             });
             await newProduct.save();
-        } else {
-            const productsList = await readJson(productsPath);
-            const nextId = productsList.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
 
+            // Dual persistence: sync to local products.json immediately so it never disappears
+            try {
+                const plainObj = newProduct.toObject ? newProduct.toObject() : { ...newProduct };
+                delete plainObj._id;
+                delete plainObj.__v;
+                productsList.unshift(plainObj);
+                await writeJson(productsPath, productsList);
+            } catch (syncErr) {
+                console.warn('Could not mirror new product to JSON:', syncErr.message);
+            }
+        } else {
+            const nextId = fileMaxId + 1;
             newProduct = {
                 id: nextId,
                 title: title.trim(),
@@ -1047,9 +1138,9 @@ app.post('/api/products', async (req, res) => {
                 image: primaryImage,
                 images: imgList,
                 video: video || '',
-                shortDescription: shortDescription || '',
-                description: description || '',
-                sizes: Array.isArray(sizes) ? sizes : ['M', 'L', 'XL'],
+                shortDescription: finalShortDesc,
+                description: finalDesc,
+                sizes: Array.isArray(sizes) && sizes.length > 0 ? sizes : ['M', 'L', 'XL'],
                 colors: Array.isArray(colors) ? colors : [],
                 tags: Array.isArray(tags) ? tags : [],
                 stock: stock !== undefined ? Number(stock) : 50,
@@ -1078,7 +1169,7 @@ app.post('/api/products', async (req, res) => {
                 rating: 5.0,
                 reviews: 0
             };
-            productsList.push(newProduct);
+            productsList.unshift(newProduct);
             await writeJson(productsPath, productsList);
         }
         res.status(201).json(newProduct);
@@ -1152,19 +1243,23 @@ app.put('/api/products/:id', async (req, res) => {
         if (supplierStockStatus !== undefined) updateData.supplierStockStatus = supplierStockStatus;
         if (supplierNotes !== undefined) updateData.supplierNotes = supplierNotes;
 
-        if (useMongo) {
+        let returnedProduct = null;
+        if (useMongo && mongoose.connection.readyState === 1) {
             const filter = isNum ? { id: numId } : { _id: rawParam };
-            const updatedProduct = await ProductModel.findOneAndUpdate(filter, updateData, { new: true });
-            if (!updatedProduct) return res.status(404).json({ error: 'Product not found.' });
-            res.json(updatedProduct);
-        } else {
-            const productsList = await readJson(productsPath);
-            const index = productsList.findIndex(p => (isNum && p.id === numId) || String(p.id) === rawParam);
-            if (index === -1) return res.status(404).json({ error: 'Product not found.' });
+            returnedProduct = await ProductModel.findOneAndUpdate(filter, updateData, { new: true });
+        }
+
+        // Always keep local JSON cache synchronized
+        const productsList = await readJson(productsPath);
+        const index = productsList.findIndex(p => (isNum && p.id === numId) || String(p.id) === rawParam);
+        if (index !== -1) {
             productsList[index] = { ...productsList[index], ...updateData };
             await writeJson(productsPath, productsList);
-            res.json(productsList[index]);
+            if (!returnedProduct) returnedProduct = productsList[index];
         }
+
+        if (!returnedProduct) return res.status(404).json({ error: 'Product not found.' });
+        res.json(returnedProduct);
     } catch (err) {
         console.error('Failed to update product:', err);
         res.status(500).json({ error: 'Failed to update product.' });
@@ -1175,46 +1270,40 @@ app.put('/api/products/:id', async (req, res) => {
 app.post('/api/products/:id/duplicate', async (req, res) => {
     try {
         const prodId = parseInt(req.params.id);
+        const productsList = await readJson(productsPath);
+        const fileMaxId = productsList.reduce((max, p) => (p.id > max ? p.id : max), 0);
+
         let original = null;
-        let nextId = 1;
-
-        if (useMongo) {
+        if (useMongo && mongoose.connection.readyState === 1) {
             original = await ProductModel.findOne({ id: prodId }).lean();
-            if (!original) return res.status(404).json({ error: 'Product not found.' });
-            const lastProduct = await ProductModel.findOne().sort({ id: -1 });
-            nextId = lastProduct ? lastProduct.id + 1 : 1;
+        }
+        if (!original) {
+            original = productsList.find(p => p.id === prodId);
+        }
+        if (!original) return res.status(404).json({ error: 'Product not found.' });
 
-            const cloned = {
-                ...original,
-                _id: undefined,
-                id: nextId,
-                title: `${original.title} (Copy)`,
-                sku: original.sku ? `${original.sku}-COPY` : `NET-SKU-${nextId}`,
-                reviews: 0,
-                rating: 5.0
-            };
-            delete cloned._id;
+        const nextId = fileMaxId + 1;
+        const cloned = {
+            ...original,
+            _id: undefined,
+            id: nextId,
+            title: `${original.title} (Copy)`,
+            sku: original.sku ? `${original.sku}-COPY` : `NET-SKU-${nextId}`,
+            reviews: 0,
+            rating: 5.0
+        };
+        delete cloned._id;
+        delete cloned.__v;
+
+        if (useMongo && mongoose.connection.readyState === 1) {
             const newDoc = new ProductModel(cloned);
             await newDoc.save();
-            return res.status(201).json(newDoc);
-        } else {
-            const productsList = await readJson(productsPath);
-            original = productsList.find(p => p.id === prodId);
-            if (!original) return res.status(404).json({ error: 'Product not found.' });
-            nextId = productsList.reduce((max, p) => p.id > max ? p.id : max, 0) + 1;
-
-            const cloned = {
-                ...original,
-                id: nextId,
-                title: `${original.title} (Copy)`,
-                sku: original.sku ? `${original.sku}-COPY` : `NET-SKU-${nextId}`,
-                reviews: 0,
-                rating: 5.0
-            };
-            productsList.push(cloned);
-            await writeJson(productsPath, productsList);
-            return res.status(201).json(cloned);
         }
+
+        productsList.unshift(cloned);
+        await writeJson(productsPath, productsList);
+
+        return res.status(201).json(cloned);
     } catch (err) {
         console.error('Failed to duplicate product:', err);
         res.status(500).json({ error: 'Failed to duplicate product.' });
@@ -1228,22 +1317,16 @@ app.delete('/api/products/:id', async (req, res) => {
         const numId = parseInt(rawParam);
         const isNum = !isNaN(numId);
 
-        if (useMongo) {
+        if (useMongo && mongoose.connection.readyState === 1) {
             const filter = isNum ? { id: numId } : { _id: rawParam };
-            const deleted = await ProductModel.findOneAndDelete(filter);
-            if (!deleted) return res.status(404).json({ error: 'Product not found.' });
-            res.json({ message: 'Product deleted successfully.' });
-        } else {
-            const productsList = await readJson(productsPath);
-            const filtered = productsList.filter(p => !((isNum && p.id === numId) || String(p.id) === rawParam));
-
-            if (productsList.length === filtered.length) {
-                return res.status(404).json({ error: 'Product not found.' });
-            }
-
-            await writeJson(productsPath, filtered);
-            res.json({ message: 'Product deleted successfully.' });
+            await ProductModel.findOneAndDelete(filter);
         }
+
+        const productsList = await readJson(productsPath);
+        const filtered = productsList.filter(p => !((isNum && p.id === numId) || String(p.id) === rawParam));
+        await writeJson(productsPath, filtered);
+
+        res.json({ message: 'Product deleted successfully.' });
     } catch (err) {
         res.status(500).json({ error: 'Failed to delete product.' });
     }
@@ -2329,10 +2412,564 @@ app.post('/api/reviews', async (req, res) => {
 });
 
 // --------------------------------------------------------------------------
+// EMAIL OTP HELPERS & STORAGE ENGINE
+// --------------------------------------------------------------------------
+
+// Helper to find active OTP record
+async function findActiveOtp(email, purpose) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (useMongo && mongoose.connection.readyState === 1) {
+        return await EmailOtpModel.findOne({ 
+            email: cleanEmail, 
+            purpose,
+            expiresAt: { $gt: Date.now() }
+        }).sort({ createdAt: -1 });
+    } else {
+        const list = await readJson(otpsPath);
+        return list.find(o => o.email === cleanEmail && o.purpose === purpose && o.expiresAt > Date.now());
+    }
+}
+
+// Helper to save or overwrite active OTP record
+async function saveOtpRecord(record) {
+    if (useMongo && mongoose.connection.readyState === 1) {
+        await EmailOtpModel.deleteMany({ email: record.email, purpose: record.purpose });
+        const doc = new EmailOtpModel(record);
+        await doc.save();
+    }
+    try {
+        const list = await readJson(otpsPath);
+        const filtered = list.filter(o => !(o.email === record.email && o.purpose === record.purpose));
+        filtered.push(record);
+        await writeJson(otpsPath, filtered);
+    } catch {}
+    return record;
+}
+
+// Helper to update active OTP record
+async function updateOtpRecord(record, updates) {
+    let updatedDoc = null;
+    if (useMongo && mongoose.connection.readyState === 1) {
+        if (record._id) {
+            updatedDoc = await EmailOtpModel.findByIdAndUpdate(record._id, updates, { new: true });
+        } else {
+            updatedDoc = await EmailOtpModel.findOneAndUpdate({ email: record.email, purpose: record.purpose }, updates, { new: true });
+        }
+    }
+    try {
+        const list = await readJson(otpsPath);
+        const idx = list.findIndex(o => o.email === record.email && o.purpose === record.purpose);
+        if (idx !== -1) {
+            list[idx] = { ...list[idx], ...updates };
+            await writeJson(otpsPath, list);
+            if (!updatedDoc) updatedDoc = list[idx];
+        }
+    } catch {}
+    return updatedDoc || record;
+}
+
+// Helper to remove OTP record upon completion or invalidation
+async function removeOtpRecord(email, purpose) {
+    const cleanEmail = (email || '').toLowerCase().trim();
+    if (useMongo && mongoose.connection.readyState === 1) {
+        await EmailOtpModel.deleteMany({ email: cleanEmail, purpose });
+    }
+    try {
+        const list = await readJson(otpsPath);
+        const filtered = list.filter(o => !(o.email === cleanEmail && o.purpose === purpose));
+        await writeJson(otpsPath, filtered);
+    } catch {}
+}
+
+// --------------------------------------------------------------------------
+// EMAIL OTP ROUTES (REGISTRATION & FORGOT PASSWORD)
+// --------------------------------------------------------------------------
+
+// 1. SMTP Health Status (Public for diagnostics / admin)
+app.get('/api/auth/smtp-status', async (req, res) => {
+    try {
+        dotenv.config();
+        const configured = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+        const health = await testSmtpConnection();
+        res.json({
+            configured,
+            host: process.env.SMTP_HOST || 'smtp-relay.brevo.com',
+            port: parseInt(process.env.SMTP_PORT, 10) || 587,
+            from: process.env.SMTP_FROM || '"Netrave Fashion" <no-reply@netravefashion.com>',
+            connection: health
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// 2. Send Registration Email OTP
+app.post('/api/auth/send-registration-otp', async (req, res) => {
+    try {
+        const { name, email, phone, password } = req.body;
+        const trimmedName = (name || '').trim();
+        const cleanEmail = (email || '').toLowerCase().trim();
+        const rawPhone = (phone || '').toString().trim();
+        const rawPassword = (password || '').toString();
+
+        if (!trimmedName) {
+            return res.status(400).json({ error: 'Please enter your full name.' });
+        }
+        if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+            return res.status(400).json({ error: 'Please enter a valid email address.' });
+        }
+        if (!rawPassword || rawPassword.length < 6) {
+            return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+        }
+
+        let normalizedPhone = '';
+        if (rawPhone) {
+            const digitsOnly = rawPhone.replace(/\D/g, '');
+            normalizedPhone = (digitsOnly.length === 12 && digitsOnly.startsWith('91'))
+                ? digitsOnly.slice(2)
+                : (digitsOnly.length === 10 ? digitsOnly : '');
+            if (!normalizedPhone) {
+                return res.status(400).json({ error: 'Please enter a valid 10-digit mobile number.' });
+            }
+        }
+
+        // Check for existing accounts with this email or phone
+        if (useMongo && mongoose.connection.readyState === 1) {
+            const orQuery = [{ email: cleanEmail }];
+            if (normalizedPhone) orQuery.push({ phone: normalizedPhone });
+            const existingUser = await UserModel.findOne({ $or: orQuery });
+            if (existingUser) {
+                const msg = existingUser.email === cleanEmail 
+                    ? 'An account with this email address already exists. Please log in.' 
+                    : 'An account with this mobile number already exists. Please log in.';
+                return res.status(400).json({ error: msg });
+            }
+        } else {
+            const users = await readJson(usersPath);
+            const existingUser = users.find(u => 
+                ((u.email || '').toLowerCase() === cleanEmail) || 
+                (normalizedPhone && (u.phone || '').replace(/\D/g, '') === normalizedPhone)
+            );
+            if (existingUser) {
+                const msg = (existingUser.email || '').toLowerCase() === cleanEmail 
+                    ? 'An account with this email address already exists. Please log in.' 
+                    : 'An account with this mobile number already exists. Please log in.';
+                return res.status(400).json({ error: msg });
+            }
+        }
+
+        // Rate limit: 60-second cooldown
+        const existingOtp = await findActiveOtp(cleanEmail, 'registration');
+        if (existingOtp && existingOtp.resendCooldownUntil > Date.now()) {
+            const waitSec = Math.ceil((existingOtp.resendCooldownUntil - Date.now()) / 1000);
+            return res.status(429).json({ 
+                error: `Please wait ${waitSec} second(s) before requesting a new verification code.`,
+                cooldownRemaining: waitSec 
+            });
+        }
+
+        // Generate 6-digit OTP & Hash
+        const otp = generate6DigitOtp();
+        const otpHash = hashOtp(otp, cleanEmail);
+
+        // Pre-compute secure password hash
+        const saltKey = normalizedPhone || cleanEmail || trimmedName;
+        const hashedPassword = hashMpin(rawPassword, saltKey);
+
+        const pendingUser = {
+            name: trimmedName,
+            email: cleanEmail,
+            phone: normalizedPhone || '',
+            mpin: hashedPassword,
+            password: hashedPassword,
+            authProvider: 'local',
+            emailVerified: true
+        };
+
+        // Save OTP record (5-minute expiry, 60s cooldown)
+        await saveOtpRecord({
+            email: cleanEmail,
+            otpHash,
+            purpose: 'registration',
+            attempts: 0,
+            resendCooldownUntil: Date.now() + 60 * 1000,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+            isVerified: false,
+            registrationData: pendingUser
+        });
+
+        // Send Email via Nodemailer
+        try {
+            await sendOtpEmail({
+                to: cleanEmail,
+                name: trimmedName,
+                otp,
+                purpose: 'registration'
+            });
+        } catch (emailErr) {
+            console.error('[Netrave Backend] Error sending registration OTP email:', emailErr.message);
+            return res.status(500).json({ 
+                error: `Failed to deliver verification email: ${emailErr.message}. Please verify SMTP settings.` 
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: `A 6-digit verification code has been sent to ${cleanEmail}. It expires in 5 minutes.`,
+            email: cleanEmail,
+            cooldown: 60
+        });
+    } catch (err) {
+        console.error('[Netrave Backend] Send registration OTP error:', err);
+        res.status(500).json({ error: 'Failed to process registration request. Please try again.' });
+    }
+});
+
+// 3. Verify Registration Email OTP & Create User
+app.post('/api/auth/verify-registration-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const cleanEmail = (email || '').toLowerCase().trim();
+        const cleanOtp = (otp || '').toString().trim();
+
+        if (!cleanEmail || !cleanOtp) {
+            return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
+        }
+
+        const otpRecord = await findActiveOtp(cleanEmail, 'registration');
+        if (!otpRecord) {
+            return res.status(400).json({ error: 'Verification code has expired or is invalid. Please request a new code.' });
+        }
+
+        if (otpRecord.attempts >= 5) {
+            await removeOtpRecord(cleanEmail, 'registration');
+            return res.status(429).json({ 
+                error: 'Too many incorrect attempts. For security, this code has been invalidated. Please request a new code.' 
+            });
+        }
+
+        const incomingHash = hashOtp(cleanOtp, cleanEmail);
+        if (incomingHash !== otpRecord.otpHash) {
+            const newAttempts = (otpRecord.attempts || 0) + 1;
+            await updateOtpRecord(otpRecord, { attempts: newAttempts });
+            const remaining = Math.max(0, 5 - newAttempts);
+            return res.status(400).json({ 
+                error: `Incorrect verification code. ${remaining} attempt(s) remaining.` 
+            });
+        }
+
+        // OTP is valid! Activate account
+        const pending = otpRecord.registrationData;
+        if (!pending || !pending.name) {
+            return res.status(400).json({ error: 'Registration session expired. Please sign up again.' });
+        }
+
+        let createdUser = null;
+        if (useMongo && mongoose.connection.readyState === 1) {
+            // Check duplicate one final time
+            const existing = await UserModel.findOne({ email: cleanEmail });
+            if (existing) {
+                await removeOtpRecord(cleanEmail, 'registration');
+                return res.status(400).json({ error: 'An account with this email address already exists. Please log in.' });
+            }
+
+            const newUserDoc = new UserModel({
+                name: pending.name,
+                email: pending.email,
+                phone: pending.phone || '',
+                mpin: pending.mpin,
+                password: pending.password,
+                authProvider: 'local',
+                emailVerified: true,
+                lastActiveAt: Date.now()
+            });
+            await newUserDoc.save();
+            createdUser = newUserDoc;
+        }
+
+        // Always mirror to users.json for zero-downtime cache
+        const usersList = await readJson(usersPath);
+        const existingInFile = usersList.find(u => (u.email || '').toLowerCase() === cleanEmail);
+        if (!existingInFile) {
+            const jsonUser = {
+                name: pending.name,
+                email: pending.email,
+                phone: pending.phone || '',
+                mpin: pending.mpin,
+                password: pending.password,
+                authProvider: 'local',
+                emailVerified: true,
+                loginAttempts: 0,
+                lockUntil: 0,
+                lastActiveAt: Date.now()
+            };
+            usersList.push(jsonUser);
+            await writeJson(usersPath, usersList);
+            if (!createdUser) createdUser = jsonUser;
+        }
+
+        // Single-use: remove the registration OTP immediately
+        await removeOtpRecord(cleanEmail, 'registration');
+
+        await logUserLogin(createdUser.phone || createdUser.email, createdUser.name, 'registered & verified (Email OTP)', req);
+
+        return res.status(201).json({
+            success: true,
+            message: 'Email verified successfully! Your account is now active.',
+            user: {
+                name: createdUser.name,
+                email: createdUser.email,
+                phone: createdUser.phone || '',
+                emailVerified: true
+            }
+        });
+    } catch (err) {
+        console.error('[Netrave Backend] Verify registration OTP error:', err);
+        res.status(500).json({ error: 'Verification failed. Please try again.' });
+    }
+});
+
+// 4. Send Forgot Password Email OTP
+app.post('/api/auth/send-forgot-otp', async (req, res) => {
+    try {
+        const { email } = req.body;
+        const cleanEmail = (email || '').toLowerCase().trim();
+
+        if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+            return res.status(400).json({ error: 'Please enter a valid email address.' });
+        }
+
+        // Lookup user
+        let user = null;
+        if (useMongo && mongoose.connection.readyState === 1) {
+            user = await UserModel.findOne({ email: cleanEmail });
+        }
+        if (!user) {
+            const users = await readJson(usersPath);
+            user = users.find(u => (u.email || '').toLowerCase() === cleanEmail);
+        }
+
+        // If user not found, respond with generic message to prevent email enumeration
+        if (!user) {
+            return res.json({
+                success: true,
+                message: 'If an account exists with this email address, a 6-digit password reset code has been sent.',
+                email: cleanEmail,
+                cooldown: 60
+            });
+        }
+
+        if (user.isBlocked) {
+            return res.status(403).json({ error: 'This account has been blocked. Please contact support.' });
+        }
+
+        // Check 60-second cooldown
+        const existingOtp = await findActiveOtp(cleanEmail, 'forgot_password');
+        if (existingOtp && existingOtp.resendCooldownUntil > Date.now()) {
+            const waitSec = Math.ceil((existingOtp.resendCooldownUntil - Date.now()) / 1000);
+            return res.status(429).json({ 
+                error: `Please wait ${waitSec} second(s) before requesting a new reset code.`,
+                cooldownRemaining: waitSec 
+            });
+        }
+
+        // Generate 6-digit OTP & Hash
+        const otp = generate6DigitOtp();
+        const otpHash = hashOtp(otp, cleanEmail);
+
+        // Save OTP record (5-minute expiry, 60s cooldown)
+        await saveOtpRecord({
+            email: cleanEmail,
+            otpHash,
+            purpose: 'forgot_password',
+            attempts: 0,
+            resendCooldownUntil: Date.now() + 60 * 1000,
+            expiresAt: Date.now() + 5 * 60 * 1000,
+            isVerified: false
+        });
+
+        // Send Email
+        try {
+            await sendOtpEmail({
+                to: cleanEmail,
+                name: user.name || '',
+                otp,
+                purpose: 'forgot_password'
+            });
+        } catch (emailErr) {
+            console.error('[Netrave Backend] Error sending password reset email:', emailErr.message);
+            return res.status(500).json({ 
+                error: `Failed to deliver reset email: ${emailErr.message}. Please check SMTP configuration.` 
+            });
+        }
+
+        return res.json({
+            success: true,
+            message: `A 6-digit password reset code has been sent to ${cleanEmail}. It expires in 5 minutes.`,
+            email: cleanEmail,
+            cooldown: 60
+        });
+    } catch (err) {
+        console.error('[Netrave Backend] Send forgot OTP error:', err);
+        res.status(500).json({ error: 'Failed to process password reset request. Please try again.' });
+    }
+});
+
+// 5. Verify Forgot Password OTP
+app.post('/api/auth/verify-forgot-otp', async (req, res) => {
+    try {
+        const { email, otp } = req.body;
+        const cleanEmail = (email || '').toLowerCase().trim();
+        const cleanOtp = (otp || '').toString().trim();
+
+        if (!cleanEmail || !cleanOtp) {
+            return res.status(400).json({ error: 'Email and 6-digit verification code are required.' });
+        }
+
+        const otpRecord = await findActiveOtp(cleanEmail, 'forgot_password');
+        if (!otpRecord) {
+            return res.status(400).json({ error: 'Password reset code has expired or is invalid. Please request a new code.' });
+        }
+
+        if (otpRecord.attempts >= 5) {
+            await removeOtpRecord(cleanEmail, 'forgot_password');
+            return res.status(429).json({ 
+                error: 'Too many incorrect attempts. For security, this code has been invalidated. Please request a new code.' 
+            });
+        }
+
+        const incomingHash = hashOtp(cleanOtp, cleanEmail);
+        if (incomingHash !== otpRecord.otpHash) {
+            const newAttempts = (otpRecord.attempts || 0) + 1;
+            await updateOtpRecord(otpRecord, { attempts: newAttempts });
+            const remaining = Math.max(0, 5 - newAttempts);
+            return res.status(400).json({ 
+                error: `Incorrect verification code. ${remaining} attempt(s) remaining.` 
+            });
+        }
+
+        // Correct OTP! Generate cryptographically random reset token valid for 10 minutes
+        const resetToken = crypto.randomBytes(32).toString('hex');
+        await updateOtpRecord(otpRecord, {
+            isVerified: true,
+            resetToken,
+            expiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes to complete password change
+        });
+
+        return res.json({
+            success: true,
+            message: 'Verification code confirmed. You may now create your new password.',
+            resetToken
+        });
+    } catch (err) {
+        console.error('[Netrave Backend] Verify forgot OTP error:', err);
+        res.status(500).json({ error: 'Verification failed. Please try again.' });
+    }
+});
+
+// 6. Reset Password with Verified Session Token
+app.post('/api/auth/reset-password', async (req, res) => {
+    try {
+        const { email, resetToken, newPassword } = req.body;
+        const cleanEmail = (email || '').toLowerCase().trim();
+        const cleanToken = (resetToken || '').toString().trim();
+        const rawPassword = (newPassword || '').toString();
+
+        if (!cleanEmail || !cleanToken) {
+            return res.status(400).json({ error: 'Email and valid reset token are required.' });
+        }
+        if (!rawPassword || rawPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters.' });
+        }
+
+        // Validate that this reset token was issued for this email and is verified
+        let otpRecord = null;
+        if (useMongo && mongoose.connection.readyState === 1) {
+            otpRecord = await EmailOtpModel.findOne({
+                email: cleanEmail,
+                purpose: 'forgot_password',
+                isVerified: true,
+                resetToken: cleanToken,
+                expiresAt: { $gt: Date.now() }
+            });
+        } else {
+            const list = await readJson(otpsPath);
+            otpRecord = list.find(o => 
+                o.email === cleanEmail && 
+                o.purpose === 'forgot_password' && 
+                o.isVerified === true && 
+                o.resetToken === cleanToken && 
+                o.expiresAt > Date.now()
+            );
+        }
+
+        if (!otpRecord) {
+            return res.status(400).json({ error: 'Invalid or expired password reset session. Please request a new code.' });
+        }
+
+        // Find user
+        let user = null;
+        if (useMongo && mongoose.connection.readyState === 1) {
+            user = await UserModel.findOne({ email: cleanEmail });
+        }
+        if (!user) {
+            const users = await readJson(usersPath);
+            user = users.find(u => (u.email || '').toLowerCase() === cleanEmail);
+        }
+
+        if (!user) {
+            return res.status(404).json({ error: 'User account not found.' });
+        }
+
+        // Hash new password using existing PBKDF2 hashMpin
+        const saltKey = user.phone || user.email || user.name;
+        const newHashedPassword = hashMpin(rawPassword, saltKey);
+
+        if (useMongo && mongoose.connection.readyState === 1) {
+            await UserModel.findOneAndUpdate(
+                { email: cleanEmail },
+                {
+                    mpin: newHashedPassword,
+                    password: newHashedPassword,
+                    loginAttempts: 0,
+                    lockUntil: 0,
+                    lastActiveAt: Date.now()
+                }
+            );
+        }
+
+        // Always sync to users.json
+        const usersList = await readJson(usersPath);
+        const uIdx = usersList.findIndex(u => (u.email || '').toLowerCase() === cleanEmail);
+        if (uIdx !== -1) {
+            usersList[uIdx].mpin = newHashedPassword;
+            usersList[uIdx].password = newHashedPassword;
+            usersList[uIdx].loginAttempts = 0;
+            usersList[uIdx].lockUntil = 0;
+            usersList[uIdx].lastActiveAt = Date.now();
+            await writeJson(usersPath, usersList);
+        }
+
+        // Invalidate the reset token immediately (single-use)
+        await removeOtpRecord(cleanEmail, 'forgot_password');
+
+        await logUserLogin(user.phone || cleanEmail, user.name, 'password reset completed', req);
+
+        return res.json({
+            success: true,
+            message: 'Your password has been reset successfully! Please log in with your new password.'
+        });
+    } catch (err) {
+        console.error('[Netrave Backend] Reset password error:', err);
+        res.status(500).json({ error: 'Failed to reset password. Please try again.' });
+    }
+});
+
+// --------------------------------------------------------------------------
 // USER AUTHENTICATION & LOGIN ENDPOINTS
 // --------------------------------------------------------------------------
 
-// Register User
+// Register User (Direct legacy registration - keeps existing fallback working)
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { phone, name, email, identifier, password, mpin } = req.body;
@@ -2537,7 +3174,7 @@ app.post('/api/auth/login', async (req, res) => {
             }
         } else if (user.password && user.password === rawSecret) {
             isSecretValid = true;
-        } else if (user.mpin) {
+        } else if (user.mpin || user.password) {
             // Check B: PBKDF2 hash match with phone, email, name or identifier
             const phoneHash = user.phone ? hashMpin(rawSecret, user.phone) : null;
             const emailHash = user.email ? hashMpin(rawSecret, user.email) : null;
@@ -2545,10 +3182,10 @@ app.post('/api/auth/login', async (req, res) => {
             const rawIdHash = hashMpin(rawSecret, rawIdentifier);
 
             if (
-                (phoneHash && user.mpin === phoneHash) ||
-                (emailHash && user.mpin === emailHash) ||
-                (nameHash && user.mpin === nameHash) ||
-                (user.mpin === rawIdHash)
+                (phoneHash && (user.mpin === phoneHash || user.password === phoneHash)) ||
+                (emailHash && (user.mpin === emailHash || user.password === emailHash)) ||
+                (nameHash && (user.mpin === nameHash || user.password === nameHash)) ||
+                (user.mpin === rawIdHash || user.password === rawIdHash)
             ) {
                 isSecretValid = true;
             }
@@ -2582,6 +3219,16 @@ app.post('/api/auth/login', async (req, res) => {
             }
 
             return res.status(401).json({ error: errMsg });
+        }
+
+        // Check if unverified account
+        if (user.emailVerified === false && user.authProvider === 'local') {
+            await logUserLogin(user.phone || rawIdentifier, user.name || 'Unknown', 'failed (unverified email)', req);
+            return res.status(403).json({ 
+                error: 'Your email address has not been verified yet. Please complete verification before logging in.',
+                requiresVerification: true,
+                email: user.email 
+            });
         }
 
         // Credentials are valid -> reset retries & upgrade plain MPIN if needed
